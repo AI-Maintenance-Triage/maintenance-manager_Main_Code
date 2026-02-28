@@ -85,3 +85,8 @@
 - [x] Sidebar navigation links (Platform Admin, Companies) not responding to clicks
 - [x] Admin can switch view to Company Admin or Contractor to test all flows
 - [x] Admin sidebar should show all navigation sections (admin + company + contractor)
+
+## Admin Test Data Creation
+- [x] Admin can create test companies directly from admin dashboard
+- [x] Admin can create test contractors directly from admin dashboard
+- [x] Created test entities appear in View As dropdowns immediately
