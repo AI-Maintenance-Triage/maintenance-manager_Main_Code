@@ -16,6 +16,7 @@ import ContractorJobBoard from "./pages/contractor/ContractorJobBoard";
 import ContractorMyJobs from "./pages/contractor/ContractorMyJobs";
 import ContractorProfile from "./pages/contractor/ContractorProfile";
 import PlatformDashboard from "./pages/admin/PlatformDashboard";
+import AdminCompanies from "./pages/admin/AdminCompanies";
 import Onboarding from "./pages/Onboarding";
 
 function Router() {
@@ -53,6 +54,9 @@ function Router() {
         <DashboardLayout><ContractorProfile /></DashboardLayout>
       </Route>
       {/* Platform Admin Routes */}
+      <Route path="/admin/companies">
+        <DashboardLayout><AdminCompanies /></DashboardLayout>
+      </Route>
       <Route path="/admin">
         <DashboardLayout><PlatformDashboard /></DashboardLayout>
       </Route>

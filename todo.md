@@ -66,3 +66,8 @@
 ## Testing
 - [x] Backend unit tests for core procedures
 - [x] AI classification tests (7 tests covering all scenarios)
+
+## Bugs
+- [x] Sidebar navigation links (Platform Admin, Companies) not responding to clicks
+- [x] Admin can switch view to Company Admin or Contractor to test all flows
+- [x] Admin sidebar should show all navigation sections (admin + company + contractor)

@@ -1,9 +1,99 @@
+import { useAuth } from "@/_core/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ClipboardList, HardHat, MapPin, DollarSign, AlertTriangle, Clock } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { ClipboardList, HardHat, MapPin, DollarSign, AlertTriangle, Clock, Building2, Plus } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useState } from "react";
+import { toast } from "sonner";
 
 export default function CompanyDashboard() {
+  const { user } = useAuth();
+  const utils = trpc.useUtils();
+
+  // Check if user has a company
+  const { data: company, isLoading: companyLoading, error: companyError } = trpc.company.get.useQuery(
+    undefined,
+    { retry: false }
+  );
+
+  // If admin without a company, show setup
+  if (!companyLoading && (companyError || !company)) {
+    return <CompanySetup onCreated={() => {
+      utils.company.get.invalidate();
+      utils.company.dashboardStats.invalidate();
+    }} />;
+  }
+
+  return <CompanyDashboardContent />;
+}
+
+function CompanySetup({ onCreated }: { onCreated: () => void }) {
+  const [name, setName] = useState("");
+  const [address, setAddress] = useState("");
+  const [phone, setPhone] = useState("");
+  const [email, setEmail] = useState("");
+
+  const createCompany = trpc.company.create.useMutation({
+    onSuccess: () => {
+      toast.success("Company created! Refreshing...");
+      // Force a full page reload to refresh auth context with new companyId
+      setTimeout(() => window.location.reload(), 500);
+    },
+    onError: (err) => {
+      toast.error(err.message || "Failed to create company");
+    },
+  });
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-2xl font-bold text-foreground">Set Up Your Company</h1>
+        <p className="text-muted-foreground mt-1">Create your property management company to start managing maintenance requests.</p>
+      </div>
+
+      <Card className="bg-card border-border max-w-lg">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-card-foreground">
+            <Building2 className="h-5 w-5 text-primary" />
+            Company Details
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="name">Company Name *</Label>
+            <Input id="name" placeholder="e.g. Acme Property Management" value={name} onChange={(e) => setName(e.target.value)} />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="address">Address</Label>
+            <Input id="address" placeholder="123 Main St, City, State" value={address} onChange={(e) => setAddress(e.target.value)} />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="phone">Phone</Label>
+              <Input id="phone" placeholder="(555) 123-4567" value={phone} onChange={(e) => setPhone(e.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="email">Email</Label>
+              <Input id="email" placeholder="info@company.com" value={email} onChange={(e) => setEmail(e.target.value)} />
+            </div>
+          </div>
+          <Button
+            onClick={() => createCompany.mutate({ name, address: address || undefined, phone: phone || undefined, email: email || undefined })}
+            disabled={!name.trim() || createCompany.isPending}
+            className="w-full mt-2"
+          >
+            {createCompany.isPending ? "Creating..." : "Create Company"}
+          </Button>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+function CompanyDashboardContent() {
   const { data: stats, isLoading } = trpc.company.dashboardStats.useQuery();
 
   if (isLoading) {
@@ -74,7 +164,7 @@ export default function CompanyDashboard() {
 function RecentJobs() {
   const { data: jobs, isLoading } = trpc.jobs.list.useQuery({});
   if (isLoading) return <Skeleton className="h-32 w-full" />;
-  if (!jobs || jobs.length === 0) return <p className="text-sm text-muted-foreground">No jobs yet. Create your first maintenance request.</p>;
+  if (!jobs || jobs.length === 0) return <p className="text-sm text-muted-foreground">No jobs yet. Create your first maintenance request from the Jobs page.</p>;
 
   const recentJobs = jobs.slice(0, 5);
   return (

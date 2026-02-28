@@ -24,33 +24,68 @@ import { useIsMobile } from "@/hooks/useMobile";
 import {
   LayoutDashboard, LogOut, PanelLeft, Building2, Wrench,
   ClipboardList, MapPin, Users, Settings, Briefcase,
-  UserCircle, Shield, HardHat,
+  UserCircle, Shield, HardHat, ChevronDown,
 } from "lucide-react";
 import { CSSProperties, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { DashboardLayoutSkeleton } from "./DashboardLayoutSkeleton";
 import { Button } from "./ui/button";
+import { Separator } from "./ui/separator";
 
 type MenuItem = { icon: React.ComponentType<{ className?: string }>; label: string; path: string };
+type MenuSection = { title: string; items: MenuItem[] };
 
-const companyMenuItems: MenuItem[] = [
-  { icon: LayoutDashboard, label: "Dashboard", path: "/company" },
-  { icon: ClipboardList, label: "Jobs", path: "/company/jobs" },
-  { icon: MapPin, label: "Properties", path: "/company/properties" },
-  { icon: HardHat, label: "Contractors", path: "/company/contractors" },
-  { icon: Settings, label: "Settings", path: "/company/settings" },
+const adminSections: MenuSection[] = [
+  {
+    title: "Platform Admin",
+    items: [
+      { icon: Shield, label: "Overview", path: "/admin" },
+      { icon: Building2, label: "Companies", path: "/admin/companies" },
+    ],
+  },
+  {
+    title: "Company Management",
+    items: [
+      { icon: LayoutDashboard, label: "Dashboard", path: "/company" },
+      { icon: ClipboardList, label: "Jobs", path: "/company/jobs" },
+      { icon: MapPin, label: "Properties", path: "/company/properties" },
+      { icon: HardHat, label: "Contractors", path: "/company/contractors" },
+      { icon: Settings, label: "Settings", path: "/company/settings" },
+    ],
+  },
+  {
+    title: "Contractor View",
+    items: [
+      { icon: Briefcase, label: "Job Board", path: "/contractor/jobs" },
+      { icon: Wrench, label: "My Jobs", path: "/contractor/my-jobs" },
+      { icon: UserCircle, label: "Profile", path: "/contractor/profile" },
+    ],
+  },
 ];
 
-const contractorMenuItems: MenuItem[] = [
-  { icon: LayoutDashboard, label: "Dashboard", path: "/contractor" },
-  { icon: Briefcase, label: "Job Board", path: "/contractor/jobs" },
-  { icon: Wrench, label: "My Jobs", path: "/contractor/my-jobs" },
-  { icon: UserCircle, label: "Profile", path: "/contractor/profile" },
+const companySections: MenuSection[] = [
+  {
+    title: "Company",
+    items: [
+      { icon: LayoutDashboard, label: "Dashboard", path: "/company" },
+      { icon: ClipboardList, label: "Jobs", path: "/company/jobs" },
+      { icon: MapPin, label: "Properties", path: "/company/properties" },
+      { icon: HardHat, label: "Contractors", path: "/company/contractors" },
+      { icon: Settings, label: "Settings", path: "/company/settings" },
+    ],
+  },
 ];
 
-const adminMenuItems: MenuItem[] = [
-  { icon: Shield, label: "Platform Admin", path: "/admin" },
-  { icon: Building2, label: "Companies", path: "/admin" },
+const contractorSections: MenuSection[] = [
+  {
+    title: "Contractor",
+    items: [
+      { icon: LayoutDashboard, label: "Dashboard", path: "/contractor" },
+      { icon: Briefcase, label: "Job Board", path: "/contractor/jobs" },
+      { icon: Wrench, label: "My Jobs", path: "/contractor/my-jobs" },
+      { icon: UserCircle, label: "Profile", path: "/contractor/profile" },
+    ],
+  },
 ];
 
 const SIDEBAR_WIDTH_KEY = "sidebar-width";
@@ -106,13 +141,15 @@ function DashboardLayoutContent({ children, setSidebarWidth }: { children: React
   const sidebarRef = useRef<HTMLDivElement>(null);
   const isMobile = useIsMobile();
 
-  const menuItems = useMemo(() => {
-    if (user?.role === "admin") return adminMenuItems;
-    if (user?.role === "contractor") return contractorMenuItems;
-    return companyMenuItems;
+  const sections = useMemo(() => {
+    if (user?.role === "admin") return adminSections;
+    if (user?.role === "contractor") return contractorSections;
+    return companySections;
   }, [user?.role]);
 
-  const activeMenuItem = menuItems.find(item => item.path === location);
+  const allItems = sections.flatMap(s => s.items);
+  const activeMenuItem = allItems.find(item => item.path === location)
+    ?? allItems.filter(item => location.startsWith(item.path)).sort((a, b) => b.path.length - a.path.length)[0];
 
   useEffect(() => {
     if (isCollapsed) setIsResizing(false);
@@ -159,19 +196,31 @@ function DashboardLayoutContent({ children, setSidebarWidth }: { children: React
           </SidebarHeader>
 
           <SidebarContent className="gap-0">
-            <SidebarMenu className="px-2 py-1">
-              {menuItems.map(item => {
-                const isActive = location === item.path;
-                return (
-                  <SidebarMenuItem key={item.path}>
-                    <SidebarMenuButton isActive={isActive} onClick={() => setLocation(item.path)} tooltip={item.label} className="h-10 transition-all font-normal">
-                      <item.icon className={`h-4 w-4 ${isActive ? "text-primary" : ""}`} />
-                      <span>{item.label}</span>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                );
-              })}
-            </SidebarMenu>
+            {sections.map((section, sIdx) => (
+              <div key={section.title}>
+                {sIdx > 0 && <Separator className="my-2 mx-2" />}
+                {!isCollapsed && (
+                  <div className="px-4 py-2">
+                    <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60">
+                      {section.title}
+                    </span>
+                  </div>
+                )}
+                <SidebarMenu className="px-2 py-0.5">
+                  {section.items.map(item => {
+                    const isActive = location === item.path || (item.path !== "/" && location.startsWith(item.path + "/"));
+                    return (
+                      <SidebarMenuItem key={`${section.title}-${item.path}`}>
+                        <SidebarMenuButton isActive={isActive} onClick={() => setLocation(item.path)} tooltip={item.label} className="h-9 transition-all font-normal">
+                          <item.icon className={`h-4 w-4 ${isActive ? "text-primary" : ""}`} />
+                          <span>{item.label}</span>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    );
+                  })}
+                </SidebarMenu>
+              </div>
+            ))}
           </SidebarContent>
 
           <SidebarFooter className="p-3">
