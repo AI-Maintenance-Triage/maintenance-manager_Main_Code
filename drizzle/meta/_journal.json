@@ -1,5 +1,13 @@
 {
   "version": "7",
   "dialect": "mysql",
-  "entries": []
+  "entries": [
+    {
+      "idx": 0,
+      "version": "5",
+      "when": 1772297922966,
+      "tag": "0000_numerous_white_queen",
+      "breakpoints": true
+    }
+  ]
 }
