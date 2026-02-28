@@ -6,6 +6,7 @@ import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, protectedProcedure, adminProcedure, router } from "./_core/trpc";
 import * as db from "./db";
 import { classifyMaintenanceRequest } from "./ai-classify";
+import { adminViewAsRouter } from "./routers/admin-viewas";
 
 // ─── Middleware: require company_admin role ─────────────────────────────────
 const companyAdminProcedure = protectedProcedure.use(({ ctx, next }) => {
@@ -25,7 +26,7 @@ const contractorProcedure = protectedProcedure.use(({ ctx, next }) => {
 // ─── Company Router ─────────────────────────────────────────────────────────
 const companyRouter = router({
   create: protectedProcedure
-    .input(z.object({ name: z.string().min(1), address: z.string().optional(), phone: z.string().optional(), email: z.string().optional() }))
+    .input(z.object({ name: z.string().min(1), address: z.string().optional(), phone: z.string().optional(), email: z.string().optional(), city: z.string().optional(), state: z.string().optional(), zipCode: z.string().optional(), website: z.string().optional() }))
     .mutation(async ({ ctx, input }) => {
       const companyId = await db.createCompany({ name: input.name, address: input.address ?? null, phone: input.phone ?? null, email: input.email ?? null });
       await db.updateUserRole(ctx.user.id, "company_admin", companyId);
@@ -564,6 +565,7 @@ export const appRouter = router({
   integrations: integrationsRouter,
   transactions: transactionsRouter,
   platform: platformRouter,
+  adminViewAs: adminViewAsRouter,
 });
 
 export type AppRouter = typeof appRouter;

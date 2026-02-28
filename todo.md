@@ -63,11 +63,25 @@
 - [x] Robust settings pages for companies and contractors
 - [x] Professional dark theme UI design
 
+## Public-Facing & Registration
+- [x] Public landing page with feature highlights and Get Started CTA
+- [x] Two-path registration flow (Property Management Company vs Contractor/Handyman)
+- [x] Company registration with unique fields (company name, address, phone, email)
+- [x] Contractor registration with unique fields (business name, trades, service area, license)
+- [x] No paywalls for testing purposes
+
+## Admin Impersonation
+- [x] Admin "View As" toggle to impersonate any company or contractor
+- [x] Admin dashboard fully separated from company/contractor views
+- [x] ViewAs context with company/contractor selection dropdowns
+- [x] Company pages load data via adminViewAs procedures when impersonating
+- [x] Contractor pages load data via adminViewAs procedures when impersonating
+
 ## Testing
 - [x] Backend unit tests for core procedures
 - [x] AI classification tests (7 tests covering all scenarios)
 
-## Bugs
+## Bugs (Resolved)
 - [x] Sidebar navigation links (Platform Admin, Companies) not responding to clicks
 - [x] Admin can switch view to Company Admin or Contractor to test all flows
 - [x] Admin sidebar should show all navigation sections (admin + company + contractor)

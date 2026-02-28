@@ -1,3 +1,4 @@
+import { useAuth } from "@/_core/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,16 +9,24 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { useViewAs } from "@/contexts/ViewAsContext";
 import { Plus, Trash2, Settings, DollarSign, MapPin, Clock, Link2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
 export default function CompanySettings() {
+  const { user } = useAuth();
+  const viewAs = useViewAs();
+  const isAdmin = user?.role === "admin";
+  const isViewingAsCompany = isAdmin && viewAs.mode === "company" && viewAs.companyId;
+
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-foreground">Settings</h1>
-        <p className="text-muted-foreground mt-1">Configure your company's maintenance operations</p>
+        <p className="text-muted-foreground mt-1">
+          {isViewingAsCompany ? `Viewing settings for ${viewAs.companyName} (read-only)` : "Configure your company's maintenance operations"}
+        </p>
       </div>
       <Tabs defaultValue="general" className="space-y-6">
         <TabsList className="bg-secondary">
@@ -26,18 +35,25 @@ export default function CompanySettings() {
           <TabsTrigger value="tracking"><MapPin className="h-4 w-4 mr-1.5" />GPS & Time</TabsTrigger>
           <TabsTrigger value="integrations"><Link2 className="h-4 w-4 mr-1.5" />Integrations</TabsTrigger>
         </TabsList>
-        <TabsContent value="general"><GeneralSettings /></TabsContent>
-        <TabsContent value="rates"><SkillTiersSettings /></TabsContent>
-        <TabsContent value="tracking"><TrackingSettings /></TabsContent>
-        <TabsContent value="integrations"><IntegrationSettings /></TabsContent>
+        <TabsContent value="general"><GeneralSettings readOnly={!!isViewingAsCompany} companyId={isViewingAsCompany ? viewAs.companyId! : undefined} /></TabsContent>
+        <TabsContent value="rates"><SkillTiersSettings readOnly={!!isViewingAsCompany} companyId={isViewingAsCompany ? viewAs.companyId! : undefined} /></TabsContent>
+        <TabsContent value="tracking"><TrackingSettings readOnly={!!isViewingAsCompany} companyId={isViewingAsCompany ? viewAs.companyId! : undefined} /></TabsContent>
+        <TabsContent value="integrations"><IntegrationSettings readOnly={!!isViewingAsCompany} companyId={isViewingAsCompany ? viewAs.companyId! : undefined} /></TabsContent>
       </Tabs>
     </div>
   );
 }
 
-function GeneralSettings() {
-  const { data: settings, isLoading } = trpc.settings.get.useQuery();
-  const { data: company } = trpc.company.get.useQuery();
+function GeneralSettings({ readOnly, companyId }: { readOnly: boolean; companyId?: number }) {
+  const regularSettings = trpc.settings.get.useQuery(undefined, { enabled: !readOnly });
+  const regularCompany = trpc.company.get.useQuery(undefined, { enabled: !readOnly });
+  const viewAsSettings = trpc.adminViewAs.companySettings.useQuery({ companyId: companyId! }, { enabled: readOnly && !!companyId });
+  const viewAsCompany = trpc.adminViewAs.companyDetails.useQuery({ companyId: companyId! }, { enabled: readOnly && !!companyId });
+
+  const settings = readOnly ? viewAsSettings.data : regularSettings.data;
+  const company = readOnly ? viewAsCompany.data : regularCompany.data;
+  const isLoading = readOnly ? viewAsSettings.isLoading : regularSettings.isLoading;
+
   const updateSettings = trpc.settings.update.useMutation({ onSuccess: () => toast.success("Settings saved!") });
   const updateCompany = trpc.company.update.useMutation({ onSuccess: () => toast.success("Company updated!") });
 
@@ -47,11 +63,11 @@ function GeneralSettings() {
   const [partsMarkup, setPartsMarkup] = useState("0");
 
   useEffect(() => {
-    if (company) setCompanyName(company.name);
+    if (company) setCompanyName((company as any).name || "");
     if (settings) {
-      setAutoApprove(settings.autoApproveContractors ?? false);
-      setEscalationTimeout(String(settings.escalationTimeoutMinutes ?? 60));
-      setPartsMarkup(settings.partsMarkupPercent ?? "0");
+      setAutoApprove((settings as any).autoApproveContractors ?? false);
+      setEscalationTimeout(String((settings as any).escalationTimeoutMinutes ?? 60));
+      setPartsMarkup((settings as any).partsMarkupPercent ?? "0");
     }
   }, [company, settings]);
 
@@ -67,11 +83,13 @@ function GeneralSettings() {
         <CardContent className="space-y-4">
           <div className="space-y-2">
             <Label>Company Name</Label>
-            <Input value={companyName} onChange={(e) => setCompanyName(e.target.value)} />
+            <Input value={companyName} onChange={(e) => setCompanyName(e.target.value)} disabled={readOnly} />
           </div>
-          <Button onClick={() => updateCompany.mutate({ name: companyName })} disabled={updateCompany.isPending}>
-            {updateCompany.isPending ? "Saving..." : "Save"}
-          </Button>
+          {!readOnly && (
+            <Button onClick={() => updateCompany.mutate({ name: companyName })} disabled={updateCompany.isPending}>
+              {updateCompany.isPending ? "Saving..." : "Save"}
+            </Button>
+          )}
         </CardContent>
       </Card>
 
@@ -86,17 +104,17 @@ function GeneralSettings() {
               <Label>Auto-Approve Contractors</Label>
               <p className="text-xs text-muted-foreground">Automatically approve contractors who request to join</p>
             </div>
-            <Switch checked={autoApprove} onCheckedChange={(v) => { setAutoApprove(v); updateSettings.mutate({ autoApproveContractors: v }); }} />
+            <Switch checked={autoApprove} disabled={readOnly} onCheckedChange={(v) => { if (!readOnly) { setAutoApprove(v); updateSettings.mutate({ autoApproveContractors: v }); } }} />
           </div>
           <div className="space-y-2">
             <Label>Job Escalation Timeout (minutes)</Label>
             <p className="text-xs text-muted-foreground">Auto-escalate if no contractor accepts within this time</p>
-            <Input type="number" value={escalationTimeout} onChange={(e) => setEscalationTimeout(e.target.value)} onBlur={() => updateSettings.mutate({ escalationTimeoutMinutes: Number(escalationTimeout) })} />
+            <Input type="number" value={escalationTimeout} disabled={readOnly} onChange={(e) => setEscalationTimeout(e.target.value)} onBlur={() => { if (!readOnly) updateSettings.mutate({ escalationTimeoutMinutes: Number(escalationTimeout) }); }} />
           </div>
           <div className="space-y-2">
             <Label>Parts Markup (%)</Label>
             <p className="text-xs text-muted-foreground">Markup percentage applied to contractor-submitted parts receipts</p>
-            <Input type="number" value={partsMarkup} onChange={(e) => setPartsMarkup(e.target.value)} onBlur={() => updateSettings.mutate({ partsMarkupPercent: partsMarkup })} />
+            <Input type="number" value={partsMarkup} disabled={readOnly} onChange={(e) => setPartsMarkup(e.target.value)} onBlur={() => { if (!readOnly) updateSettings.mutate({ partsMarkupPercent: partsMarkup }); }} />
           </div>
         </CardContent>
       </Card>
@@ -104,9 +122,14 @@ function GeneralSettings() {
   );
 }
 
-function SkillTiersSettings() {
+function SkillTiersSettings({ readOnly, companyId }: { readOnly: boolean; companyId?: number }) {
   const utils = trpc.useUtils();
-  const { data: tiers, isLoading } = trpc.skillTiers.list.useQuery();
+  const regularTiers = trpc.skillTiers.list.useQuery(undefined, { enabled: !readOnly });
+  const viewAsTiers = trpc.adminViewAs.companySkillTiers.useQuery({ companyId: companyId! }, { enabled: readOnly && !!companyId });
+
+  const tiers = readOnly ? viewAsTiers.data : regularTiers.data;
+  const isLoading = readOnly ? viewAsTiers.isLoading : regularTiers.isLoading;
+
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({ name: "", hourlyRate: "", description: "", emergencyMultiplier: "1.5" });
 
@@ -127,25 +150,27 @@ function SkillTiersSettings() {
             <CardTitle className="text-card-foreground">Skill Tiers & Hourly Rates</CardTitle>
             <CardDescription>Define the skill tiers and their hourly rates. The AI uses these to classify incoming jobs.</CardDescription>
           </div>
-          <Dialog open={open} onOpenChange={setOpen}>
-            <DialogTrigger asChild><Button size="sm" className="gap-1"><Plus className="h-4 w-4" /> Add Tier</Button></DialogTrigger>
-            <DialogContent className="bg-card">
-              <DialogHeader><DialogTitle className="text-card-foreground">Add Skill Tier</DialogTitle></DialogHeader>
-              <div className="space-y-4">
-                <div className="space-y-2"><Label>Tier Name</Label><Input placeholder="e.g. General Handyman" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></div>
-                <div className="space-y-2"><Label>Hourly Rate ($)</Label><Input type="number" placeholder="35" value={form.hourlyRate} onChange={(e) => setForm({ ...form, hourlyRate: e.target.value })} /></div>
-                <div className="space-y-2"><Label>Description</Label><Input placeholder="Basic repairs, minor fixes" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} /></div>
-                <div className="space-y-2"><Label>Emergency Multiplier</Label><Input type="number" step="0.1" placeholder="1.5" value={form.emergencyMultiplier} onChange={(e) => setForm({ ...form, emergencyMultiplier: e.target.value })} /></div>
-                <Button onClick={() => createTier.mutate({ name: form.name, hourlyRate: form.hourlyRate, description: form.description || undefined, emergencyMultiplier: form.emergencyMultiplier })} disabled={!form.name || !form.hourlyRate || createTier.isPending} className="w-full">
-                  {createTier.isPending ? "Creating..." : "Create Tier"}
-                </Button>
-              </div>
-            </DialogContent>
-          </Dialog>
+          {!readOnly && (
+            <Dialog open={open} onOpenChange={setOpen}>
+              <DialogTrigger asChild><Button size="sm" className="gap-1"><Plus className="h-4 w-4" /> Add Tier</Button></DialogTrigger>
+              <DialogContent className="bg-card">
+                <DialogHeader><DialogTitle className="text-card-foreground">Add Skill Tier</DialogTitle></DialogHeader>
+                <div className="space-y-4">
+                  <div className="space-y-2"><Label>Tier Name</Label><Input placeholder="e.g. General Handyman" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></div>
+                  <div className="space-y-2"><Label>Hourly Rate ($)</Label><Input type="number" placeholder="35" value={form.hourlyRate} onChange={(e) => setForm({ ...form, hourlyRate: e.target.value })} /></div>
+                  <div className="space-y-2"><Label>Description</Label><Input placeholder="Basic repairs, minor fixes" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} /></div>
+                  <div className="space-y-2"><Label>Emergency Multiplier</Label><Input type="number" step="0.1" placeholder="1.5" value={form.emergencyMultiplier} onChange={(e) => setForm({ ...form, emergencyMultiplier: e.target.value })} /></div>
+                  <Button onClick={() => createTier.mutate({ name: form.name, hourlyRate: form.hourlyRate, description: form.description || undefined, emergencyMultiplier: form.emergencyMultiplier })} disabled={!form.name || !form.hourlyRate || createTier.isPending} className="w-full">
+                    {createTier.isPending ? "Creating..." : "Create Tier"}
+                  </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
+          )}
         </CardHeader>
         <CardContent>
           {!tiers || tiers.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-8">No skill tiers configured. Add tiers like "General Handyman ($35/hr)", "Skilled Trade ($50/hr)", "Specialty ($80/hr)".</p>
+            <p className="text-sm text-muted-foreground text-center py-8">No skill tiers configured. {!readOnly ? 'Add tiers like "General Handyman ($35/hr)", "Skilled Trade ($50/hr)", "Specialty ($80/hr)".' : ""}</p>
           ) : (
             <div className="space-y-2">
               {tiers.map((tier: any) => (
@@ -158,9 +183,11 @@ function SkillTiersSettings() {
                     {tier.description && <p className="text-xs text-muted-foreground mt-0.5">{tier.description}</p>}
                     <p className="text-xs text-muted-foreground">Emergency: {tier.emergencyMultiplier}x</p>
                   </div>
-                  <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-destructive" onClick={() => deleteTier.mutate({ id: tier.id })}>
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
+                  {!readOnly && (
+                    <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-destructive" onClick={() => deleteTier.mutate({ id: tier.id })}>
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  )}
                 </div>
               ))}
             </div>
@@ -171,8 +198,13 @@ function SkillTiersSettings() {
   );
 }
 
-function TrackingSettings() {
-  const { data: settings, isLoading } = trpc.settings.get.useQuery();
+function TrackingSettings({ readOnly, companyId }: { readOnly: boolean; companyId?: number }) {
+  const regularSettings = trpc.settings.get.useQuery(undefined, { enabled: !readOnly });
+  const viewAsSettings = trpc.adminViewAs.companySettings.useQuery({ companyId: companyId! }, { enabled: readOnly && !!companyId });
+
+  const settings = readOnly ? viewAsSettings.data : regularSettings.data;
+  const isLoading = readOnly ? viewAsSettings.isLoading : regularSettings.isLoading;
+
   const updateSettings = trpc.settings.update.useMutation({ onSuccess: () => toast.success("Settings saved!") });
 
   const [geofence, setGeofence] = useState("500");
@@ -183,11 +215,11 @@ function TrackingSettings() {
 
   useEffect(() => {
     if (settings) {
-      setGeofence(String(settings.geofenceRadiusFeet ?? 500));
-      setAutoClockOut(String(settings.autoClockOutMinutes ?? 5));
-      setMaxSession(String(settings.maxSessionDurationHours ?? 8));
-      setTimesheetReview(settings.timesheetReviewEnabled ?? true);
-      setBillablePolicy(settings.billableTimePolicy ?? "on_site_only");
+      setGeofence(String((settings as any).geofenceRadiusFeet ?? 500));
+      setAutoClockOut(String((settings as any).autoClockOutMinutes ?? 5));
+      setMaxSession(String((settings as any).maxSessionDurationHours ?? 8));
+      setTimesheetReview((settings as any).timesheetReviewEnabled ?? true);
+      setBillablePolicy((settings as any).billableTimePolicy ?? "on_site_only");
     }
   }, [settings]);
 
@@ -204,7 +236,7 @@ function TrackingSettings() {
           <div className="space-y-2">
             <Label>Geofence Radius (feet)</Label>
             <p className="text-xs text-muted-foreground">Contractor must be within this distance of the property to clock in/out</p>
-            <Input type="number" value={geofence} onChange={(e) => setGeofence(e.target.value)} onBlur={() => updateSettings.mutate({ geofenceRadiusFeet: Number(geofence) })} />
+            <Input type="number" value={geofence} disabled={readOnly} onChange={(e) => setGeofence(e.target.value)} onBlur={() => { if (!readOnly) updateSettings.mutate({ geofenceRadiusFeet: Number(geofence) }); }} />
           </div>
         </CardContent>
       </Card>
@@ -217,25 +249,25 @@ function TrackingSettings() {
         <CardContent className="space-y-4">
           <div className="space-y-2">
             <Label>Auto Clock-Out Timer (minutes)</Label>
-            <p className="text-xs text-muted-foreground">Automatically clock out contractor after returning to their starting location for this duration</p>
-            <Input type="number" value={autoClockOut} onChange={(e) => setAutoClockOut(e.target.value)} onBlur={() => updateSettings.mutate({ autoClockOutMinutes: Number(autoClockOut) })} />
+            <p className="text-xs text-muted-foreground">Auto clock-out when contractor returns to starting location for this duration</p>
+            <Input type="number" value={autoClockOut} disabled={readOnly} onChange={(e) => setAutoClockOut(e.target.value)} onBlur={() => { if (!readOnly) updateSettings.mutate({ autoClockOutMinutes: Number(autoClockOut) }); }} />
           </div>
           <div className="space-y-2">
             <Label>Max Session Duration (hours)</Label>
             <p className="text-xs text-muted-foreground">Auto-flag sessions exceeding this duration for review</p>
-            <Input type="number" value={maxSession} onChange={(e) => setMaxSession(e.target.value)} onBlur={() => updateSettings.mutate({ maxSessionDurationHours: Number(maxSession) })} />
+            <Input type="number" value={maxSession} disabled={readOnly} onChange={(e) => setMaxSession(e.target.value)} onBlur={() => { if (!readOnly) updateSettings.mutate({ maxSessionDurationHours: Number(maxSession) }); }} />
           </div>
           <div className="flex items-center justify-between">
             <div>
               <Label>Timesheet Review Window</Label>
               <p className="text-xs text-muted-foreground">Allow contractors to review calculated time before submission</p>
             </div>
-            <Switch checked={timesheetReview} onCheckedChange={(v) => { setTimesheetReview(v); updateSettings.mutate({ timesheetReviewEnabled: v }); }} />
+            <Switch checked={timesheetReview} disabled={readOnly} onCheckedChange={(v) => { if (!readOnly) { setTimesheetReview(v); updateSettings.mutate({ timesheetReviewEnabled: v }); } }} />
           </div>
           <div className="space-y-2">
             <Label>Billable Time Policy</Label>
             <p className="text-xs text-muted-foreground">How contractor time is calculated for billing</p>
-            <Select value={billablePolicy} onValueChange={(v) => { setBillablePolicy(v); updateSettings.mutate({ billableTimePolicy: v as any }); }}>
+            <Select value={billablePolicy} disabled={readOnly} onValueChange={(v) => { if (!readOnly) { setBillablePolicy(v); updateSettings.mutate({ billableTimePolicy: v as any }); } }}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="on_site_only">On-Site Only — Only time at the property</SelectItem>
@@ -250,9 +282,13 @@ function TrackingSettings() {
   );
 }
 
-function IntegrationSettings() {
+function IntegrationSettings({ readOnly, companyId }: { readOnly: boolean; companyId?: number }) {
   const utils = trpc.useUtils();
-  const { data: integrations, isLoading } = trpc.integrations.list.useQuery();
+  const regularIntegrations = trpc.integrations.list.useQuery(undefined, { enabled: !readOnly });
+  const viewAsIntegrations = trpc.adminViewAs.companyIntegrations.useQuery({ companyId: companyId! }, { enabled: readOnly && !!companyId });
+
+  const integrations = readOnly ? viewAsIntegrations.data : regularIntegrations.data;
+  const isLoading = readOnly ? viewAsIntegrations.isLoading : regularIntegrations.isLoading;
 
   const upsertIntegration = trpc.integrations.upsert.useMutation({
     onSuccess: () => { toast.success("Integration saved!"); utils.integrations.list.invalidate(); },
@@ -273,38 +309,40 @@ function IntegrationSettings() {
 
   return (
     <div className="space-y-6">
-      <Card className="bg-card border-border">
-        <CardHeader>
-          <CardTitle className="text-card-foreground flex items-center gap-2"><Link2 className="h-5 w-5 text-primary" /> Property Management Software</CardTitle>
-          <CardDescription>Connect your property management software to automatically import maintenance requests</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Label>Provider</Label>
-            <Select value={provider} onValueChange={setProvider}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                {providers.map((p) => <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>)}
-              </SelectContent>
-            </Select>
-            <p className="text-xs text-muted-foreground">{providers.find(p => p.value === provider)?.description}</p>
-          </div>
-          <div className="space-y-2">
-            <Label>API Key</Label>
-            <Input type="password" placeholder="Enter your API key" value={apiKey} onChange={(e) => setApiKey(e.target.value)} />
-          </div>
-          <div className="space-y-2">
-            <Label>Base URL (optional)</Label>
-            <Input placeholder="https://api.buildium.com" value={baseUrl} onChange={(e) => setBaseUrl(e.target.value)} />
-          </div>
-          <Button
-            onClick={() => upsertIntegration.mutate({ provider: provider as any, apiKey: apiKey || undefined, baseUrl: baseUrl || undefined, isActive: true })}
-            disabled={!apiKey || upsertIntegration.isPending}
-          >
-            {upsertIntegration.isPending ? "Saving..." : "Save Integration"}
-          </Button>
-        </CardContent>
-      </Card>
+      {!readOnly && (
+        <Card className="bg-card border-border">
+          <CardHeader>
+            <CardTitle className="text-card-foreground flex items-center gap-2"><Link2 className="h-5 w-5 text-primary" /> Property Management Software</CardTitle>
+            <CardDescription>Connect your property management software to automatically import maintenance requests</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label>Provider</Label>
+              <Select value={provider} onValueChange={setProvider}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {providers.map((p) => <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>)}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">{providers.find(p => p.value === provider)?.description}</p>
+            </div>
+            <div className="space-y-2">
+              <Label>API Key</Label>
+              <Input type="password" placeholder="Enter your API key" value={apiKey} onChange={(e) => setApiKey(e.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <Label>Base URL (optional)</Label>
+              <Input placeholder="https://api.buildium.com" value={baseUrl} onChange={(e) => setBaseUrl(e.target.value)} />
+            </div>
+            <Button
+              onClick={() => upsertIntegration.mutate({ provider: provider as any, apiKey: apiKey || undefined, baseUrl: baseUrl || undefined, isActive: true })}
+              disabled={!apiKey || upsertIntegration.isPending}
+            >
+              {upsertIntegration.isPending ? "Saving..." : "Save Integration"}
+            </Button>
+          </CardContent>
+        </Card>
+      )}
 
       {integrations && integrations.length > 0 && (
         <Card className="bg-card border-border">
@@ -322,6 +360,14 @@ function IntegrationSettings() {
                 </div>
               ))}
             </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {readOnly && (!integrations || integrations.length === 0) && (
+        <Card className="bg-card border-border">
+          <CardContent className="p-8 text-center">
+            <p className="text-muted-foreground">This company has no integrations configured.</p>
           </CardContent>
         </Card>
       )}

@@ -1,14 +1,55 @@
 import { trpc } from "@/lib/trpc";
+import { useViewAs } from "@/contexts/ViewAsContext";
+import { useAuth } from "@/_core/hooks/useAuth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Briefcase, Clock, DollarSign, CheckCircle } from "lucide-react";
+import { Briefcase, Clock, DollarSign, CheckCircle, AlertCircle } from "lucide-react";
 
 export default function ContractorDashboard() {
-  const { data: profile, isLoading: profileLoading } = trpc.contractor.getProfile.useQuery();
-  const { data: myJobs, isLoading: jobsLoading } = trpc.contractor.myJobs.useQuery();
-  const { data: availableJobs } = trpc.contractor.availableJobs.useQuery();
+  const { user } = useAuth();
+  const viewAs = useViewAs();
+  const isAdmin = user?.role === "admin";
+  const isViewingAsContractor = isAdmin && viewAs.mode === "contractor" && viewAs.contractorProfileId;
 
-  if (profileLoading) {
+  // Admin viewing as contractor uses adminViewAs procedures
+  const { data: adminProfile, isLoading: adminProfileLoading } = trpc.adminViewAs.contractorProfile.useQuery(
+    { contractorProfileId: viewAs.contractorProfileId! },
+    { enabled: !!isViewingAsContractor }
+  );
+  const { data: adminJobs, isLoading: adminJobsLoading } = trpc.adminViewAs.contractorJobs.useQuery(
+    { contractorProfileId: viewAs.contractorProfileId! },
+    { enabled: !!isViewingAsContractor }
+  );
+  const { data: adminAvailable } = trpc.adminViewAs.contractorAvailableJobs.useQuery(
+    { contractorProfileId: viewAs.contractorProfileId! },
+    { enabled: !!isViewingAsContractor }
+  );
+
+  // Regular contractor uses their own procedures
+  const { data: myProfile, isLoading: myProfileLoading } = trpc.contractor.getProfile.useQuery(undefined, { enabled: !isViewingAsContractor });
+  const { data: myJobs, isLoading: myJobsLoading } = trpc.contractor.myJobs.useQuery(undefined, { enabled: !isViewingAsContractor });
+  const { data: myAvailable } = trpc.contractor.availableJobs.useQuery(undefined, { enabled: !isViewingAsContractor });
+
+  const profile = isViewingAsContractor ? adminProfile : myProfile;
+  const jobs = isViewingAsContractor ? adminJobs : myJobs;
+  const availableJobs = isViewingAsContractor ? adminAvailable : myAvailable;
+  const isLoading = isViewingAsContractor ? adminProfileLoading : myProfileLoading;
+
+  if (!isViewingAsContractor && isAdmin) {
+    return (
+      <div className="space-y-6">
+        <h1 className="text-2xl font-bold text-foreground">Contractor Dashboard</h1>
+        <Card className="bg-card border-border">
+          <CardContent className="p-12 text-center">
+            <AlertCircle className="h-10 w-10 text-muted-foreground mx-auto mb-4" />
+            <p className="text-muted-foreground">Select a contractor from the "View as Contractor" dropdown above to see their dashboard.</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (isLoading) {
     return (
       <div className="space-y-6">
         <h1 className="text-2xl font-bold text-foreground">Dashboard</h1>
@@ -19,15 +60,15 @@ export default function ContractorDashboard() {
     );
   }
 
-  const activeJobs = myJobs?.filter((j: any) => j.status === "in_progress" || j.status === "assigned") ?? [];
-  const completedJobs = myJobs?.filter((j: any) => j.status === "completed" || j.status === "paid") ?? [];
+  const activeJobs = jobs?.filter((j: any) => j.status === "in_progress" || j.status === "assigned") ?? [];
+  const completedJobs = jobs?.filter((j: any) => j.status === "completed" || j.status === "paid") ?? [];
 
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-foreground">Contractor Dashboard</h1>
         <p className="text-muted-foreground mt-1">
-          {profile?.isAvailable ? "You're available for jobs" : "You're currently set as unavailable"}
+          {profile?.isAvailable ? "Available for jobs" : "Currently set as unavailable"}
         </p>
       </div>
 

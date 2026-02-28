@@ -1,14 +1,29 @@
+import { useAuth } from "@/_core/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { HardHat, CheckCircle, XCircle, Clock } from "lucide-react";
+import { useViewAs } from "@/contexts/ViewAsContext";
+import { HardHat, CheckCircle, XCircle } from "lucide-react";
 import { toast } from "sonner";
 
 export default function CompanyContractors() {
+  const { user } = useAuth();
+  const viewAs = useViewAs();
+  const isAdmin = user?.role === "admin";
+  const isViewingAsCompany = isAdmin && viewAs.mode === "company" && viewAs.companyId;
+
   const utils = trpc.useUtils();
-  const { data: contractors, isLoading } = trpc.contractor.listByCompany.useQuery();
+
+  const regularContractors = trpc.contractor.listByCompany.useQuery(undefined, { enabled: !isViewingAsCompany });
+  const viewAsContractors = trpc.adminViewAs.companyContractors.useQuery(
+    { companyId: viewAs.companyId! },
+    { enabled: !!isViewingAsCompany }
+  );
+
+  const contractors = isViewingAsCompany ? viewAsContractors.data : regularContractors.data;
+  const isLoading = isViewingAsCompany ? viewAsContractors.isLoading : regularContractors.isLoading;
 
   const updateRelationship = trpc.contractor.updateRelationship.useMutation({
     onSuccess: () => { toast.success("Updated!"); utils.contractor.listByCompany.invalidate(); },
@@ -28,7 +43,9 @@ export default function CompanyContractors() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-foreground">Contractors</h1>
-        <p className="text-muted-foreground mt-1">Manage your contractor relationships</p>
+        <p className="text-muted-foreground mt-1">
+          {isViewingAsCompany ? `Viewing contractors for ${viewAs.companyName}` : "Manage your contractor relationships"}
+        </p>
       </div>
 
       {isLoading ? (
@@ -37,7 +54,9 @@ export default function CompanyContractors() {
         <Card className="bg-card border-border">
           <CardContent className="p-12 text-center">
             <HardHat className="h-10 w-10 text-muted-foreground mx-auto mb-4" />
-            <p className="text-muted-foreground">No contractors connected yet. Contractors can request to join your company through the platform.</p>
+            <p className="text-muted-foreground">
+              {isViewingAsCompany ? "No contractors connected to this company yet." : "No contractors connected yet. Contractors can request to join your company through the platform."}
+            </p>
           </CardContent>
         </Card>
       ) : (
@@ -52,9 +71,7 @@ export default function CompanyContractors() {
                       {statusBadge(c.status)}
                     </div>
                     <div className="flex items-center gap-4 text-sm text-muted-foreground flex-wrap">
-                      {c.trades && c.trades.length > 0 && (
-                        <span>Trades: {c.trades.join(", ")}</span>
-                      )}
+                      {c.trades && c.trades.length > 0 && <span>Trades: {c.trades.join(", ")}</span>}
                       {c.phone && <span>Phone: {c.phone}</span>}
                       {c.isAvailable !== undefined && (
                         <span className={c.isAvailable ? "text-green-400" : "text-muted-foreground"}>
@@ -63,26 +80,28 @@ export default function CompanyContractors() {
                       )}
                     </div>
                   </div>
-                  <div className="flex gap-2 shrink-0">
-                    {c.status === "pending" && (
-                      <>
-                        <Button size="sm" variant="outline" className="gap-1 text-green-400 border-green-500/30 hover:bg-green-500/10"
-                          onClick={() => updateRelationship.mutate({ relationshipId: c.relationshipId, status: "approved" })}>
-                          <CheckCircle className="h-3.5 w-3.5" /> Approve
+                  {!isViewingAsCompany && (
+                    <div className="flex gap-2 shrink-0">
+                      {c.status === "pending" && (
+                        <>
+                          <Button size="sm" variant="outline" className="gap-1 text-green-400 border-green-500/30 hover:bg-green-500/10"
+                            onClick={() => updateRelationship.mutate({ relationshipId: c.relationshipId, status: "approved" })}>
+                            <CheckCircle className="h-3.5 w-3.5" /> Approve
+                          </Button>
+                          <Button size="sm" variant="outline" className="gap-1 text-red-400 border-red-500/30 hover:bg-red-500/10"
+                            onClick={() => updateRelationship.mutate({ relationshipId: c.relationshipId, status: "rejected" })}>
+                            <XCircle className="h-3.5 w-3.5" /> Reject
+                          </Button>
+                        </>
+                      )}
+                      {c.status === "approved" && (
+                        <Button size="sm" variant="outline" className="text-muted-foreground"
+                          onClick={() => updateRelationship.mutate({ relationshipId: c.relationshipId, status: "suspended" })}>
+                          Suspend
                         </Button>
-                        <Button size="sm" variant="outline" className="gap-1 text-red-400 border-red-500/30 hover:bg-red-500/10"
-                          onClick={() => updateRelationship.mutate({ relationshipId: c.relationshipId, status: "rejected" })}>
-                          <XCircle className="h-3.5 w-3.5" /> Reject
-                        </Button>
-                      </>
-                    )}
-                    {c.status === "approved" && (
-                      <Button size="sm" variant="outline" className="text-muted-foreground"
-                        onClick={() => updateRelationship.mutate({ relationshipId: c.relationshipId, status: "suspended" })}>
-                        Suspend
-                      </Button>
-                    )}
-                  </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>

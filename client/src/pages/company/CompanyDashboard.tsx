@@ -4,23 +4,42 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ClipboardList, HardHat, MapPin, DollarSign, AlertTriangle, Clock, Building2, Plus } from "lucide-react";
+import { useViewAs } from "@/contexts/ViewAsContext";
+import { ClipboardList, HardHat, MapPin, DollarSign, AlertTriangle, Clock, Building2 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useState } from "react";
 import { toast } from "sonner";
 
 export default function CompanyDashboard() {
   const { user } = useAuth();
+  const viewAs = useViewAs();
+  const isAdmin = user?.role === "admin";
   const utils = trpc.useUtils();
 
-  // Check if user has a company
+  // Admin viewing as a company — use adminViewAs procedures
+  if (isAdmin && viewAs.mode === "company" && viewAs.companyId) {
+    return <CompanyDashboardViewAs companyId={viewAs.companyId} companyName={viewAs.companyName || "Company"} />;
+  }
+
+  // Admin without selecting a company
+  if (isAdmin && viewAs.mode !== "company") {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-2xl font-bold text-foreground">Company Dashboard</h1>
+          <p className="text-muted-foreground mt-1">Select a company from the "View as Company" dropdown above to view their dashboard.</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Regular company admin — check if they have a company
   const { data: company, isLoading: companyLoading, error: companyError } = trpc.company.get.useQuery(
     undefined,
-    { retry: false }
+    { retry: false, enabled: !isAdmin }
   );
 
-  // If admin without a company, show setup
-  if (!companyLoading && (companyError || !company)) {
+  if (!isAdmin && !companyLoading && (companyError || !company)) {
     return <CompanySetup onCreated={() => {
       utils.company.get.invalidate();
       utils.company.dashboardStats.invalidate();
@@ -28,6 +47,54 @@ export default function CompanyDashboard() {
   }
 
   return <CompanyDashboardContent />;
+}
+
+function CompanyDashboardViewAs({ companyId, companyName }: { companyId: number; companyName: string }) {
+  const { data: stats, isLoading } = trpc.adminViewAs.companyDashboard.useQuery({ companyId });
+
+  if (isLoading) {
+    return (
+      <div className="space-y-6">
+        <h1 className="text-2xl font-bold text-foreground">Dashboard — {companyName}</h1>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <Card key={i} className="bg-card"><CardContent className="p-6"><Skeleton className="h-16 w-full" /></CardContent></Card>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  const statCards = [
+    { label: "Open Jobs", value: stats?.openJobs ?? 0, icon: ClipboardList, color: "text-blue-400" },
+    { label: "In Progress", value: stats?.inProgressJobs ?? 0, icon: Clock, color: "text-yellow-400" },
+    { label: "Active Contractors", value: stats?.activeContractors ?? 0, icon: HardHat, color: "text-green-400" },
+    { label: "Properties", value: stats?.totalProperties ?? 0, icon: MapPin, color: "text-purple-400" },
+    { label: "Completed", value: stats?.completedJobs ?? 0, icon: AlertTriangle, color: "text-red-400" },
+    { label: "Total Spent", value: stats?.totalSpent ? `$${stats.totalSpent}` : "$0", icon: DollarSign, color: "text-primary" },
+  ];
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-2xl font-bold text-foreground">Dashboard — {companyName}</h1>
+        <p className="text-muted-foreground mt-1">Viewing as company admin</p>
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {statCards.map((stat) => (
+          <Card key={stat.label} className="bg-card border-border">
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">{stat.label}</CardTitle>
+              <stat.icon className={`h-4 w-4 ${stat.color}`} />
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold text-card-foreground">{stat.value}</div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    </div>
+  );
 }
 
 function CompanySetup({ onCreated }: { onCreated: () => void }) {
@@ -39,12 +106,9 @@ function CompanySetup({ onCreated }: { onCreated: () => void }) {
   const createCompany = trpc.company.create.useMutation({
     onSuccess: () => {
       toast.success("Company created! Refreshing...");
-      // Force a full page reload to refresh auth context with new companyId
       setTimeout(() => window.location.reload(), 500);
     },
-    onError: (err) => {
-      toast.error(err.message || "Failed to create company");
-    },
+    onError: (err) => toast.error(err.message || "Failed to create company"),
   });
 
   return (
@@ -53,7 +117,6 @@ function CompanySetup({ onCreated }: { onCreated: () => void }) {
         <h1 className="text-2xl font-bold text-foreground">Set Up Your Company</h1>
         <p className="text-muted-foreground mt-1">Create your property management company to start managing maintenance requests.</p>
       </div>
-
       <Card className="bg-card border-border max-w-lg">
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-card-foreground">
@@ -124,7 +187,6 @@ function CompanyDashboardContent() {
         <h1 className="text-2xl font-bold text-foreground">Dashboard</h1>
         <p className="text-muted-foreground mt-1">Overview of your maintenance operations</p>
       </div>
-
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {statCards.map((stat) => (
           <Card key={stat.label} className="bg-card border-border">
@@ -138,20 +200,13 @@ function CompanyDashboardContent() {
           </Card>
         ))}
       </div>
-
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card className="bg-card border-border">
-          <CardHeader>
-            <CardTitle className="text-card-foreground">Recent Jobs</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <RecentJobs />
-          </CardContent>
+          <CardHeader><CardTitle className="text-card-foreground">Recent Jobs</CardTitle></CardHeader>
+          <CardContent><RecentJobs /></CardContent>
         </Card>
         <Card className="bg-card border-border">
-          <CardHeader>
-            <CardTitle className="text-card-foreground">Quick Actions</CardTitle>
-          </CardHeader>
+          <CardHeader><CardTitle className="text-card-foreground">Quick Actions</CardTitle></CardHeader>
           <CardContent className="space-y-3">
             <p className="text-sm text-muted-foreground">Use the sidebar navigation to manage your jobs, properties, contractors, and settings.</p>
           </CardContent>

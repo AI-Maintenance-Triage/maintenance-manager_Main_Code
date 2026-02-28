@@ -1,15 +1,44 @@
 import { trpc } from "@/lib/trpc";
+import { useViewAs } from "@/contexts/ViewAsContext";
+import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Clock, CheckCircle, Play, Square, MapPin } from "lucide-react";
+import { Clock, CheckCircle, Play, Square, AlertCircle } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
 export default function ContractorMyJobs() {
+  const { user } = useAuth();
+  const viewAs = useViewAs();
   const utils = trpc.useUtils();
-  const { data: jobs, isLoading } = trpc.contractor.myJobs.useQuery();
+  const isAdmin = user?.role === "admin";
+  const isViewingAsContractor = isAdmin && viewAs.mode === "contractor" && viewAs.contractorProfileId;
+
+  const { data: adminJobs, isLoading: adminLoading } = trpc.adminViewAs.contractorJobs.useQuery(
+    { contractorProfileId: viewAs.contractorProfileId! },
+    { enabled: !!isViewingAsContractor }
+  );
+
+  const { data: myJobs, isLoading: myLoading } = trpc.contractor.myJobs.useQuery(undefined, { enabled: !isViewingAsContractor });
+
+  const jobs = isViewingAsContractor ? adminJobs : myJobs;
+  const isLoading = isViewingAsContractor ? adminLoading : myLoading;
+
+  if (!isViewingAsContractor && isAdmin) {
+    return (
+      <div className="space-y-6">
+        <h1 className="text-2xl font-bold text-foreground">My Jobs</h1>
+        <Card className="bg-card border-border">
+          <CardContent className="p-12 text-center">
+            <AlertCircle className="h-10 w-10 text-muted-foreground mx-auto mb-4" />
+            <p className="text-muted-foreground">Select a contractor from the "View as Contractor" dropdown above to see their jobs.</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   if (isLoading) {
     return (
@@ -36,7 +65,13 @@ export default function ContractorMyJobs() {
             <Clock className="h-5 w-5 text-yellow-400" /> Active Jobs
           </h2>
           {activeJobs.map((job: any) => (
-            <JobCard key={job.id} job={job} onUpdate={() => { utils.contractor.myJobs.invalidate(); }} />
+            <JobCard key={job.id} job={job} readOnly={!!isViewingAsContractor} onUpdate={() => {
+              if (isViewingAsContractor) {
+                utils.adminViewAs.contractorJobs.invalidate();
+              } else {
+                utils.contractor.myJobs.invalidate();
+              }
+            }} />
           ))}
         </div>
       )}
@@ -74,7 +109,7 @@ export default function ContractorMyJobs() {
   );
 }
 
-function JobCard({ job, onUpdate }: { job: any; onUpdate: () => void }) {
+function JobCard({ job, readOnly, onUpdate }: { job: any; readOnly: boolean; onUpdate: () => void }) {
   const [activeSessionId, setActiveSessionId] = useState<number | null>(null);
   const [gettingLocation, setGettingLocation] = useState(false);
 
@@ -114,7 +149,7 @@ function JobCard({ job, onUpdate }: { job: any; onUpdate: () => void }) {
           clockOut.mutate({ sessionId: activeSessionId, latitude: lat, longitude: lng, method: "manual" });
         }
       },
-      (err) => {
+      () => {
         setGettingLocation(false);
         toast.error("Could not get your location. Please enable GPS.");
       },
@@ -141,29 +176,34 @@ function JobCard({ job, onUpdate }: { job: any; onUpdate: () => void }) {
               <span className="capitalize">{job.status.replace("_", " ")}</span>
             </div>
           </div>
-          <div className="flex flex-col gap-2 shrink-0">
-            {job.status === "assigned" && !activeSessionId && (
-              <Button
-                onClick={() => getLocationAndAct("clockIn")}
-                disabled={isClockingIn}
-                className="gap-2 bg-green-600 hover:bg-green-700"
-              >
-                <Play className="h-4 w-4" />
-                {isClockingIn ? "Getting GPS..." : "Clock In"}
-              </Button>
-            )}
-            {(job.status === "in_progress" || activeSessionId) && (
-              <Button
-                onClick={() => getLocationAndAct("clockOut")}
-                disabled={isClockingOut}
-                variant="destructive"
-                className="gap-2"
-              >
-                <Square className="h-4 w-4" />
-                {isClockingOut ? "Getting GPS..." : "Clock Out"}
-              </Button>
-            )}
-          </div>
+          {!readOnly && (
+            <div className="flex flex-col gap-2 shrink-0">
+              {job.status === "assigned" && !activeSessionId && (
+                <Button
+                  onClick={() => getLocationAndAct("clockIn")}
+                  disabled={isClockingIn}
+                  className="gap-2 bg-green-600 hover:bg-green-700"
+                >
+                  <Play className="h-4 w-4" />
+                  {isClockingIn ? "Getting GPS..." : "Clock In"}
+                </Button>
+              )}
+              {(job.status === "in_progress" || activeSessionId) && (
+                <Button
+                  onClick={() => getLocationAndAct("clockOut")}
+                  disabled={isClockingOut}
+                  variant="destructive"
+                  className="gap-2"
+                >
+                  <Square className="h-4 w-4" />
+                  {isClockingOut ? "Getting GPS..." : "Clock Out"}
+                </Button>
+              )}
+            </div>
+          )}
+          {readOnly && (
+            <Badge variant="outline" className="shrink-0 text-muted-foreground">View Only</Badge>
+          )}
         </div>
       </CardContent>
     </Card>

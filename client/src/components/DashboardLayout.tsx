@@ -21,10 +21,12 @@ import {
 } from "@/components/ui/sidebar";
 import { getLoginUrl } from "@/const";
 import { useIsMobile } from "@/hooks/useMobile";
+import { useViewAs } from "@/contexts/ViewAsContext";
+import { trpc } from "@/lib/trpc";
 import {
   LayoutDashboard, LogOut, PanelLeft, Building2, Wrench,
   ClipboardList, MapPin, Users, Settings, Briefcase,
-  UserCircle, Shield, HardHat, ChevronDown,
+  UserCircle, Shield, HardHat, ChevronDown, Eye, X,
 } from "lucide-react";
 import { CSSProperties, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "wouter";
@@ -41,24 +43,6 @@ const adminSections: MenuSection[] = [
     items: [
       { icon: Shield, label: "Overview", path: "/admin" },
       { icon: Building2, label: "Companies", path: "/admin/companies" },
-    ],
-  },
-  {
-    title: "Company Management",
-    items: [
-      { icon: LayoutDashboard, label: "Dashboard", path: "/company" },
-      { icon: ClipboardList, label: "Jobs", path: "/company/jobs" },
-      { icon: MapPin, label: "Properties", path: "/company/properties" },
-      { icon: HardHat, label: "Contractors", path: "/company/contractors" },
-      { icon: Settings, label: "Settings", path: "/company/settings" },
-    ],
-  },
-  {
-    title: "Contractor View",
-    items: [
-      { icon: Briefcase, label: "Job Board", path: "/contractor/jobs" },
-      { icon: Wrench, label: "My Jobs", path: "/contractor/my-jobs" },
-      { icon: UserCircle, label: "Profile", path: "/contractor/profile" },
     ],
   },
 ];
@@ -140,12 +124,18 @@ function DashboardLayoutContent({ children, setSidebarWidth }: { children: React
   const [isResizing, setIsResizing] = useState(false);
   const sidebarRef = useRef<HTMLDivElement>(null);
   const isMobile = useIsMobile();
+  const viewAs = useViewAs();
+  const isAdmin = user?.role === "admin";
 
   const sections = useMemo(() => {
-    if (user?.role === "admin") return adminSections;
+    if (isAdmin) {
+      if (viewAs.mode === "company") return [...adminSections, ...companySections];
+      if (viewAs.mode === "contractor") return [...adminSections, ...contractorSections];
+      return adminSections;
+    }
     if (user?.role === "contractor") return contractorSections;
     return companySections;
-  }, [user?.role]);
+  }, [user?.role, isAdmin, viewAs.mode]);
 
   const allItems = sections.flatMap(s => s.items);
   const activeMenuItem = allItems.find(item => item.path === location)
@@ -254,6 +244,9 @@ function DashboardLayoutContent({ children, setSidebarWidth }: { children: React
       </div>
 
       <SidebarInset>
+        {/* Admin View As Banner */}
+        {isAdmin && <AdminViewAsBanner />}
+
         {isMobile && (
           <div className="flex border-b h-14 items-center justify-between bg-background/95 px-2 backdrop-blur sticky top-0 z-40">
             <div className="flex items-center gap-2">
@@ -265,5 +258,109 @@ function DashboardLayoutContent({ children, setSidebarWidth }: { children: React
         <main className="flex-1 p-4 md:p-6">{children}</main>
       </SidebarInset>
     </>
+  );
+}
+
+function AdminViewAsBanner() {
+  const viewAs = useViewAs();
+  const [, setLocation] = useLocation();
+
+  // Fetch companies and contractors for the dropdowns
+  const { data: companies } = trpc.company.listAll.useQuery();
+  const { data: contractors } = trpc.adminViewAs.allContractors.useQuery();
+
+  return (
+    <div className="bg-primary/5 border-b border-primary/20 px-4 py-2.5">
+      <div className="flex items-center gap-4 flex-wrap">
+        <div className="flex items-center gap-2 text-sm font-medium text-primary">
+          <Eye className="h-4 w-4" />
+          <span>Admin View</span>
+        </div>
+
+        <div className="flex items-center gap-2">
+          {/* View as Company dropdown */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" className={`gap-2 h-8 text-xs ${viewAs.mode === "company" ? "border-primary bg-primary/10 text-primary" : "border-border"}`}>
+                <Building2 className="h-3.5 w-3.5" />
+                {viewAs.mode === "company" ? viewAs.companyName : "View as Company"}
+                <ChevronDown className="h-3 w-3" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="max-h-60 overflow-y-auto">
+              {companies && companies.length > 0 ? (
+                companies.map((c) => (
+                  <DropdownMenuItem
+                    key={c.id}
+                    onClick={() => {
+                      viewAs.setViewAsCompany(c.id, c.name);
+                      setLocation("/company");
+                    }}
+                    className="cursor-pointer"
+                  >
+                    <Building2 className="mr-2 h-3.5 w-3.5 text-muted-foreground" />
+                    {c.name}
+                  </DropdownMenuItem>
+                ))
+              ) : (
+                <DropdownMenuItem disabled>No companies registered yet</DropdownMenuItem>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          {/* View as Contractor dropdown */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" className={`gap-2 h-8 text-xs ${viewAs.mode === "contractor" ? "border-primary bg-primary/10 text-primary" : "border-border"}`}>
+                <HardHat className="h-3.5 w-3.5" />
+                {viewAs.mode === "contractor" ? viewAs.contractorName : "View as Contractor"}
+                <ChevronDown className="h-3 w-3" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="max-h-60 overflow-y-auto">
+              {contractors && contractors.length > 0 ? (
+                contractors.map((c) => (
+                  <DropdownMenuItem
+                    key={c.profile.id}
+                    onClick={() => {
+                      viewAs.setViewAsContractor(c.profile.id, c.user.name || c.profile.businessName || `Contractor #${c.profile.id}`);
+                      setLocation("/contractor");
+                    }}
+                    className="cursor-pointer"
+                  >
+                    <HardHat className="mr-2 h-3.5 w-3.5 text-muted-foreground" />
+                    {c.user.name || c.profile.businessName || `Contractor #${c.profile.id}`}
+                  </DropdownMenuItem>
+                ))
+              ) : (
+                <DropdownMenuItem disabled>No contractors registered yet</DropdownMenuItem>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          {/* Reset button */}
+          {viewAs.mode !== "admin" && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8 text-xs gap-1 text-muted-foreground hover:text-foreground"
+              onClick={() => {
+                viewAs.resetViewAs();
+                setLocation("/admin");
+              }}
+            >
+              <X className="h-3 w-3" />
+              Reset
+            </Button>
+          )}
+        </div>
+
+        {viewAs.mode !== "admin" && (
+          <span className="text-xs text-muted-foreground ml-auto">
+            Viewing as: <span className="font-medium text-foreground">{viewAs.mode === "company" ? viewAs.companyName : viewAs.contractorName}</span>
+          </span>
+        )}
+      </div>
+    </div>
   );
 }

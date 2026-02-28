@@ -489,3 +489,17 @@ export async function getPlatformStats() {
     totalRevenue: revenue?.total ?? "0.00",
   };
 }
+
+
+// ─── Admin: List All Contractors ──────────────────────────────────────────
+export async function listAllContractors() {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select({
+    profile: contractorProfiles,
+    user: { id: users.id, name: users.name, email: users.email },
+  })
+    .from(contractorProfiles)
+    .innerJoin(users, eq(contractorProfiles.userId, users.id))
+    .orderBy(desc(contractorProfiles.createdAt));
+}

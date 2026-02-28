@@ -1,9 +1,11 @@
 import { trpc } from "@/lib/trpc";
+import { useViewAs } from "@/contexts/ViewAsContext";
+import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Briefcase, MapPin, DollarSign, AlertTriangle } from "lucide-react";
+import { Briefcase, DollarSign, AlertTriangle, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 
 const priorityColors: Record<string, string> = {
@@ -14,8 +16,21 @@ const priorityColors: Record<string, string> = {
 };
 
 export default function ContractorJobBoard() {
+  const { user } = useAuth();
+  const viewAs = useViewAs();
   const utils = trpc.useUtils();
-  const { data: jobs, isLoading } = trpc.contractor.availableJobs.useQuery();
+  const isAdmin = user?.role === "admin";
+  const isViewingAsContractor = isAdmin && viewAs.mode === "contractor" && viewAs.contractorProfileId;
+
+  const { data: adminJobs, isLoading: adminLoading } = trpc.adminViewAs.contractorAvailableJobs.useQuery(
+    { contractorProfileId: viewAs.contractorProfileId! },
+    { enabled: !!isViewingAsContractor }
+  );
+
+  const { data: myJobs, isLoading: myLoading } = trpc.contractor.availableJobs.useQuery(undefined, { enabled: !isViewingAsContractor });
+
+  const jobs = isViewingAsContractor ? adminJobs : myJobs;
+  const isLoading = isViewingAsContractor ? adminLoading : myLoading;
 
   const acceptJob = trpc.contractor.acceptJob.useMutation({
     onSuccess: () => {
@@ -25,6 +40,20 @@ export default function ContractorJobBoard() {
     },
     onError: (err: any) => toast.error(err.message),
   });
+
+  if (!isViewingAsContractor && isAdmin) {
+    return (
+      <div className="space-y-6">
+        <h1 className="text-2xl font-bold text-foreground">Job Board</h1>
+        <Card className="bg-card border-border">
+          <CardContent className="p-12 text-center">
+            <AlertCircle className="h-10 w-10 text-muted-foreground mx-auto mb-4" />
+            <p className="text-muted-foreground">Select a contractor from the "View as Contractor" dropdown above to see their available jobs.</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -73,13 +102,18 @@ export default function ContractorJobBoard() {
                       {job.unitNumber && <span>Unit: {job.unitNumber}</span>}
                     </div>
                   </div>
-                  <Button
-                    onClick={() => acceptJob.mutate({ jobId: job.id })}
-                    disabled={acceptJob.isPending}
-                    className="shrink-0"
-                  >
-                    {acceptJob.isPending ? "Accepting..." : "Accept Job"}
-                  </Button>
+                  {!isViewingAsContractor && (
+                    <Button
+                      onClick={() => acceptJob.mutate({ jobId: job.id })}
+                      disabled={acceptJob.isPending}
+                      className="shrink-0"
+                    >
+                      {acceptJob.isPending ? "Accepting..." : "Accept Job"}
+                    </Button>
+                  )}
+                  {isViewingAsContractor && (
+                    <Badge variant="outline" className="shrink-0 text-muted-foreground">View Only</Badge>
+                  )}
                 </div>
               </CardContent>
             </Card>

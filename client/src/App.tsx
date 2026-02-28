@@ -4,7 +4,9 @@ import NotFound from "@/pages/NotFound";
 import { Route, Switch } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
+import { ViewAsProvider } from "./contexts/ViewAsContext";
 import Home from "./pages/Home";
+import Register from "./pages/Register";
 import DashboardLayout from "./components/DashboardLayout";
 import CompanyDashboard from "./pages/company/CompanyDashboard";
 import CompanyJobs from "./pages/company/CompanyJobs";
@@ -17,13 +19,13 @@ import ContractorMyJobs from "./pages/contractor/ContractorMyJobs";
 import ContractorProfile from "./pages/contractor/ContractorProfile";
 import PlatformDashboard from "./pages/admin/PlatformDashboard";
 import AdminCompanies from "./pages/admin/AdminCompanies";
-import Onboarding from "./pages/Onboarding";
 
 function Router() {
   return (
     <Switch>
+      {/* Public routes */}
       <Route path="/" component={Home} />
-      <Route path="/onboarding" component={Onboarding} />
+      <Route path="/register" component={Register} />
       {/* Company Admin Routes */}
       <Route path="/company">
         <DashboardLayout><CompanyDashboard /></DashboardLayout>
@@ -70,10 +72,12 @@ function App() {
   return (
     <ErrorBoundary>
       <ThemeProvider defaultTheme="dark">
-        <TooltipProvider>
-          <Toaster />
-          <Router />
-        </TooltipProvider>
+        <ViewAsProvider>
+          <TooltipProvider>
+            <Toaster />
+            <Router />
+          </TooltipProvider>
+        </ViewAsProvider>
       </ThemeProvider>
     </ErrorBoundary>
   );
