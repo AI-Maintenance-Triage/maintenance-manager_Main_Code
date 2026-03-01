@@ -9,6 +9,7 @@ import Home from "./pages/Home";
 import Register from "./pages/Register";
 import SignUp from "./pages/SignUp";
 import SignIn from "./pages/SignIn";
+import GetStarted from "./pages/GetStarted";
 import DashboardLayout from "./components/DashboardLayout";
 import CompanyDashboard from "./pages/company/CompanyDashboard";
 import CompanyJobs from "./pages/company/CompanyJobs";
@@ -30,6 +31,7 @@ function Router() {
       <Route path="/register" component={Register} />
       <Route path="/signup" component={SignUp} />
       <Route path="/signin" component={SignIn} />
+      <Route path="/get-started" component={GetStarted} />
       {/* Company Admin Routes */}
       <Route path="/company">
         <DashboardLayout><CompanyDashboard /></DashboardLayout>

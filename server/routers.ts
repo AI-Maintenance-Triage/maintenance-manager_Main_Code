@@ -161,6 +161,8 @@ const propertiesRouter = router({
 const contractorRouter = router({
   setupProfile: protectedProcedure
     .input(z.object({
+      firstName: z.string().optional(),
+      lastName: z.string().optional(),
       businessName: z.string().optional(),
       phone: z.string().optional(),
       trades: z.array(z.string()).optional(),
@@ -170,12 +172,18 @@ const contractorRouter = router({
       insuranceInfo: z.string().optional(),
     }))
     .mutation(async ({ ctx, input }) => {
+      const { firstName, lastName, ...profileData } = input;
+      // Update user's display name if first/last name provided
+      if (firstName || lastName) {
+        const fullName = [firstName, lastName].filter(Boolean).join(" ");
+        await db.updateUserName(ctx.user.id, fullName);
+      }
       const existing = await db.getContractorProfile(ctx.user.id);
       if (existing) {
-        await db.updateContractorProfile(existing.id, input);
+        await db.updateContractorProfile(existing.id, profileData);
         return { id: existing.id };
       }
-      const id = await db.createContractorProfile({ userId: ctx.user.id, ...input });
+      const id = await db.createContractorProfile({ userId: ctx.user.id, ...profileData });
       await db.updateUserRole(ctx.user.id, "contractor", undefined, id);
       return { id };
     }),

@@ -50,7 +50,7 @@ export default function Home() {
             <Button variant="ghost" onClick={() => setLocation("/signin")} className="text-muted-foreground hover:text-foreground">
               Sign In
             </Button>
-            <Button onClick={() => setLocation("/signup")} className="gap-2">
+            <Button onClick={() => setLocation("/get-started")} className="gap-2">
               Get Started Free <ArrowRight className="h-4 w-4" />
             </Button>
           </div>
@@ -80,7 +80,7 @@ export default function Home() {
               to stop chasing contractors and start scaling.
             </p>
             <div className="flex flex-wrap gap-4">
-              <Button size="lg" onClick={() => setLocation("/signup")} className="gap-2 h-12 px-8 text-base">
+              <Button size="lg" onClick={() => setLocation("/get-started")} className="gap-2 h-12 px-8 text-base">
                 Start Free <ArrowRight className="h-4 w-4" />
               </Button>
               <Button size="lg" variant="outline" onClick={() => document.getElementById("features")?.scrollIntoView({ behavior: "smooth" })} className="h-12 px-8 text-base border-border text-foreground hover:bg-accent">
@@ -178,7 +178,7 @@ export default function Home() {
                   </li>
                 ))}
               </ul>
-              <Button onClick={() => setLocation("/signup?role=company")} className="w-full mt-8 gap-2">
+              <Button onClick={() => setLocation("/get-started?role=company")} className="w-full mt-8 gap-2">
                 Get Started as Property Manager <ArrowRight className="h-4 w-4" />
               </Button>
             </div>
@@ -209,7 +209,7 @@ export default function Home() {
                   </li>
                 ))}
               </ul>
-              <Button onClick={() => setLocation("/signup?role=contractor")} variant="outline" className="w-full mt-8 gap-2 border-primary/30 text-foreground hover:bg-primary/10">
+              <Button onClick={() => setLocation("/get-started?role=contractor")} variant="outline" className="w-full mt-8 gap-2 border-primary/30 text-foreground hover:bg-primary/10">
                 Get Started as Contractor <ArrowRight className="h-4 w-4" />
               </Button>
             </div>
@@ -244,7 +244,7 @@ export default function Home() {
             Join property managers who are saving hours every week by letting AI handle job classification, 
             GPS handle time tracking, and Stripe handle payments.
           </p>
-          <Button size="lg" onClick={() => setLocation("/signup")} className="gap-2 h-12 px-8 text-base">
+          <Button size="lg" onClick={() => setLocation("/get-started")} className="gap-2 h-12 px-8 text-base">
             Get Started Free <ArrowRight className="h-4 w-4" />
           </Button>
         </div>

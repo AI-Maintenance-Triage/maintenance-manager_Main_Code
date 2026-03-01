@@ -10,7 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useViewAs } from "@/contexts/ViewAsContext";
-import { Plus, Trash2, Settings, DollarSign, MapPin, Clock, Link2 } from "lucide-react";
+import { Plus, Trash2, Settings, DollarSign, MapPin, Clock, Link2, Pencil } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
@@ -132,9 +132,14 @@ function SkillTiersSettings({ readOnly, companyId }: { readOnly: boolean; compan
 
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({ name: "", hourlyRate: "", description: "", emergencyMultiplier: "1.5" });
+  const [editOpen, setEditOpen] = useState(false);
+  const [editForm, setEditForm] = useState({ id: 0, name: "", hourlyRate: "", description: "", emergencyMultiplier: "1.5" });
 
   const createTier = trpc.skillTiers.create.useMutation({
     onSuccess: () => { toast.success("Tier created!"); utils.skillTiers.list.invalidate(); setOpen(false); setForm({ name: "", hourlyRate: "", description: "", emergencyMultiplier: "1.5" }); },
+  });
+  const updateTier = trpc.skillTiers.update.useMutation({
+    onSuccess: () => { toast.success("Tier updated!"); utils.skillTiers.list.invalidate(); setEditOpen(false); },
   });
   const deleteTier = trpc.skillTiers.delete.useMutation({
     onSuccess: () => { toast.success("Tier removed"); utils.skillTiers.list.invalidate(); },
@@ -173,7 +178,7 @@ function SkillTiersSettings({ readOnly, companyId }: { readOnly: boolean; compan
             <p className="text-sm text-muted-foreground text-center py-8">No skill tiers configured. {!readOnly ? 'Add tiers like "General Handyman ($35/hr)", "Skilled Trade ($50/hr)", "Specialty ($80/hr)".' : ""}</p>
           ) : (
             <div className="space-y-2">
-              {tiers.map((tier: any) => (
+  {tiers.map((tier: any) => (
                 <div key={tier.id} className="flex items-center justify-between p-3 rounded-lg bg-secondary/50">
                   <div>
                     <div className="flex items-center gap-2">
@@ -184,9 +189,14 @@ function SkillTiersSettings({ readOnly, companyId }: { readOnly: boolean; compan
                     <p className="text-xs text-muted-foreground">Emergency: {tier.emergencyMultiplier}x</p>
                   </div>
                   {!readOnly && (
-                    <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-destructive" onClick={() => deleteTier.mutate({ id: tier.id })}>
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                    <div className="flex items-center gap-1">
+                      <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-primary" onClick={() => { setEditForm({ id: tier.id, name: tier.name, hourlyRate: tier.hourlyRate, description: tier.description || "", emergencyMultiplier: String(tier.emergencyMultiplier) }); setEditOpen(true); }}>
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-destructive" onClick={() => deleteTier.mutate({ id: tier.id })}>
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
                   )}
                 </div>
               ))}
@@ -194,6 +204,22 @@ function SkillTiersSettings({ readOnly, companyId }: { readOnly: boolean; compan
           )}
         </CardContent>
       </Card>
+
+      {/* Edit Tier Dialog */}
+      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+        <DialogContent className="bg-card">
+          <DialogHeader><DialogTitle className="text-card-foreground">Edit Skill Tier</DialogTitle></DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2"><Label>Tier Name</Label><Input value={editForm.name} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} /></div>
+            <div className="space-y-2"><Label>Hourly Rate ($)</Label><Input type="number" value={editForm.hourlyRate} onChange={(e) => setEditForm({ ...editForm, hourlyRate: e.target.value })} /></div>
+            <div className="space-y-2"><Label>Description</Label><Input value={editForm.description} onChange={(e) => setEditForm({ ...editForm, description: e.target.value })} /></div>
+            <div className="space-y-2"><Label>Emergency Multiplier</Label><Input type="number" step="0.1" value={editForm.emergencyMultiplier} onChange={(e) => setEditForm({ ...editForm, emergencyMultiplier: e.target.value })} /></div>
+            <Button onClick={() => updateTier.mutate({ id: editForm.id, name: editForm.name, hourlyRate: editForm.hourlyRate, description: editForm.description || undefined, emergencyMultiplier: editForm.emergencyMultiplier })} disabled={!editForm.name || !editForm.hourlyRate || updateTier.isPending} className="w-full">
+              {updateTier.isPending ? "Saving..." : "Save Changes"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

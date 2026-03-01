@@ -127,7 +127,15 @@
 - [x] Fix View As Company/Contractor to fully mimic their view — no admin UI visible
 - [x] Homepage "Get Started" goes directly to role-specific sign-up (?role=company or ?role=contractor)
 - [x] Remove website field from company registration form
-- [ ] Add first/last name option for contractors (not all have a business name)
+- [x] Add first/last name option for contractors (not all have a business name)
 - [x] Make property name optional when adding a property (defaults to address)
-- [ ] Add interactive map with ZIP code + radius slider for contractor service area
-- [ ] Make all company settings editable (skill tier prices, GPS settings, integrations)
+- [x] Add interactive map with ZIP code + radius slider for contractor service area
+- [x] Make all company settings editable (skill tier prices, GPS settings, integrations)
+
+## Registration Flow Redesign (Session 4)
+- [x] Create /get-started page with role selection as the very first step (before account creation)
+- [x] All homepage CTAs route to /get-started (generic) or /get-started?role=company / /get-started?role=contractor
+- [x] After role selection, user goes to /signup?role=... to create account
+- [x] Add first/last name fields for contractors in registration form
+- [x] Add interactive map with ZIP + radius slider for contractor service area
+- [x] Make all company settings fully editable (skill tier prices, GPS, integrations)

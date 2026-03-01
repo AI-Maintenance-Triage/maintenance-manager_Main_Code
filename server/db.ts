@@ -549,3 +549,10 @@ export async function adminUpdateContractorProfile(id: number, data: Partial<Ins
   await db.update(contractorProfiles).set(data).where(eq(contractorProfiles.id, id));
 }
 
+
+// ─── Update User Display Name ──────────────────────────────────────────────
+export async function updateUserName(userId: number, name: string) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(users).set({ name }).where(eq(users.id, userId));
+}

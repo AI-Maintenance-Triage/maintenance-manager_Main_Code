@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { trpc } from "@/lib/trpc";
+import { ServiceAreaMap } from "@/components/ServiceAreaMap";
 import {
   Building2, HardHat, ArrowRight, ArrowLeft, CheckCircle2, Wrench, Loader2,
   Phone, MapPin, Briefcase, Shield, FileText,
@@ -381,11 +382,15 @@ function ContractorForm({
   onBack: () => void;
   onDone: () => void;
 }) {
+  // Pre-fill first/last name from the account name
+  const nameParts = userName.trim().split(" ");
+  const [firstName, setFirstName] = useState(nameParts[0] || "");
+  const [lastName, setLastName] = useState(nameParts.slice(1).join(" ") || "");
   const [businessName, setBusinessName] = useState("");
   const [phone, setPhone] = useState("");
   const [trades, setTrades] = useState<string[]>([]);
-  const [serviceZips, setServiceZips] = useState("");
-  const [serviceRadius, setServiceRadius] = useState("25");
+  const [serviceZip, setServiceZip] = useState("");
+  const [serviceRadius, setServiceRadius] = useState(25);
   const [licenseNumber, setLicenseNumber] = useState("");
   const [insuranceInfo, setInsuranceInfo] = useState("");
 
@@ -410,13 +415,13 @@ function ContractorForm({
       return;
     }
     setupProfile.mutate({
+      firstName: firstName.trim() || undefined,
+      lastName: lastName.trim() || undefined,
       businessName: businessName.trim() || undefined,
       phone: phone.trim() || undefined,
       trades,
-      serviceAreaZips: serviceZips.trim()
-        ? serviceZips.split(",").map((z) => z.trim()).filter(Boolean)
-        : undefined,
-      serviceRadiusMiles: parseInt(serviceRadius) || 25,
+      serviceAreaZips: serviceZip ? [serviceZip] : undefined,
+      serviceRadiusMiles: serviceRadius,
       licenseNumber: licenseNumber.trim() || undefined,
       insuranceInfo: insuranceInfo.trim() || undefined,
     });
@@ -441,34 +446,56 @@ function ContractorForm({
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Basic Info */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="bname">Business Name</Label>
-                <div className="relative">
+            {/* Name & Contact */}
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="fname">First Name <span className="text-destructive">*</span></Label>
                   <Input
-                    id="bname"
-                    value={businessName}
-                    onChange={(e) => setBusinessName(e.target.value)}
-                    placeholder="e.g., Mike's Plumbing"
-                    className="pl-9"
+                    id="fname"
+                    value={firstName}
+                    onChange={(e) => setFirstName(e.target.value)}
+                    placeholder="Mike"
                     autoFocus
                   />
-                  <Briefcase className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 </div>
-                <p className="text-xs text-muted-foreground">Optional — leave blank to use your name</p>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="cphone">Phone Number</Label>
-                <div className="relative">
+                <div className="space-y-2">
+                  <Label htmlFor="lname">Last Name <span className="text-destructive">*</span></Label>
                   <Input
-                    id="cphone"
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                    placeholder="(555) 123-4567"
-                    className="pl-9"
+                    id="lname"
+                    value={lastName}
+                    onChange={(e) => setLastName(e.target.value)}
+                    placeholder="Johnson"
                   />
-                  <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                </div>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="bname">Business Name</Label>
+                  <div className="relative">
+                    <Input
+                      id="bname"
+                      value={businessName}
+                      onChange={(e) => setBusinessName(e.target.value)}
+                      placeholder="e.g., Mike's Plumbing"
+                      className="pl-9"
+                    />
+                    <Briefcase className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  </div>
+                  <p className="text-xs text-muted-foreground">Optional — leave blank to use your name</p>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="cphone">Phone Number</Label>
+                  <div className="relative">
+                    <Input
+                      id="cphone"
+                      value={phone}
+                      onChange={(e) => setPhone(e.target.value)}
+                      placeholder="(555) 123-4567"
+                      className="pl-9"
+                    />
+                    <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  </div>
                 </div>
               </div>
             </div>
@@ -509,33 +536,12 @@ function ContractorForm({
             {/* Service Area */}
             <div className="space-y-3">
               <Label>Service Area</Label>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="zips" className="text-xs text-muted-foreground font-normal">ZIP Codes (comma-separated)</Label>
-                  <div className="relative">
-                    <Input
-                      id="zips"
-                      value={serviceZips}
-                      onChange={(e) => setServiceZips(e.target.value)}
-                      placeholder="10001, 10002, 10003"
-                      className="pl-9"
-                    />
-                    <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="radius" className="text-xs text-muted-foreground font-normal">Service Radius (miles)</Label>
-                  <Input
-                    id="radius"
-                    type="number"
-                    min="1"
-                    max="200"
-                    value={serviceRadius}
-                    onChange={(e) => setServiceRadius(e.target.value)}
-                    placeholder="25"
-                  />
-                </div>
-              </div>
+              <ServiceAreaMap
+                zip={serviceZip}
+                radiusMiles={serviceRadius}
+                onZipChange={setServiceZip}
+                onRadiusChange={setServiceRadius}
+              />
             </div>
 
             {/* Credentials */}
