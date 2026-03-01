@@ -14,6 +14,7 @@ import {
   partsReceipts, InsertPartsReceipt,
   transactions, InsertTransaction,
   integrationConnectors, InsertIntegrationConnector,
+  platformSettings,
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
@@ -406,6 +407,46 @@ export async function getLocationPings(timeSessionId: number) {
   return db.select().from(locationPings).where(eq(locationPings.timeSessionId, timeSessionId)).orderBy(locationPings.timestamp);
 }
 
+// Get all active time sessions for a company (for live tracking view)
+export async function getActiveSessionsByCompany(companyId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  const sessions = await db.select({
+    sessionId: timeSessions.id,
+    maintenanceRequestId: timeSessions.maintenanceRequestId,
+    contractorProfileId: timeSessions.contractorProfileId,
+    clockInTime: timeSessions.clockInTime,
+    clockInLat: timeSessions.clockInLat,
+    clockInLng: timeSessions.clockInLng,
+    contractorName: contractorProfiles.businessName,
+    contractorPhone: contractorProfiles.phone,
+    jobTitle: maintenanceRequests.title,
+    jobAddress: properties.address,
+    jobLat: properties.latitude,
+    jobLng: properties.longitude,
+  })
+  .from(timeSessions)
+  .leftJoin(contractorProfiles, eq(timeSessions.contractorProfileId, contractorProfiles.id))
+  .leftJoin(maintenanceRequests, eq(timeSessions.maintenanceRequestId, maintenanceRequests.id))
+  .leftJoin(properties, eq(maintenanceRequests.propertyId, properties.id))
+  .where(and(
+    eq(timeSessions.companyId, companyId),
+    eq(timeSessions.status, "active"),
+  ));
+  return sessions;
+}
+
+// Get the most recent location ping for a session
+export async function getLatestPingForSession(timeSessionId: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(locationPings)
+    .where(eq(locationPings.timeSessionId, timeSessionId))
+    .orderBy(desc(locationPings.timestamp))
+    .limit(1);
+  return result[0];
+}
+
 // ─── Parts & Receipts ──────────────────────────────────────────────────────
 export async function createPartsReceipt(data: InsertPartsReceipt) {
   const db = await getDb();
@@ -684,17 +725,16 @@ export async function listJobBoardForContractor(contractorProfileId: number) {
 
   // Filter by service area if contractor has coordinates
   if (contractorLat !== null && contractorLng !== null) {
-    return jobs.filter((row) => {
-      const propLat = row.property.latitude ? parseFloat(String(row.property.latitude)) : null;
-      const propLng = row.property.longitude ? parseFloat(String(row.property.longitude)) : null;
-      if (propLat === null || propLng === null) {
-        // Property has no geocoded coordinates — exclude it from the board
-        // (can't determine distance, so it should not appear)
-        return false;
-      }
-      const dist = haversineDistanceMiles(contractorLat, contractorLng, propLat, propLng);
-      return dist <= radiusMiles;
-    });
+    return jobs
+      .map((row) => {
+        const propLat = row.property.latitude ? parseFloat(String(row.property.latitude)) : null;
+        const propLng = row.property.longitude ? parseFloat(String(row.property.longitude)) : null;
+        if (propLat === null || propLng === null) return null;
+        const distanceMiles = Math.round(haversineDistanceMiles(contractorLat, contractorLng, propLat, propLng) * 10) / 10;
+        if (distanceMiles > radiusMiles) return null;
+        return { ...row, distanceMiles };
+      })
+      .filter((row): row is NonNullable<typeof row> => row !== null);
   }
 
   // Contractor has no geocoded coordinates — return empty list so the UI
@@ -820,4 +860,148 @@ export async function debugJobBoardForContractor(contractorProfileId: number) {
     } : null,
     jobs: jobsWithDistance,
   };
+}
+
+// ─── Job Completion: Contractor marks job complete ─────────────────────────
+export async function markJobComplete(
+  jobId: number,
+  contractorProfileId: number,
+  completionNotes: string,
+  completionPhotoUrls: string[]
+) {
+  const db = await getDb();
+  if (!db) throw new Error("DB unavailable");
+
+  const [job] = await db
+    .select()
+    .from(maintenanceRequests)
+    .where(
+      and(
+        eq(maintenanceRequests.id, jobId),
+        eq(maintenanceRequests.assignedContractorId, contractorProfileId),
+        inArray(maintenanceRequests.status, ["assigned", "in_progress"])
+      )
+    )
+    .limit(1);
+
+  if (!job) throw new Error("Job not found or not assigned to you");
+
+  await db
+    .update(maintenanceRequests)
+    .set({
+      status: "pending_verification",
+      completedAt: new Date(),
+      completionNotes,
+      completionPhotoUrls,
+    })
+    .where(eq(maintenanceRequests.id, jobId));
+}
+
+// ─── Job Verification: Company approves or disputes ────────────────────────
+export async function verifyJob(
+  jobId: number,
+  companyId: number,
+  verifiedByUserId: number,
+  action: "approve" | "dispute",
+  notes: string
+) {
+  const db = await getDb();
+  if (!db) throw new Error("DB unavailable");
+
+  const [job] = await db
+    .select()
+    .from(maintenanceRequests)
+    .where(
+      and(
+        eq(maintenanceRequests.id, jobId),
+        eq(maintenanceRequests.companyId, companyId),
+        eq(maintenanceRequests.status, "pending_verification")
+      )
+    )
+    .limit(1);
+
+  if (!job) throw new Error("Job not found or not pending verification");
+
+  if (action === "approve") {
+    await db
+      .update(maintenanceRequests)
+      .set({
+        status: "verified",
+        verifiedAt: new Date(),
+        verifiedByUserId,
+        verificationNotes: notes,
+      })
+      .where(eq(maintenanceRequests.id, jobId));
+  } else {
+    await db
+      .update(maintenanceRequests)
+      .set({
+        status: "disputed",
+        verifiedByUserId,
+        disputeNotes: notes,
+      })
+      .where(eq(maintenanceRequests.id, jobId));
+  }
+}
+
+// ─── Get jobs awaiting verification for a company ─────────────────────────
+export async function getJobsPendingVerification(companyId: number) {
+  const db = await getDb();
+  if (!db) return [];
+
+  return db
+    .select({
+      job: maintenanceRequests,
+      property: {
+        id: properties.id,
+        name: properties.name,
+        address: properties.address,
+        city: properties.city,
+        state: properties.state,
+      },
+    })
+    .from(maintenanceRequests)
+    .innerJoin(properties, eq(maintenanceRequests.propertyId, properties.id))
+    .where(
+      and(
+        eq(maintenanceRequests.companyId, companyId),
+        inArray(maintenanceRequests.status, ["pending_verification", "disputed"])
+      )
+    )
+    .orderBy(desc(maintenanceRequests.completedAt));
+}
+
+// ─── Get contractor's active/completed jobs ────────────────────────────────
+export async function getContractorJobs(contractorProfileId: number) {
+  const db = await getDb();
+  if (!db) return [];
+
+  return db
+    .select({
+      job: maintenanceRequests,
+      property: {
+        id: properties.id,
+        name: properties.name,
+        address: properties.address,
+        city: properties.city,
+        state: properties.state,
+        zipCode: properties.zipCode,
+      },
+    })
+    .from(maintenanceRequests)
+    .innerJoin(properties, eq(maintenanceRequests.propertyId, properties.id))
+    .where(
+      and(
+        eq(maintenanceRequests.assignedContractorId, contractorProfileId),
+        inArray(maintenanceRequests.status, [
+          "assigned",
+          "in_progress",
+          "pending_verification",
+          "verified",
+          "disputed",
+          "paid",
+        ])
+      )
+    )
+    .orderBy(desc(maintenanceRequests.assignedAt));
 }

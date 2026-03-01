@@ -39,6 +39,7 @@ export const companies = mysqlTable("companies", {
   phone: varchar("phone", { length: 32 }),
   email: varchar("email", { length: 320 }),
   stripeAccountId: varchar("stripeAccountId", { length: 128 }),
+  stripeCustomerId: varchar("stripeCustomerId", { length: 128 }),
   subscriptionTier: mysqlEnum("subscriptionTier", ["free", "starter", "professional", "enterprise"]).default("free").notNull(),
   subscriptionStatus: mysqlEnum("subscriptionStatus", ["active", "past_due", "canceled", "trialing"]).default("trialing").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
@@ -125,6 +126,7 @@ export const contractorProfiles = mysqlTable("contractor_profiles", {
   licenseNumber: varchar("licenseNumber", { length: 128 }),
   insuranceInfo: text("insuranceInfo"),
   stripeAccountId: varchar("stripeAccountId", { length: 128 }),
+  stripeOnboardingComplete: boolean("stripeOnboardingComplete").default(false).notNull(),
   isAvailable: boolean("isAvailable").default(true).notNull(),
   rating: decimal("rating", { precision: 3, scale: 2 }).default("0.00"),
   completedJobs: int("completedJobs").default(0).notNull(),
@@ -176,10 +178,20 @@ export const maintenanceRequests = mysqlTable("maintenance_requests", {
   // Job board
   postedToBoard: boolean("postedToBoard").default(false).notNull(),
   // Job status
-  status: mysqlEnum("status", ["open", "assigned", "in_progress", "completed", "verified", "paid", "canceled"]).default("open").notNull(),
+  status: mysqlEnum("status", ["open", "assigned", "in_progress", "pending_verification", "completed", "verified", "disputed", "paid", "canceled"]).default("open").notNull(),
   assignedContractorId: int("assignedContractorId"),
   assignedAt: timestamp("assignedAt"),
+  // Completion (contractor side)
   completedAt: timestamp("completedAt"),
+  completionNotes: text("completionNotes"),
+  completionPhotoUrls: json("completionPhotoUrls").$type<string[]>(),
+  // Verification (company side)
+  verifiedAt: timestamp("verifiedAt"),
+  verifiedByUserId: int("verifiedByUserId"),
+  verificationNotes: text("verificationNotes"),
+  disputeNotes: text("disputeNotes"),
+  stripePaymentIntentId: varchar("stripePaymentIntentId", { length: 128 }),
+  paidAt: timestamp("paidAt"),
   // Financials
   skillTierId: int("skillTierId"),
   hourlyRate: decimal("hourlyRate", { precision: 8, scale: 2 }),
@@ -282,6 +294,25 @@ export const transactions = mysqlTable("transactions", {
 
 export type Transaction = typeof transactions.$inferSelect;
 export type InsertTransaction = typeof transactions.$inferInsert;
+
+// ─── Platform Settings (admin-controlled global settings) ────────────────────
+export const platformSettings = mysqlTable("platform_settings", {
+  id: int("id").autoincrement().primaryKey(),
+  // Platform fee charged ON TOP of job cost (not taken from contractor)
+  platformFeePercent: decimal("platformFeePercent", { precision: 5, scale: 2 }).default("5.00").notNull(),
+  // Optional per-listing fee charged to company when a job is posted
+  perListingFeeEnabled: boolean("perListingFeeEnabled").default(false).notNull(),
+  perListingFeeAmount: decimal("perListingFeeAmount", { precision: 8, scale: 2 }).default("0.00").notNull(),
+  // Auto clock-out: minutes after contractor returns to origin before auto clock-out fires
+  autoClockOutMinutes: int("autoClockOutMinutes").default(15).notNull(),
+  // Return-to-origin radius in meters to trigger auto clock-out check
+  autoClockOutRadiusMeters: int("autoClockOutRadiusMeters").default(200).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type PlatformSettings = typeof platformSettings.$inferSelect;
+export type InsertPlatformSettings = typeof platformSettings.$inferInsert;
 
 // ─── Integration Connectors ────────────────────────────────────────────────
 export const integrationConnectors = mysqlTable("integration_connectors", {

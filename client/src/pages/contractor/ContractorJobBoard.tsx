@@ -170,6 +170,7 @@ export default function ContractorJobBoard() {
             const job = row.job;
             const property = row.property;
             const company = row.company;
+            const distanceMiles: number | undefined = row.distanceMiles;
             const priority = PRIORITY_CONFIG[job.aiPriority as keyof typeof PRIORITY_CONFIG] ?? PRIORITY_CONFIG.medium;
             return (
               <Card
@@ -201,6 +202,11 @@ export default function ContractorJobBoard() {
                     <div className="flex items-center gap-2">
                       <MapPin className="h-3.5 w-3.5 text-primary shrink-0" />
                       <span>{[property.city, property.state].filter(Boolean).join(", ") || property.zipCode || "Location on file"}</span>
+                      {distanceMiles !== undefined && (
+                        <span className="ml-auto shrink-0 text-xs font-medium text-primary bg-primary/10 px-1.5 py-0.5 rounded-full">
+                          {distanceMiles} mi
+                        </span>
+                      )}
                     </div>
                     {job.aiSkillTier && (
                       <div className="flex items-center gap-2">

@@ -1,16 +1,17 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { trpc } from "@/lib/trpc";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
-import { Building2, HardHat, ClipboardList, DollarSign, Plus, Wrench, Pencil, Trash2, MapPin, Loader2 } from "lucide-react";
+import { Building2, HardHat, ClipboardList, DollarSign, Plus, Wrench, Pencil, Trash2, MapPin, Loader2, Settings, Clock } from "lucide-react";
 
 const TRADE_OPTIONS = [
   "General Handyman", "Plumbing", "Electrical", "HVAC",
@@ -116,6 +117,30 @@ export default function PlatformDashboard() {
   const toggleEditTrade = (trade: string) => {
     setEditContractorTrades(prev => prev.includes(trade) ? prev.filter(t => t !== trade) : [...prev, trade]);
   };
+
+  // ─── Platform Fee Settings ─────────────────────────────────────────────
+  const { data: platformSettings, isLoading: settingsLoading } = trpc.stripePayments.getPlatformSettings.useQuery();
+  const [feePercent, setFeePercent] = useState("");
+  const [perListingEnabled, setPerListingEnabled] = useState(false);
+  const [perListingAmount, setPerListingAmount] = useState("");
+  const [autoClockOutMinutes, setAutoClockOutMinutes] = useState("");
+  const [autoClockOutRadius, setAutoClockOutRadius] = useState("");
+  useEffect(() => {
+    if (platformSettings) {
+      setFeePercent(platformSettings.platformFeePercent ?? "5.00");
+      setPerListingEnabled(platformSettings.perListingFeeEnabled ?? false);
+      setPerListingAmount(platformSettings.perListingFeeAmount ?? "0.00");
+      setAutoClockOutMinutes(String(platformSettings.autoClockOutMinutes ?? 15));
+      setAutoClockOutRadius(String(platformSettings.autoClockOutRadiusMeters ?? 200));
+    }
+  }, [platformSettings]);
+  const updateSettings = trpc.stripePayments.updatePlatformSettings.useMutation({
+    onSuccess: () => {
+      toast.success("Platform settings updated!");
+      utils.stripePayments.getPlatformSettings.invalidate();
+    },
+    onError: (err) => toast.error(err.message),
+  });
 
   const bulkReGeocode = trpc.admin.bulkReGeocode.useMutation({
     onSuccess: (result) => {
@@ -431,6 +456,91 @@ export default function PlatformDashboard() {
                   </div>
                 );
               })}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Platform Fee Settings */}
+      <Card className="bg-card border-border">
+        <CardHeader>
+          <CardTitle className="text-card-foreground flex items-center gap-2">
+            <Settings className="h-5 w-5 text-primary" /> Platform Fee Settings
+          </CardTitle>
+          <CardDescription>Configure fees charged to companies. Changes take effect immediately on the next job verification.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {settingsLoading ? (
+            <Skeleton className="h-32 w-full" />
+          ) : (
+            <div className="space-y-6">
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <DollarSign className="h-4 w-4 text-primary" />
+                  <h3 className="font-medium text-foreground">Transaction Fee</h3>
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className="flex-1 space-y-1">
+                    <Label className="text-sm text-muted-foreground">Platform Fee %</Label>
+                    <p className="text-xs text-muted-foreground">Charged ON TOP of job cost. Contractor receives full job cost.</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Input type="number" min="0" max="100" step="0.1" value={feePercent} onChange={(e) => setFeePercent(e.target.value)} className="w-24 bg-secondary border-border" />
+                    <span className="text-muted-foreground">%</span>
+                  </div>
+                </div>
+              </div>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <ClipboardList className="h-4 w-4 text-primary" />
+                    <h3 className="font-medium text-foreground">Per-Listing Fee</h3>
+                  </div>
+                  <Switch checked={perListingEnabled} onCheckedChange={setPerListingEnabled} />
+                </div>
+                {perListingEnabled && (
+                  <div className="flex items-center gap-3 pl-6">
+                    <div className="flex-1 space-y-1">
+                      <Label className="text-sm text-muted-foreground">Fee per job posted</Label>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-muted-foreground">$</span>
+                      <Input type="number" min="0" step="0.01" value={perListingAmount} onChange={(e) => setPerListingAmount(e.target.value)} className="w-24 bg-secondary border-border" />
+                    </div>
+                  </div>
+                )}
+              </div>
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <Clock className="h-4 w-4 text-primary" />
+                  <h3 className="font-medium text-foreground">Auto Clock-Out</h3>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <Label className="text-sm text-muted-foreground">Timeout (minutes)</Label>
+                    <p className="text-xs text-muted-foreground">After returning to origin</p>
+                    <Input type="number" min="1" max="120" value={autoClockOutMinutes} onChange={(e) => setAutoClockOutMinutes(e.target.value)} className="bg-secondary border-border" />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-sm text-muted-foreground">Origin Radius (meters)</Label>
+                    <p className="text-xs text-muted-foreground">Distance to trigger check</p>
+                    <Input type="number" min="50" max="1000" value={autoClockOutRadius} onChange={(e) => setAutoClockOutRadius(e.target.value)} className="bg-secondary border-border" />
+                  </div>
+                </div>
+              </div>
+              <Button
+                onClick={() => updateSettings.mutate({
+                  platformFeePercent: parseFloat(feePercent) || 5,
+                  perListingFeeEnabled: perListingEnabled,
+                  perListingFeeAmount: parseFloat(perListingAmount) || 0,
+                  autoClockOutMinutes: parseInt(autoClockOutMinutes) || 15,
+                  autoClockOutRadiusMeters: parseInt(autoClockOutRadius) || 200,
+                })}
+                disabled={updateSettings.isPending}
+                className="w-full"
+              >
+                {updateSettings.isPending ? "Saving..." : "Save Platform Settings"}
+              </Button>
             </div>
           )}
         </CardContent>

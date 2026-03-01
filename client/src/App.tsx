@@ -16,6 +16,8 @@ import CompanyJobs from "./pages/company/CompanyJobs";
 import CompanyProperties from "./pages/company/CompanyProperties";
 import CompanyContractors from "./pages/company/CompanyContractors";
 import CompanySettings from "./pages/company/CompanySettings";
+import CompanyVerification from "./pages/company/CompanyVerification";
+import LiveTracking from "./pages/company/LiveTracking";
 import ContractorDashboard from "./pages/contractor/ContractorDashboard";
 import ContractorJobBoard from "./pages/contractor/ContractorJobBoard";
 import ContractorMyJobs from "./pages/contractor/ContractorMyJobs";
@@ -44,6 +46,12 @@ function Router() {
       </Route>
       <Route path="/company/contractors">
         <DashboardLayout><CompanyContractors /></DashboardLayout>
+      </Route>
+      <Route path="/company/verification">
+        <DashboardLayout><CompanyVerification /></DashboardLayout>
+      </Route>
+      <Route path="/company/live-tracking">
+        <DashboardLayout><LiveTracking /></DashboardLayout>
       </Route>
       <Route path="/company/settings">
         <DashboardLayout><CompanySettings /></DashboardLayout>

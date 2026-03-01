@@ -8,6 +8,15 @@ import * as db from "./db";
 import type { ContractorProfile } from "../drizzle/schema";
 import { classifyMaintenanceRequest } from "./ai-classify";
 import { adminViewAsRouter } from "./routers/admin-viewas";
+import {
+  stripe,
+  getPlatformSettings,
+  createContractorConnectAccount,
+  createContractorOnboardingLink,
+  getOrCreateStripeCustomer,
+  createSetupIntent,
+  chargeJobAndPayContractor,
+} from "./stripe";
 
 /// ─── Middleware: require company_admin role ─────────────────────────────────
 const companyAdminProcedure = protectedProcedure.use(({ ctx, next }) => {
@@ -366,6 +375,27 @@ const contractorRouter = router({
       });
       return { success: true };
     }),
+
+  // Contractor: get all my jobs (assigned, in_progress, pending_verification, etc.)
+  allMyJobs: contractorProcedure.query(async ({ ctx }) => {
+    const profile = await getEffectiveContractorProfile(ctx);
+    if (!profile) return [];
+    return db.getContractorJobs(profile.id);
+  }),
+
+  // Contractor: mark a job as complete with notes and photos
+  markComplete: contractorProcedure
+    .input(z.object({
+      jobId: z.number(),
+      completionNotes: z.string().min(1, "Please describe the work completed"),
+      completionPhotoUrls: z.array(z.string()).default([]),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const profile = await getEffectiveContractorProfile(ctx);
+      if (!profile) throw new TRPCError({ code: "NOT_FOUND" });
+      await db.markJobComplete(input.jobId, profile.id, input.completionNotes, input.completionPhotoUrls);
+      return { success: true };
+    }),
 });
 
 // ─── Maintenance Requests Router ────────────────────────────────────────────
@@ -433,7 +463,7 @@ const jobsRouter = router({
   update: companyAdminProcedure
     .input(z.object({
       id: z.number(),
-      status: z.enum(["open", "assigned", "in_progress", "completed", "verified", "paid", "canceled"]).optional(),
+      status: z.enum(["open", "assigned", "in_progress", "pending_verification", "completed", "verified", "disputed", "paid", "canceled"]).optional(),
       skillTierId: z.number().optional(),
       hourlyRate: z.string().optional(),
       isEmergency: z.boolean().optional(),
@@ -441,6 +471,120 @@ const jobsRouter = router({
     .mutation(async ({ input }) => {
       const { id, ...data } = input;
       await db.updateMaintenanceRequest(id, data);
+      return { success: true };
+    }),
+
+  // Company: get jobs awaiting verification
+  pendingVerification: companyAdminProcedure.query(async ({ ctx }) => {
+    if (!getEffectiveCompanyId(ctx)) throw new TRPCError({ code: "NOT_FOUND" });
+    return db.getJobsPendingVerification(getEffectiveCompanyId(ctx));
+  }),
+
+  // Company: approve or dispute a completed job
+  verifyJob: companyAdminProcedure
+    .input(z.object({
+      jobId: z.number(),
+      action: z.enum(["approve", "dispute"]),
+      notes: z.string().min(1, "Please provide notes"),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const companyId = getEffectiveCompanyId(ctx);
+
+      // Verify the job first
+      await db.verifyJob(input.jobId, companyId, ctx.user.id, input.action, input.notes);
+
+      // Only trigger payment on approval
+      if (input.action === "approve") {
+        try {
+          const job = await db.getMaintenanceRequestById(input.jobId);
+          if (!job) throw new TRPCError({ code: "NOT_FOUND", message: "Job not found" });
+
+          const company = await db.getCompanyById(companyId);
+          if (!company?.stripeCustomerId) {
+            // No payment method — mark verified but skip payment
+            console.warn(`[Payment] Company ${companyId} has no Stripe customer. Skipping payment for job ${input.jobId}.`);
+            return { success: true, paymentSkipped: true, reason: "no_payment_method" };
+          }
+
+          // Get contractor profile
+          const contractorProfile = job.assignedContractorId
+            ? await db.getContractorProfileById(job.assignedContractorId)
+            : null;
+          if (!contractorProfile?.stripeAccountId || !contractorProfile.stripeOnboardingComplete) {
+            console.warn(`[Payment] Contractor ${job.assignedContractorId} has no Stripe account. Skipping payment for job ${input.jobId}.`);
+            return { success: true, paymentSkipped: true, reason: "contractor_no_stripe" };
+          }
+
+          // Get platform fee settings
+          const settings = await getPlatformSettings();
+          const feePercent = parseFloat(settings.platformFeePercent ?? "5");
+          const perListingEnabled = settings.perListingFeeEnabled;
+          const perListingAmount = parseFloat(settings.perListingFeeAmount ?? "0");
+
+          // Calculate costs in cents
+          const laborCost = parseFloat(job.totalLaborCost ?? "0");
+          const partsCost = parseFloat(job.totalPartsCost ?? "0");
+          const jobCostDollars = laborCost + partsCost;
+          const jobCostCents = Math.round(jobCostDollars * 100);
+          const platformFeeCents = Math.round(jobCostDollars * (feePercent / 100) * 100);
+          const perListingFeeCents = perListingEnabled ? Math.round(perListingAmount * 100) : 0;
+
+          if (jobCostCents <= 0) {
+            console.warn(`[Payment] Job ${input.jobId} has zero cost. Skipping payment.`);
+            return { success: true, paymentSkipped: true, reason: "zero_cost" };
+          }
+
+          const result = await chargeJobAndPayContractor({
+            stripeCustomerId: company.stripeCustomerId,
+            contractorStripeAccountId: contractorProfile.stripeAccountId,
+            jobCostCents,
+            platformFeeCents,
+            perListingFeeCents,
+            jobId: input.jobId,
+            companyId,
+            contractorProfileId: contractorProfile.id,
+            description: `Maintenance job #${input.jobId}: ${job.title}`,
+          });
+
+          // Record transaction
+          await db.createTransaction({
+            maintenanceRequestId: input.jobId,
+            companyId,
+            contractorProfileId: contractorProfile.id,
+            laborCost: laborCost.toFixed(2),
+            partsCost: partsCost.toFixed(2),
+            platformFee: (result.platformFeeCents / 100).toFixed(2),
+            totalCharged: (result.totalChargeCents / 100).toFixed(2),
+            contractorPayout: (result.jobCostCents / 100).toFixed(2),
+            stripePaymentIntentId: result.paymentIntentId,
+            stripeTransferId: result.transferId,
+            status: "captured",
+            paidAt: new Date(),
+          });
+
+          // Update job with payment info
+          await db.updateMaintenanceRequest(input.jobId, {
+            stripePaymentIntentId: result.paymentIntentId,
+            status: "paid",
+            paidAt: new Date(),
+            platformFee: (result.platformFeeCents / 100).toFixed(2),
+            totalCost: (result.totalChargeCents / 100).toFixed(2),
+          });
+
+          return {
+            success: true,
+            paymentSkipped: false,
+            totalCharged: result.totalChargeCents / 100,
+            contractorPayout: result.jobCostCents / 100,
+          };
+        } catch (err) {
+          console.error(`[Payment] Error processing payment for job ${input.jobId}:`, err);
+          // Don't fail the verification — job is verified, payment can be retried
+          const message = err instanceof Error ? err.message : "Payment processing failed";
+          return { success: true, paymentSkipped: true, reason: message };
+        }
+      }
+
       return { success: true };
     }),
 
@@ -536,6 +680,44 @@ const timeTrackingRouter = router({
     .input(z.object({ sessionId: z.number() }))
     .query(async ({ input }) => {
       return db.getLocationPings(input.sessionId);
+    }),
+
+  // Contractor: get active session for a job (to restore state on page reload)
+  getActiveSessionForJob: contractorProcedure
+    .input(z.object({ jobId: z.number() }))
+    .query(async ({ ctx, input }) => {
+      const profile = await getEffectiveContractorProfile(ctx);
+      if (!profile) return null;
+      return db.getActiveTimeSession(input.jobId, profile.id);
+    }),
+
+  // Get auto clock-out settings (public for contractor use)
+  getAutoClockOutSettings: protectedProcedure
+    .query(async () => {
+      const settings = await getPlatformSettings();
+      return {
+        autoClockOutMinutes: settings.autoClockOutMinutes ?? 15,
+        autoClockOutRadiusMeters: settings.autoClockOutRadiusMeters ?? 200,
+      };
+    }),
+
+  // Company: get all active sessions (live tracking view)
+  getActiveSessionsForCompany: companyAdminProcedure
+    .query(async ({ ctx }) => {
+      const companyId = getEffectiveCompanyId(ctx);
+      const sessions = await db.getActiveSessionsByCompany(companyId);
+      // Attach latest ping for each session
+      const enriched = await Promise.all(sessions.map(async (s) => {
+        const latestPing = await db.getLatestPingForSession(s.sessionId);
+        return {
+          ...s,
+          latestLat: latestPing?.latitude ?? s.clockInLat,
+          latestLng: latestPing?.longitude ?? s.clockInLng,
+          latestPingTime: latestPing?.timestamp ?? s.clockInTime,
+          latestLocationType: latestPing?.locationType ?? "unknown",
+        };
+      }));
+      return enriched;
     }),
 });
 
@@ -662,6 +844,119 @@ const jobBoardRouter = router({
     }),
 });
 
+// ─── Stripe Router ─────────────────────────────────────────────────────────
+const stripeRouter = router({
+  // Contractor: create/get Connect account and return onboarding link
+  contractorOnboardingLink: contractorProcedure
+    .input(z.object({ origin: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const profile = await getEffectiveContractorProfile(ctx);
+      const user = await db.getUserById(ctx.user.id);
+      if (!user) throw new TRPCError({ code: "NOT_FOUND" });
+
+      let stripeAccountId = profile.stripeAccountId;
+      if (!stripeAccountId) {
+        const account = await createContractorConnectAccount(user.email ?? "");
+        stripeAccountId = account.id;
+        await db.updateContractorProfile(profile.id, { stripeAccountId });
+      }
+
+      const url = await createContractorOnboardingLink(stripeAccountId, input.origin);
+      return { url };
+    }),
+
+  // Contractor: check onboarding status from Stripe
+  contractorOnboardingStatus: contractorProcedure
+    .query(async ({ ctx }) => {
+      const profile = await getEffectiveContractorProfile(ctx);
+      if (!profile.stripeAccountId) {
+        return { onboardingComplete: false, chargesEnabled: false, payoutsEnabled: false };
+      }
+      const account = await stripe.accounts.retrieve(profile.stripeAccountId);
+      const complete = account.charges_enabled === true && account.payouts_enabled === true;
+      if (complete && !profile.stripeOnboardingComplete) {
+        await db.updateContractorProfile(profile.id, { stripeOnboardingComplete: true });
+      }
+      return {
+        onboardingComplete: complete,
+        chargesEnabled: account.charges_enabled ?? false,
+        payoutsEnabled: account.payouts_enabled ?? false,
+        stripeAccountId: profile.stripeAccountId,
+      };
+    }),
+
+  // Company: create a SetupIntent to save a card
+  createSetupIntent: companyAdminProcedure
+    .input(z.object({ origin: z.string() }))
+    .mutation(async ({ ctx, input: _input }) => {
+      const companyId = getEffectiveCompanyId(ctx);
+      const company = await db.getCompanyById(companyId);
+      if (!company) throw new TRPCError({ code: "NOT_FOUND" });
+      const user = await db.getUserById(ctx.user.id);
+      if (!user) throw new TRPCError({ code: "NOT_FOUND" });
+
+      const customerId = await getOrCreateStripeCustomer(
+        companyId,
+        user.email ?? "",
+        company.name
+      );
+      const { clientSecret } = await createSetupIntent(customerId);
+      return { clientSecret, customerId };
+    }),
+
+  // Company: list saved payment methods
+  listPaymentMethods: companyAdminProcedure
+    .query(async ({ ctx }) => {
+      const companyId = getEffectiveCompanyId(ctx);
+      const company = await db.getCompanyById(companyId);
+      if (!company?.stripeCustomerId) return { paymentMethods: [] };
+      const pms = await stripe.paymentMethods.list({
+        customer: company.stripeCustomerId,
+        type: "card",
+      });
+      return {
+        paymentMethods: pms.data.map(pm => ({
+          id: pm.id,
+          brand: pm.card?.brand ?? "unknown",
+          last4: pm.card?.last4 ?? "????",
+          expMonth: pm.card?.exp_month ?? 0,
+          expYear: pm.card?.exp_year ?? 0,
+        })),
+      };
+    }),
+
+  // Admin: get platform fee settings
+  getPlatformSettings: adminProcedure
+    .query(async () => {
+      return getPlatformSettings();
+    }),
+
+  // Admin: update platform fee settings
+  updatePlatformSettings: adminProcedure
+    .input(z.object({
+      platformFeePercent: z.number().min(0).max(100).optional(),
+      perListingFeeEnabled: z.boolean().optional(),
+      perListingFeeAmount: z.number().min(0).optional(),
+      autoClockOutMinutes: z.number().min(1).max(120).optional(),
+      autoClockOutRadiusMeters: z.number().min(50).max(1000).optional(),
+    }))
+    .mutation(async ({ input }) => {
+      const settings = await getPlatformSettings();
+      const drizzleDb = await db.getDb();
+      if (!drizzleDb) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const { platformSettings } = await import("../drizzle/schema");
+      const { eq } = await import("drizzle-orm");
+      await drizzleDb.update(platformSettings).set({
+        ...(input.platformFeePercent !== undefined && { platformFeePercent: input.platformFeePercent.toFixed(2) }),
+        ...(input.perListingFeeEnabled !== undefined && { perListingFeeEnabled: input.perListingFeeEnabled }),
+        ...(input.perListingFeeAmount !== undefined && { perListingFeeAmount: input.perListingFeeAmount.toFixed(2) }),
+        ...(input.autoClockOutMinutes !== undefined && { autoClockOutMinutes: input.autoClockOutMinutes }),
+        ...(input.autoClockOutRadiusMeters !== undefined && { autoClockOutRadiusMeters: input.autoClockOutRadiusMeters }),
+      }).where(eq(platformSettings.id, settings.id));
+      return { success: true };
+    }),
+});
+
 // ─── Platform Admin Router ──────────────────────────────────────────────────
 const platformRouter = router({
   stats: adminProcedure.query(async () => {
@@ -700,6 +995,7 @@ export const appRouter = router({
   integrations: integrationsRouter,
   transactions: transactionsRouter,
   platform: platformRouter,
+  stripePayments: stripeRouter,
   adminViewAs: adminViewAsRouter,
   admin: router({
     // Re-geocode all properties and contractor profiles that are missing coordinates.

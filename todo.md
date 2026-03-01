@@ -229,3 +229,85 @@
 - [x] Custom dropdown renders inside the React tree (inside Dialog DOM), no z-index/pointer-events conflict
 - [x] Supports keyboard navigation (arrow keys, Enter, Escape), loading spinner, and "Powered by Google" attribution
 - [x] onMouseDown + preventDefault prevents input blur before click fires (key trick for Dialog compatibility)
+
+## Job Completion Workflow
+- [ ] Schema: add completionNotes, completionPhotos (JSON array of S3 URLs), verificationNotes, disputeNotes to maintenance_requests
+- [ ] Schema: extend status enum to include "pending_verification", "disputed", "completed", "cancelled"
+- [ ] Backend: contractor.markComplete mutation (uploads photos to S3, sets status=pending_verification)
+- [ ] Backend: company.verifyJob mutation (approve → status=completed, reject → status=disputed)
+- [ ] Backend: company.getJobsAwaitingVerification query
+- [ ] Frontend: contractor My Jobs page — Mark Complete button with notes + photo upload
+- [ ] Frontend: company Jobs page — Pending Verification tab with approve/reject actions
+- [ ] Notify company owner when a job is marked complete (built-in notification)
+- [ ] Notify contractor when a job is verified or disputed
+
+## Stripe Connect Payment Split
+- [ ] Add Stripe Connect integration (webdev_add_feature stripe)
+- [ ] Schema: add stripePaymentIntentId, platformFeePercent, payoutAmount to maintenance_requests
+- [ ] Backend: charge company on job verification, split payout to contractor minus platform fee
+- [ ] Frontend: contractor onboarding — connect Stripe account to receive payouts
+- [ ] Frontend: company billing — payment method setup
+
+## Distance on Job Board Cards
+- [ ] Show "X miles away" on each job card in the contractor job board
+- [ ] Backend: include distance in jobBoard.list response
+
+## Contractor Address Autocomplete
+- [ ] Replace ZIP code field in contractor profile with full address autocomplete
+- [ ] Store full base address + geocode on save
+
+## AI Job Categorization
+- [ ] On job creation, call LLM to suggest skill tier and urgency level
+- [ ] Show AI suggestion as pre-filled defaults in the job creation form
+- [ ] Allow company to accept or override the suggestion
+
+## Stripe Connect Payment System (Full)
+- [ ] Schema: add stripeCustomerId to companies, stripeAccountId + stripeOnboardingComplete to contractor_profiles
+- [ ] Schema: add platform_settings table (platformFeePercent, perListingFeeEnabled, perListingFeeAmount, autoClockOutMinutes)
+- [ ] Backend: Stripe Connect Express account creation + onboarding link for contractors
+- [ ] Backend: Stripe Customer + SetupIntent for company card on file
+- [ ] Backend: On job verification — charge company (job cost + platform % fee + per-listing fee if enabled), transfer full job cost to contractor Stripe account
+- [ ] Backend: Stripe webhook handler at /api/stripe/webhook
+- [ ] Frontend: Contractor "Connect Bank Account" button in profile settings
+- [ ] Frontend: Company "Payment Setup" section in company settings
+- [ ] Frontend: Payment summary shown at verification step (breakdown: job cost + fees = total)
+
+## GPS Clock-In/Out & Live Tracking
+- [ ] Schema: add clockedInAt, clockedOutAt, startLat, startLng, totalHours to time_sessions
+- [ ] Schema: locationPings table (jobId, contractorProfileId, lat, lng, timestamp, accuracy)
+- [ ] Backend: contractor.clockIn mutation (stores GPS start location + timestamp)
+- [ ] Backend: contractor.clockOut mutation (calculates totalHours, marks job in_progress → ready for verification)
+- [ ] Backend: contractor.pingLocation mutation (stores GPS ping every ~30s while clocked in)
+- [ ] Backend: auto-clock-out check — if contractor returns within 200m of start location and autoClockOutMinutes pass without manual clock-out, auto clock out
+- [ ] Frontend: Contractor job page — Clock In / Clock Out button with browser GPS permission request
+- [ ] Frontend: Company live map — shows contractor's current GPS position on Google Map, route status badge (En Route / On Site / Returning)
+
+## Admin Platform Settings
+- [ ] Platform fee % (default 5%, live-editable from admin dashboard)
+- [ ] Per-listing fee toggle + dollar amount (default off, $0)
+- [ ] Auto-clock-out timeout in minutes (default 15 min, adjustable)
+- [ ] All settings stored in platform_settings table, read on every job verification
+- [ ] Admin dashboard settings panel for all three controls
+
+## GPS Live Tracking & Auto Clock-Out (Session 7)
+- [x] Switch GPS tracking from interval pings to continuous watchPosition (mirrors Google Maps live tracking)
+- [x] watchPosition fires on every position change as contractor moves — no fixed interval
+- [x] Auto clock-out: detect when contractor returns within configurable radius of clock-in origin
+- [x] Auto clock-out: show toast warning with countdown when contractor is back near origin
+- [x] Auto clock-out: cancel timer if contractor moves away from origin before timer fires
+- [x] Auto clock-out: fire clock-out automatically after configurable minutes (default: 15 min)
+- [x] Admin dashboard: auto clock-out minutes setting (adjustable)
+- [x] Admin dashboard: auto clock-out geofence radius setting (adjustable, default 200m)
+- [x] Live GPS indicator badge on job card while watchPosition is active
+- [x] Cleanup watchPosition watcher and timers on component unmount
+- [x] Live Tracking page for companies (/company/live-tracking)
+- [x] Live Tracking: Google Maps with real-time contractor position markers (blue arrow)
+- [x] Live Tracking: Job site markers (amber pin) for each active session
+- [x] Live Tracking: Left panel with contractor list, on-clock duration, last seen time
+- [x] Live Tracking: Click contractor to pan map to their current location
+- [x] Live Tracking: Selected contractor info overlay on map
+- [x] Live Tracking: Polls every 5 seconds for fresh positions
+- [x] Live Tracking: Stale indicator (>2 min since last ping = gray/offline)
+- [x] Live Tracking nav item added to company sidebar
+- [x] 9 GPS tracking unit tests (Haversine distance, auto clock-out logic) — all passing
+- [x] 47 total tests passing, 0 TypeScript errors
