@@ -613,3 +613,43 @@
 - [x] Build landing page Integrations section with real logos and brand fonts
 - [x] Add Plan Distribution analytics card to admin Platform Dashboard
 - [x] Add "Run Trial Expiry Check" button to admin dashboard
+
+## Stripe Connect + Nightly Cron + New Integrations (Current Session)
+- [x] Schema: add stripeConnectAccountId, stripeConnectStatus to contractor_profiles
+- [x] Schema: push migration
+- [x] Backend: stripe.createConnectOnboardingLink procedure (contractor initiates Connect onboarding)
+- [x] Backend: stripe.getConnectStatus procedure (check if contractor's Connect account is active)
+- [x] Backend: stripe webhook: handle account.updated to update contractor Connect status
+- [x] Backend: update job payment flow to use transfer_data (platform fee split + contractor payout)
+- [x] Frontend: contractor billing page — Stripe Connect onboarding card (connect bank account)
+- [x] Frontend: contractor billing page — show Connect status (pending/active/restricted)
+- [x] Backend: scheduled nightly cron job that calls runTrialExpiryCheck automatically at midnight
+- [x] Schema: add RealPage and Propertyware to provider enum in integrationConnectors
+- [x] Schema: push migration
+- [x] Backend: add RealPage and Propertyware to provider enum in integrations router
+- [x] Frontend: company settings integrations page — add RealPage and Propertyware cards
+- [x] Frontend: landing page integrations section — add RealPage and Propertyware logos
+- [x] Upload RealPage and Propertyware logos to CDN
+
+## Stripe ACH Bank Account Payment (Current Session)
+- [x] Backend: add Stripe Financial Connections session creation endpoint for companies
+- [x] Backend: support us_bank_account payment methods in chargeJobAndPayContractor
+- [x] Backend: list saved bank accounts alongside cards in listPaymentMethods
+- [x] Backend: allow setting default payment method (card or bank account)
+- [x] Frontend: company Settings → Payment — "Add Bank Account" button with Stripe Financial Connections flow
+- [x] Frontend: show saved bank accounts in payment methods list with ACH badge
+- [x] Frontend: job payment confirmation dialog — show selected payment method type and ACH note
+- [x] Frontend: company billing page — show bank account option in payment methods section
+
+## Contractor Invite System (Current Session)
+- [x] Schema: contractor_invites table (id, companyId, email, name, token, status, expiresAt, createdAt)
+- [x] Schema: push migration
+- [x] Backend: invites.create procedure — generate token, save invite, send email
+- [x] Backend: invites.list procedure — list pending/accepted invites for a company
+- [x] Backend: invites.revoke procedure — cancel a pending invite
+- [x] Backend: public.acceptInvite procedure — validate token, pre-fill registration with companyId
+- [x] Email: sendContractorInviteEmail — branded invite email with sign-up link
+- [x] Frontend: company Contractors page — "Invite Contractor" button + dialog (name + email)
+- [x] Frontend: company Contractors page — Pending Invites table with revoke action
+- [x] Frontend: /invite/:token page — landing page that validates token and redirects to registration
+- [x] Frontend: registration flow — pre-fill company association from invite token

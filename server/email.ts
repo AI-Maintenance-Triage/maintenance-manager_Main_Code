@@ -285,3 +285,33 @@ export async function sendTrialExpiredEmail(opts: {
   `);
   return sendEmail({ to: opts.to, subject: `Your ${opts.planName} trial has expired — reactivate now`, html });
 }
+
+// ─── Contractor Invite ────────────────────────────────────────────────────
+export async function sendContractorInviteEmail(opts: {
+  to: string;
+  name: string;
+  companyName: string;
+  inviteUrl: string;
+  expiresInDays: number;
+}) {
+  const html = layout("You've been invited to join Maintenance Manager", `
+    <h1>You're invited!</h1>
+    <p>Hi ${opts.name || "there"},</p>
+    <p><strong>${opts.companyName}</strong> has invited you to join their contractor network on <strong>Maintenance Manager</strong> — the AI-powered platform for property maintenance.</p>
+    <p>As a connected contractor you'll be able to:</p>
+    <ul style="margin:12px 0 16px 0;padding-left:20px;color:#a3a3a3;">
+      <li>Receive and accept maintenance jobs from ${opts.companyName}</li>
+      <li>Clock in/out with GPS time tracking</li>
+      <li>Submit expense receipts and get paid automatically via Stripe</li>
+      <li>Build your rating and grow your business</li>
+    </ul>
+    <a href="${opts.inviteUrl}" class="btn">Accept Invitation &amp; Sign Up</a>
+    <hr class="divider" />
+    <p style="font-size:13px;color:#737373;">This invitation expires in ${opts.expiresInDays} day${opts.expiresInDays !== 1 ? "s" : ""}. If you did not expect this email, you can safely ignore it.</p>
+  `);
+  return sendEmail({
+    to: opts.to,
+    subject: `${opts.companyName} invited you to join Maintenance Manager`,
+    html,
+  });
+}

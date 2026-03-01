@@ -191,7 +191,7 @@ export const maintenanceRequests = mysqlTable("maintenance_requests", {
   propertyId: int("propertyId").notNull(),
   // Source info
   externalId: varchar("externalId", { length: 128 }),
-  source: mysqlEnum("source", ["manual", "buildium", "appfolio", "rentmanager", "yardi", "doorloop"]).default("manual").notNull(),
+  source: mysqlEnum("source", ["manual", "buildium", "appfolio", "rentmanager", "yardi", "doorloop", "realpage", "propertyware"]).default("manual").notNull(),
   // Tenant info
   tenantName: varchar("tenantName", { length: 255 }),
   tenantPhone: varchar("tenantPhone", { length: 32 }),
@@ -353,7 +353,7 @@ export type InsertPlatformSettings = typeof platformSettings.$inferInsert;
 export const integrationConnectors = mysqlTable("integration_connectors", {
   id: int("id").autoincrement().primaryKey(),
   companyId: int("companyId").notNull(),
-  provider: mysqlEnum("provider", ["buildium", "appfolio", "rentmanager", "yardi", "doorloop"]).notNull(),
+  provider: mysqlEnum("provider", ["buildium", "appfolio", "rentmanager", "yardi", "doorloop", "realpage", "propertyware"]).notNull(),
   apiKey: text("apiKey"),
   apiSecret: text("apiSecret"),
   baseUrl: text("baseUrl"),
@@ -456,3 +456,22 @@ export const subscriptionPlans = mysqlTable("subscription_plans", {
 });
 export type SubscriptionPlan = typeof subscriptionPlans.$inferSelect;
 export type InsertSubscriptionPlan = typeof subscriptionPlans.$inferInsert;
+
+// ─── Contractor Invites ────────────────────────────────────────────────────
+// Companies send invite links to specific contractors via email.
+// The token is embedded in the sign-up URL; on registration the contractor
+// is automatically associated with the inviting company.
+export const contractorInvites = mysqlTable("contractor_invites", {
+  id: int("id").autoincrement().primaryKey(),
+  companyId: int("companyId").notNull(),
+  email: varchar("email", { length: 320 }).notNull(),
+  name: varchar("name", { length: 255 }),
+  token: varchar("token", { length: 128 }).notNull().unique(),
+  status: mysqlEnum("status", ["pending", "accepted", "revoked", "expired"]).default("pending").notNull(),
+  expiresAt: bigint("expiresAt", { mode: "number" }).notNull(), // UTC ms
+  acceptedAt: bigint("acceptedAt", { mode: "number" }),         // UTC ms, set on registration
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type ContractorInvite = typeof contractorInvites.$inferSelect;
+export type InsertContractorInvite = typeof contractorInvites.$inferInsert;

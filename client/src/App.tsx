@@ -30,6 +30,7 @@ import PlatformDashboard from "./pages/admin/PlatformDashboard";
 import AdminCompanies from "./pages/admin/AdminCompanies";
 import AdminSubscriptionPlans from "./pages/admin/AdminSubscriptionPlans";
 import ResetPassword from "./pages/ResetPassword";
+import InviteAccept from "./pages/InviteAccept";
 import { PWAInstallBanner } from "./components/PWAInstallBanner";
 
 function Router() {
@@ -42,6 +43,7 @@ function Router() {
       <Route path="/signin" component={SignIn} />
       <Route path="/get-started" component={GetStarted} />
       <Route path="/reset-password" component={ResetPassword} />
+      <Route path="/invite/:token" component={InviteAccept} />
       {/* Company Admin Routes */}
       <Route path="/company">
         <DashboardLayout><CompanyDashboard /></DashboardLayout>

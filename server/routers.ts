@@ -18,6 +18,10 @@ import {
   createContractorOnboardingLink,
   getOrCreateStripeCustomer,
   createSetupIntent,
+  createBankAccountSetupIntent,
+  listAllPaymentMethods,
+  setDefaultPaymentMethod,
+  detachPaymentMethod,
   chargeJobAndPayContractor,
 } from "./stripe";
 
@@ -275,9 +279,10 @@ const contractorRouter = router({
       serviceRadiusMiles: z.number().optional(),
       licenseNumber: z.string().optional(),
       insuranceInfo: z.string().optional(),
+      inviteToken: z.string().optional(), // if present, auto-connect to the inviting company
     }))
     .mutation(async ({ ctx, input }) => {
-      const { firstName, lastName, ...profileData } = input;
+      const { firstName, lastName, inviteToken, ...profileData } = input;
       // Update user's display name if first/last name provided
       if (firstName || lastName) {
         const fullName = [firstName, lastName].filter(Boolean).join(" ");
@@ -298,6 +303,27 @@ const contractorRouter = router({
         const coords = await db.geocodeAddress(`${zip}, USA`);
         if (coords) await db.updateContractorCoords(profileId, coords.lat, coords.lng);
       }
+
+      // If an invite token was provided, validate it and auto-connect contractor to the company
+      if (inviteToken) {
+        const invite = await db.getContractorInviteByToken(inviteToken);
+        if (invite && invite.status === "pending" && invite.expiresAt > Date.now()) {
+          // Create the contractor-company relationship (approved immediately since company invited them)
+          const { contractorCompanies: cc } = await import("../drizzle/schema");
+          const drizzleDb = await db.getDb();
+          if (drizzleDb) {
+            await drizzleDb.insert(cc).values({
+              contractorProfileId: profileId,
+              companyId: invite.companyId,
+              status: "approved",
+              invitedBy: "company",
+            }).onDuplicateKeyUpdate({ set: { status: "approved" } });
+          }
+          // Mark invite as accepted
+          await db.updateContractorInviteStatus(invite.id, "accepted", Date.now());
+        }
+      }
+
       return { id: profileId };
     }),
 
@@ -1160,7 +1186,7 @@ const integrationsRouter = router({
 
   upsert: companyAdminProcedure
     .input(z.object({
-      provider: z.enum(["buildium", "appfolio", "rentmanager", "yardi", "doorloop"]),
+      provider: z.enum(["buildium", "appfolio", "rentmanager", "yardi", "doorloop", "realpage", "propertyware"]),
       apiKey: z.string().optional(),
       apiSecret: z.string().optional(),
       baseUrl: z.string().optional(),
@@ -1675,11 +1701,62 @@ const stripeRouter = router({
         ...(input.perListingFeeAmount !== undefined && { perListingFeeAmount: input.perListingFeeAmount.toFixed(2) }),
         ...(input.autoClockOutMinutes !== undefined && { autoClockOutMinutes: input.autoClockOutMinutes }),
         ...(input.autoClockOutRadiusMeters !== undefined && { autoClockOutRadiusMeters: input.autoClockOutRadiusMeters }),
-      }).where(eq(platformSettings.id, settings.id));
+       }).where(eq(platformSettings.id, settings.id));
+      return { success: true };
+    }),
+
+  // ── Stripe ACH / Bank Account procedures ──────────────────────────────────
+
+  // Company: create a SetupIntent for adding a US bank account via Financial Connections
+  createBankAccountSetupIntent: companyAdminProcedure
+    .mutation(async ({ ctx }) => {
+      const companyId = getEffectiveCompanyId(ctx);
+      const company = await db.getCompanyById(companyId);
+      if (!company) throw new TRPCError({ code: "NOT_FOUND" });
+      const user = await db.getUserById(ctx.user.id);
+      if (!user) throw new TRPCError({ code: "NOT_FOUND" });
+      const customerId = await getOrCreateStripeCustomer(companyId, user.email ?? "", company.name);
+      const result = await createBankAccountSetupIntent(customerId);
+      return result;
+    }),
+
+  // Company: list all saved payment methods (cards + bank accounts)
+  listAllPaymentMethods: companyAdminProcedure
+    .query(async ({ ctx }) => {
+      const companyId = getEffectiveCompanyId(ctx);
+      const company = await db.getCompanyById(companyId);
+      if (!company?.stripeCustomerId) return { paymentMethods: [] };
+      const pms = await listAllPaymentMethods(company.stripeCustomerId);
+      return { paymentMethods: pms };
+    }),
+
+  // Company: set default payment method (card or bank account)
+  setDefaultPaymentMethod: companyAdminProcedure
+    .input(z.object({ paymentMethodId: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const companyId = getEffectiveCompanyId(ctx);
+      const company = await db.getCompanyById(companyId);
+      if (!company?.stripeCustomerId) throw new TRPCError({ code: "NOT_FOUND", message: "No Stripe customer" });
+      await setDefaultPaymentMethod(company.stripeCustomerId, input.paymentMethodId);
+      return { success: true };
+    }),
+
+  // Company: remove a payment method
+  detachPaymentMethod: companyAdminProcedure
+    .input(z.object({ paymentMethodId: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      // Verify the PM belongs to this company's customer before detaching
+      const companyId = getEffectiveCompanyId(ctx);
+      const company = await db.getCompanyById(companyId);
+      if (!company?.stripeCustomerId) throw new TRPCError({ code: "NOT_FOUND" });
+      const pm = await stripe.paymentMethods.retrieve(input.paymentMethodId);
+      if ((pm as any).customer !== company.stripeCustomerId) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Payment method does not belong to this company" });
+      }
+      await detachPaymentMethod(input.paymentMethodId);
       return { success: true };
     }),
 });
-
 // ─── Platform Admin Router ──────────────────────────────────────────────────
 const platformRouter = router({
   stats: adminProcedure.query(async () => {
@@ -1736,6 +1813,101 @@ const emailPrefsRouter = router({
 
 // ─── Main App Router ────────────────────────────────────────────────────────
 // ─── Public Router (no auth required) ───────────────────────────────────────
+// ─── Contractor Invites Router ──────────────────────────────────────────────────
+const invitesRouter = router({
+  // Company: send invite email to a contractor
+  create: companyAdminProcedure
+    .input(z.object({
+      email: z.string().email(),
+      name: z.string().optional(),
+      origin: z.string(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const companyId = getEffectiveCompanyId(ctx);
+      const company = await db.getCompanyById(companyId);
+      if (!company) throw new TRPCError({ code: "NOT_FOUND" });
+
+      // Prevent duplicate pending invites for the same email
+      const existing = await db.getContractorInviteByEmailAndCompany(input.email.toLowerCase(), companyId);
+      if (existing) throw new TRPCError({ code: "CONFLICT", message: "A pending invite already exists for this email address." });
+
+      // Generate a secure random token
+      const { randomBytes } = await import("crypto");
+      const token = randomBytes(48).toString("hex");
+      const EXPIRES_IN_DAYS = 7;
+      const expiresAt = Date.now() + EXPIRES_IN_DAYS * 24 * 60 * 60 * 1000;
+
+      await db.createContractorInvite({
+        companyId,
+        email: input.email.toLowerCase(),
+        name: input.name ?? null,
+        token,
+        status: "pending",
+        expiresAt,
+      });
+
+      const inviteUrl = `${input.origin}/invite/${token}`;
+      await email.sendContractorInviteEmail({
+        to: input.email,
+        name: input.name ?? "",
+        companyName: company.name,
+        inviteUrl,
+        expiresInDays: EXPIRES_IN_DAYS,
+      });
+
+      return { success: true };
+    }),
+
+  // Company: list all invites they have sent
+  list: companyAdminProcedure
+    .query(async ({ ctx }) => {
+      const companyId = getEffectiveCompanyId(ctx);
+      const invites = await db.listContractorInvitesByCompany(companyId);
+      // Auto-mark expired ones
+      const now = Date.now();
+      const updated = invites.map((inv) => ({
+        ...inv,
+        status: inv.status === "pending" && inv.expiresAt < now ? "expired" as const : inv.status,
+      }));
+      return { invites: updated };
+    }),
+
+  // Company: revoke a pending invite
+  revoke: companyAdminProcedure
+    .input(z.object({ inviteId: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      const companyId = getEffectiveCompanyId(ctx);
+      const invites = await db.listContractorInvitesByCompany(companyId);
+      const invite = invites.find((i) => i.id === input.inviteId);
+      if (!invite) throw new TRPCError({ code: "NOT_FOUND" });
+      if (invite.status !== "pending") throw new TRPCError({ code: "BAD_REQUEST", message: "Only pending invites can be revoked." });
+      await db.updateContractorInviteStatus(input.inviteId, "revoked");
+      return { success: true };
+    }),
+
+  // Public: validate an invite token (used on the /invite/:token landing page)
+  validateToken: publicProcedure
+    .input(z.object({ token: z.string() }))
+    .query(async ({ input }) => {
+      const invite = await db.getContractorInviteByToken(input.token);
+      if (!invite) throw new TRPCError({ code: "NOT_FOUND", message: "Invite not found." });
+      if (invite.status === "revoked") throw new TRPCError({ code: "FORBIDDEN", message: "This invite has been revoked." });
+      if (invite.status === "accepted") throw new TRPCError({ code: "CONFLICT", message: "This invite has already been accepted." });
+      if (invite.status === "expired" || invite.expiresAt < Date.now()) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "This invite has expired. Please ask the company to send a new one." });
+      }
+      const company = await db.getCompanyById(invite.companyId);
+      return {
+        valid: true,
+        email: invite.email,
+        name: invite.name,
+        companyId: invite.companyId,
+        companyName: company?.name ?? "Unknown Company",
+        token: invite.token,
+      };
+    }),
+});
+
 const publicRouter = router({
   /** Returns all active company-type plans sorted by sortOrder — used on the landing page pricing section */
   listCompanyPlans: publicProcedure.query(async () => {
@@ -1781,6 +1953,7 @@ export const appRouter = router({
   emailPrefs: emailPrefsRouter,
   platform: platformRouter,
   stripePayments: stripeRouter,
+  invites: invitesRouter,
   adminViewAs: adminViewAsRouter,
   admin: router({
     // Re-geocode all properties and contractor profiles that are missing coordinates.

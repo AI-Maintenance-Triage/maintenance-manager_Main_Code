@@ -500,6 +500,20 @@ export default function Home() {
                 color: "#2563EB",
                 font: "font-semibold",
               },
+              {
+                name: "RealPage",
+                logo: "https://d2xsxph8kpxj0f.cloudfront.net/310519663387010889/bBuQZrfKLoBs6LmtvQ4y6E/realpage_e7f8ae12.jpg",
+                bg: "bg-white",
+                color: "#E05A00",
+                font: "font-bold tracking-wide",
+              },
+              {
+                name: "Propertyware",
+                logo: "https://d2xsxph8kpxj0f.cloudfront.net/310519663387010889/bBuQZrfKLoBs6LmtvQ4y6E/propertyware_dec78994.png",
+                bg: "bg-white",
+                color: "#1565C0",
+                font: "font-semibold",
+              },
             ].map((integration) => (
               <div
                 key={integration.name}

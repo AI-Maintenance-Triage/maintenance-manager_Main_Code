@@ -22,6 +22,7 @@ export default function Register() {
   const search = useSearch();
   const params = new URLSearchParams(search);
   const roleIntent = params.get("role") as "company" | "contractor" | null;
+  const inviteToken = params.get("inviteToken") ?? "";
   const [step, setStep] = useState<Step>(() => {
     if (roleIntent === "company") return "company-form";
     if (roleIntent === "contractor") return "contractor-form";
@@ -106,6 +107,7 @@ export default function Register() {
             userId={user.id}
             userName={user.name || ""}
             userEmail={user.email || ""}
+            inviteToken={inviteToken || undefined}
             onBack={() => setStep("choose")}
             onDone={async () => {
               await refresh();
@@ -373,12 +375,14 @@ function ContractorForm({
   userId,
   userName,
   userEmail,
+  inviteToken,
   onBack,
   onDone,
 }: {
   userId: number;
   userName: string;
   userEmail: string;
+  inviteToken?: string;
   onBack: () => void;
   onDone: () => void;
 }) {
@@ -424,6 +428,7 @@ function ContractorForm({
       serviceRadiusMiles: serviceRadius,
       licenseNumber: licenseNumber.trim() || undefined,
       insuranceInfo: insuranceInfo.trim() || undefined,
+      inviteToken: inviteToken || undefined,
     });
   };
 

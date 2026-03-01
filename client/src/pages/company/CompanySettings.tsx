@@ -478,6 +478,8 @@ function IntegrationSettings({ readOnly, companyId }: { readOnly: boolean; compa
     { value: "rentmanager", label: "Rent Manager", description: "Connect Rent Manager for maintenance request import" },
     { value: "yardi", label: "Yardi", description: "Connect Yardi Voyager for enterprise property management" },
     { value: "doorloop", label: "DoorLoop", description: "Connect DoorLoop for modern property management and maintenance sync" },
+    { value: "realpage", label: "RealPage", description: "Connect RealPage for multifamily and commercial property management sync" },
+    { value: "propertyware", label: "Propertyware", description: "Connect Propertyware (a RealPage company) for single-family rental management" },
   ];
 
   return (

@@ -1993,3 +1993,63 @@ export async function getPlanDistributionStats() {
 
   return { companyStats: companyPlanRows, contractorStats: contractorPlanRows, summary };
 }
+
+// ─── Contractor Invites ────────────────────────────────────────────────────
+import { contractorInvites, InsertContractorInvite } from "../drizzle/schema";
+
+export async function createContractorInvite(data: InsertContractorInvite) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  const result = await db.insert(contractorInvites).values(data);
+  return result[0].insertId;
+}
+
+export async function getContractorInviteByToken(token: string) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db
+    .select()
+    .from(contractorInvites)
+    .where(eq(contractorInvites.token, token))
+    .limit(1);
+  return result[0];
+}
+
+export async function listContractorInvitesByCompany(companyId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db
+    .select()
+    .from(contractorInvites)
+    .where(eq(contractorInvites.companyId, companyId))
+    .orderBy(desc(contractorInvites.createdAt));
+}
+
+export async function updateContractorInviteStatus(
+  id: number,
+  status: "pending" | "accepted" | "revoked" | "expired",
+  acceptedAt?: number
+) {
+  const db = await getDb();
+  if (!db) return;
+  const updateData: Partial<InsertContractorInvite> = { status };
+  if (acceptedAt !== undefined) updateData.acceptedAt = acceptedAt;
+  await db.update(contractorInvites).set(updateData).where(eq(contractorInvites.id, id));
+}
+
+export async function getContractorInviteByEmailAndCompany(email: string, companyId: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db
+    .select()
+    .from(contractorInvites)
+    .where(
+      and(
+        eq(contractorInvites.email, email.toLowerCase()),
+        eq(contractorInvites.companyId, companyId),
+        eq(contractorInvites.status, "pending")
+      )
+    )
+    .limit(1);
+  return result[0];
+}

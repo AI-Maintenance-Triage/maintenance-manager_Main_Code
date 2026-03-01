@@ -11,6 +11,7 @@ import {
   Receipt, DollarSign, TrendingUp, Briefcase, Calendar, Download,
   Check, X, ClipboardList, Building2, ArrowUpRight, Zap,
   Star, Shield, Crown, CheckCircle2, AlertCircle, XCircle, CreditCard,
+  Link2, ExternalLink, RefreshCw,
 } from "lucide-react";
 
 const CONTRACTOR_FEATURE_LABELS: Record<string, string> = {
@@ -53,6 +54,158 @@ function planStatusBadge(status: string) {
     case "expired": return <Badge className="bg-red-500/15 text-red-400 border-red-500/30 gap-1"><XCircle className="h-3 w-3" /> Expired</Badge>;
     default: return null;
   }
+}
+
+function StripeConnectCard() {
+  const utils = trpc.useUtils();
+  const [onboardingLoading, setOnboardingLoading] = useState(false);
+
+  const { data: connectStatus, isLoading: connectLoading, refetch } =
+    trpc.stripePayments.contractorOnboardingStatus.useQuery();
+
+  const startOnboarding = trpc.stripePayments.contractorOnboardingLink.useMutation({
+    onSuccess: (data) => {
+      setOnboardingLoading(false);
+      window.open(data.url, "_blank");
+      toast.success("Stripe onboarding opened", {
+        description: "Complete the form in the new tab, then return here and refresh.",
+      });
+    },
+    onError: (err) => {
+      setOnboardingLoading(false);
+      toast.error("Could not start onboarding", { description: err.message });
+    },
+  });
+
+  // Handle return from Stripe onboarding
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const stripeParam = params.get("stripe");
+    if (stripeParam === "success") {
+      toast.success("Stripe onboarding complete!", {
+        description: "Your payout account has been connected.",
+      });
+      refetch();
+      utils.stripePayments.contractorOnboardingStatus.invalidate();
+    } else if (stripeParam === "refresh") {
+      toast.info("Onboarding session expired", {
+        description: "Please start the onboarding process again.",
+      });
+    }
+  }, []);
+
+  const isComplete = connectStatus?.onboardingComplete ?? false;
+  const hasAccount = !!connectStatus?.stripeAccountId;
+
+  return (
+    <Card className={`border ${isComplete ? "border-green-500/30 bg-green-500/5" : "border-amber-500/30 bg-amber-500/5"}`}>
+      <CardContent className="p-6">
+        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+          <div className="space-y-1 flex-1">
+            <div className="flex items-center gap-2 mb-2">
+              <div className={`p-2 rounded-lg ${isComplete ? "bg-green-500/20" : "bg-amber-500/20"}`}>
+                <Link2 className={`h-5 w-5 ${isComplete ? "text-green-400" : "text-amber-400"}`} />
+              </div>
+              <div>
+                <h3 className="font-semibold text-foreground">Stripe Payout Account</h3>
+                <p className="text-xs text-muted-foreground">Required to receive job payments</p>
+              </div>
+              {isComplete ? (
+                <Badge className="bg-green-500/15 text-green-400 border-green-500/30 gap-1 ml-auto sm:ml-0">
+                  <CheckCircle2 className="h-3 w-3" /> Connected
+                </Badge>
+              ) : (
+                <Badge className="bg-amber-500/15 text-amber-400 border-amber-500/30 gap-1 ml-auto sm:ml-0">
+                  <AlertCircle className="h-3 w-3" /> {hasAccount ? "Incomplete" : "Not Connected"}
+                </Badge>
+              )}
+            </div>
+
+            {isComplete ? (
+              <div className="space-y-1.5">
+                <p className="text-sm text-green-400">
+                  Your Stripe account is connected and ready to receive payouts. When a company pays for a completed job, funds are automatically transferred to your Stripe account.
+                </p>
+                <div className="flex items-center gap-3 mt-3 flex-wrap">
+                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <CheckCircle2 className="h-3.5 w-3.5 text-green-400" /> Charges enabled
+                  </div>
+                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <CheckCircle2 className="h-3.5 w-3.5 text-green-400" /> Payouts enabled
+                  </div>
+                  {connectStatus?.stripeAccountId && (
+                    <div className="text-xs text-muted-foreground font-mono">
+                      ID: {connectStatus.stripeAccountId}
+                    </div>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <p className="text-sm text-amber-400">
+                  {hasAccount
+                    ? "Your Stripe account setup is not yet complete. Please finish the onboarding process to start receiving payouts."
+                    : "Connect a Stripe account to receive automatic payouts when jobs are completed and verified. The platform fee is deducted from the company's payment — you receive the full agreed job amount."}
+                </p>
+                {!isComplete && (
+                  <div className="bg-secondary/50 rounded-md p-3 mt-2 space-y-1">
+                    <p className="text-xs font-medium text-foreground">How payouts work:</p>
+                    <ul className="text-xs text-muted-foreground space-y-0.5">
+                      <li className="flex items-center gap-1.5"><Check className="h-3 w-3 text-green-400 shrink-0" /> Company pays job cost + platform fee</li>
+                      <li className="flex items-center gap-1.5"><Check className="h-3 w-3 text-green-400 shrink-0" /> Platform fee is kept by the platform</li>
+                      <li className="flex items-center gap-1.5"><Check className="h-3 w-3 text-green-400 shrink-0" /> Full job cost transferred to your Stripe account</li>
+                      <li className="flex items-center gap-1.5"><Check className="h-3 w-3 text-green-400 shrink-0" /> Funds available in your bank within 2 business days</li>
+                    </ul>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          <div className="flex flex-col gap-2 shrink-0">
+            {connectLoading ? (
+              <Skeleton className="h-9 w-36" />
+            ) : isComplete ? (
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-2 border-green-500/30 text-green-400 hover:bg-green-500/10"
+                onClick={() => {
+                  setOnboardingLoading(true);
+                  startOnboarding.mutate({ origin: window.location.origin });
+                }}
+                disabled={onboardingLoading}
+              >
+                <ExternalLink className="h-3.5 w-3.5" />
+                Manage Account
+              </Button>
+            ) : (
+              <Button
+                size="sm"
+                className="gap-2 bg-amber-500 hover:bg-amber-600 text-white"
+                onClick={() => {
+                  setOnboardingLoading(true);
+                  startOnboarding.mutate({ origin: window.location.origin });
+                }}
+                disabled={onboardingLoading || startOnboarding.isPending}
+              >
+                <Link2 className="h-3.5 w-3.5" />
+                {onboardingLoading ? "Opening..." : hasAccount ? "Continue Setup" : "Connect Stripe"}
+              </Button>
+            )}
+            <Button
+              variant="ghost"
+              size="sm"
+              className="gap-1.5 text-xs text-muted-foreground hover:text-foreground"
+              onClick={() => refetch()}
+            >
+              <RefreshCw className="h-3 w-3" /> Refresh Status
+            </Button>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
 }
 
 export default function ContractorBilling() {
@@ -115,6 +268,9 @@ export default function ContractorBilling() {
         </h1>
         <p className="text-muted-foreground mt-1">Manage your subscription plan and view your payment history</p>
       </div>
+
+      {/* Stripe Connect Onboarding */}
+      <StripeConnectCard />
 
       {/* Current Plan Summary */}
       {planLoading ? (

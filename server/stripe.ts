@@ -80,6 +80,80 @@ export async function createSetupIntent(stripeCustomerId: string) {
   return { clientSecret: si.client_secret, setupIntentId: si.id };
 }
 
+/**
+ * Create a SetupIntent for US bank account (ACH) via Stripe Financial Connections.
+ * The client uses this client_secret with Stripe.js collectBankAccountForSetup().
+ */
+export async function createBankAccountSetupIntent(stripeCustomerId: string) {
+  const si = await stripe.setupIntents.create({
+    customer: stripeCustomerId,
+    payment_method_types: ["us_bank_account"],
+    payment_method_options: {
+      us_bank_account: {
+        financial_connections: {
+          permissions: ["payment_method"],
+        },
+      },
+    },
+  });
+  return { clientSecret: si.client_secret!, setupIntentId: si.id };
+}
+
+/**
+ * List all saved payment methods for a Stripe customer — cards and bank accounts.
+ * Returns a unified list with a `type` discriminator.
+ */
+export async function listAllPaymentMethods(stripeCustomerId: string) {
+  const [cards, bankAccounts, customerRaw] = await Promise.all([
+    stripe.paymentMethods.list({ customer: stripeCustomerId, type: "card" }),
+    stripe.paymentMethods.list({ customer: stripeCustomerId, type: "us_bank_account" }),
+    stripe.customers.retrieve(stripeCustomerId),
+  ]);
+
+  const customer = customerRaw as Stripe.Customer;
+  const defaultPmId = customer.invoice_settings?.default_payment_method as string | null;
+
+  const cardItems = cards.data.map((pm) => ({
+    id: pm.id,
+    type: "card" as const,
+    brand: pm.card?.brand ?? "",
+    last4: pm.card?.last4 ?? "",
+    expMonth: pm.card?.exp_month ?? 0,
+    expYear: pm.card?.exp_year ?? 0,
+    isDefault: pm.id === defaultPmId,
+  }));
+
+  const bankItems = bankAccounts.data.map((pm) => ({
+    id: pm.id,
+    type: "us_bank_account" as const,
+    bankName: (pm.us_bank_account as any)?.bank_name ?? "Bank Account",
+    last4: (pm.us_bank_account as any)?.last4 ?? "",
+    accountType: (pm.us_bank_account as any)?.account_type ?? "checking",
+    isDefault: pm.id === defaultPmId,
+  }));
+
+  return [...cardItems, ...bankItems];
+}
+
+/**
+ * Set the default payment method on a Stripe customer (card or bank account).
+ */
+export async function setDefaultPaymentMethod(
+  stripeCustomerId: string,
+  paymentMethodId: string
+) {
+  await stripe.customers.update(stripeCustomerId, {
+    invoice_settings: { default_payment_method: paymentMethodId },
+  });
+}
+
+/**
+ * Detach (remove) a payment method from a customer.
+ */
+export async function detachPaymentMethod(paymentMethodId: string) {
+  await stripe.paymentMethods.detach(paymentMethodId);
+}
+
 // ─── Job payment: charge company, transfer full job cost to contractor ─────
 export interface JobPaymentParams {
   stripeCustomerId: string;
@@ -108,16 +182,23 @@ export async function chargeJobAndPayContractor(params: JobPaymentParams) {
 
   const totalChargeCents = jobCostCents + platformFeeCents + perListingFeeCents;
 
-  // Get default payment method for customer
-  const paymentMethods = await stripe.paymentMethods.list({
-    customer: stripeCustomerId,
-    type: "card",
-  });
-  const paymentMethodId = paymentMethods.data[0]?.id;
+  // Get default payment method — prefer the customer's default, then fall back to first card or bank account
+  const customerRaw = await stripe.customers.retrieve(stripeCustomerId);
+  const customer = customerRaw as Stripe.Customer;
+  let paymentMethodId = customer.invoice_settings?.default_payment_method as string | undefined;
+
+  if (!paymentMethodId) {
+    // Fall back: try cards first, then bank accounts
+    const [cards, bankAccounts] = await Promise.all([
+      stripe.paymentMethods.list({ customer: stripeCustomerId, type: "card" }),
+      stripe.paymentMethods.list({ customer: stripeCustomerId, type: "us_bank_account" }),
+    ]);
+    paymentMethodId = cards.data[0]?.id ?? bankAccounts.data[0]?.id;
+  }
 
   if (!paymentMethodId) {
     throw new Error(
-      "No payment method on file for this company. Please add a card in Company Settings → Payment."
+      "No payment method on file for this company. Please add a card or bank account in Company Settings → Payment."
     );
   }
 

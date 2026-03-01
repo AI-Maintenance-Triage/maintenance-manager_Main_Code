@@ -12,8 +12,12 @@ export default function SignUp() {
   const search = useSearch();
   const params = new URLSearchParams(search);
   const roleIntent = params.get("role") as "company" | "contractor" | null;
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
+  const inviteToken = params.get("inviteToken") ?? "";
+  const inviteEmail = params.get("email") ?? "";
+  const inviteName = params.get("name") ?? "";
+  const inviteCompanyName = params.get("companyName") ?? "";
+  const [name, setName] = useState(inviteName);
+  const [email, setEmail] = useState(inviteEmail);
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -59,8 +63,12 @@ export default function SignUp() {
       }
 
       toast.success("Account created! Let's set up your profile.");
-      // After registration, redirect to role selection / onboarding (pass role intent if present)
-      window.location.href = roleIntent ? `/register?role=${roleIntent}` : "/register";
+      // After registration, redirect to role selection / onboarding, passing role + invite token if present
+      const registerParams = new URLSearchParams();
+      if (roleIntent) registerParams.set("role", roleIntent);
+      if (inviteToken) registerParams.set("inviteToken", inviteToken);
+      const registerQs = registerParams.toString();
+      window.location.href = registerQs ? `/register?${registerQs}` : "/register";
     } catch (err) {
       toast.error("Something went wrong. Please try again.");
     } finally {
@@ -93,7 +101,11 @@ export default function SignUp() {
           <CardHeader className="text-center pb-4">
             <CardTitle className="text-2xl">Create your account</CardTitle>
             <CardDescription>
-              {roleIntent === "company" ? "Create your property management company account" : roleIntent === "contractor" ? "Create your contractor account to find maintenance jobs" : "Sign up to manage properties or find maintenance jobs"}
+              {inviteCompanyName
+                ? `You've been invited by ${inviteCompanyName} — create your contractor account to get started`
+                : roleIntent === "company" ? "Create your property management company account"
+                : roleIntent === "contractor" ? "Create your contractor account to find maintenance jobs"
+                : "Sign up to manage properties or find maintenance jobs"}
             </CardDescription>
           </CardHeader>
           <CardContent>
