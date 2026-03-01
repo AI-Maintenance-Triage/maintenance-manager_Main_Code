@@ -33,6 +33,8 @@ import {
   activityEvents, InsertActivityEvent,
   maintenanceMode,
   companyPaymentMethods,
+  pmsIntegrations, InsertPmsIntegration,
+  passwordResetTokens, InsertPasswordResetToken,
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
@@ -2585,6 +2587,15 @@ export async function listAuditLog(limit = 100, offset = 0, search?: string) {
   return query;
 }
 
+export async function listAuditLogByAction(action: string, limit = 50) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(auditLog)
+    .where(eq(auditLog.action, action))
+    .orderBy(desc(auditLog.createdAt))
+    .limit(limit);
+}
+
 // ─── Account Suspensions ──────────────────────────────────────────────────
 export async function suspendAccount(data: InsertAccountSuspension) {
   const db = await getDb();
@@ -2854,4 +2865,99 @@ export async function updateTransactionFee(transactionId: number, newPlatformFee
   await db.update(transactions)
     .set({ platformFee: newPlatformFeeDollars, updatedAt: new Date() })
     .where(eq(transactions.id, transactionId));
+}
+
+// ─── PMS Integrations ─────────────────────────────────────────────────────────
+export async function listPmsIntegrations(companyId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(pmsIntegrations).where(eq(pmsIntegrations.companyId, companyId)).orderBy(desc(pmsIntegrations.createdAt));
+}
+
+export async function getPmsIntegrationById(id: number, companyId: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const rows = await db.select().from(pmsIntegrations).where(and(eq(pmsIntegrations.id, id), eq(pmsIntegrations.companyId, companyId))).limit(1);
+  return rows[0] ?? null;
+}
+
+export async function getPmsIntegrationByProvider(companyId: number, provider: string) {
+  const db = await getDb();
+  if (!db) return null;
+  const rows = await db.select().from(pmsIntegrations).where(and(eq(pmsIntegrations.companyId, companyId), eq(pmsIntegrations.provider, provider))).limit(1);
+  return rows[0] ?? null;
+}
+
+export async function createPmsIntegration(data: InsertPmsIntegration) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  const result = await db.insert(pmsIntegrations).values(data);
+  return result[0].insertId;
+}
+
+export async function updatePmsIntegration(id: number, companyId: number, data: Partial<InsertPmsIntegration>) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(pmsIntegrations).set(data).where(and(eq(pmsIntegrations.id, id), eq(pmsIntegrations.companyId, companyId)));
+}
+
+export async function deletePmsIntegration(id: number, companyId: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.delete(pmsIntegrations).where(and(eq(pmsIntegrations.id, id), eq(pmsIntegrations.companyId, companyId)));
+}
+
+export async function listPmsWebhookEvents(companyId: number, limit = 50) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(pmsWebhookEvents).where(eq(pmsWebhookEvents.companyId, companyId)).orderBy(desc(pmsWebhookEvents.createdAt)).limit(limit);
+}
+
+export async function createPmsWebhookEvent(data: {
+  companyId?: number | null;
+  provider: string;
+  rawPayload?: string | null;
+  status?: string;
+  errorMessage?: string | null;
+  createdJobId?: number | null;
+}) {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db.insert(pmsWebhookEvents).values({
+    companyId: data.companyId ?? undefined,
+    provider: data.provider,
+    rawPayload: data.rawPayload ? JSON.parse(data.rawPayload) : undefined,
+    status: (data.status ?? "received") as "received" | "processed" | "failed" | "ignored",
+    errorMessage: data.errorMessage ?? undefined,
+    createdJobId: data.createdJobId ?? undefined,
+  });
+  return result[0].insertId;
+}
+
+// ─── Password Reset Tokens ─────────────────────────────────────────────────────
+export async function createPasswordResetToken(userId: number, token: string, expiresAt: Date) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  // Invalidate any existing tokens for this user
+  await db.delete(passwordResetTokens).where(eq(passwordResetTokens.userId, userId));
+  await db.insert(passwordResetTokens).values({ userId, token, expiresAt });
+}
+
+export async function getPasswordResetToken(token: string) {
+  const db = await getDb();
+  if (!db) return null;
+  const rows = await db.select().from(passwordResetTokens).where(eq(passwordResetTokens.token, token)).limit(1);
+  return rows[0] ?? null;
+}
+
+export async function markPasswordResetTokenUsed(id: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(passwordResetTokens).set({ usedAt: new Date() }).where(eq(passwordResetTokens.id, id));
+}
+
+export async function updateUserPassword(userId: number, passwordHash: string) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(users).set({ passwordHash }).where(eq(users.id, userId));
 }

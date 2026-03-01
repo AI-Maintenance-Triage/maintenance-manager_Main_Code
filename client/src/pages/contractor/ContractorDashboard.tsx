@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { useLocation } from "wouter";
 import { AnnouncementBanner } from "@/components/AnnouncementBanner";
+import { ContractorOnboardingChecklist } from "@/components/ContractorOnboardingChecklist";
 
 export default function ContractorDashboard() {
   const { user } = useAuth();
@@ -70,6 +71,9 @@ export default function ContractorDashboard() {
   return (
     <div className="space-y-6">
       <AnnouncementBanner userType="contractor" />
+      {profile && !isViewingAsContractor && (
+        <ContractorOnboardingChecklist profile={profile} />
+      )}
       <div>
         <h1 className="text-2xl font-bold text-foreground">Contractor Dashboard</h1>
         <p className="text-muted-foreground mt-1">

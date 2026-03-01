@@ -6,9 +6,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
-import { DollarSign, Search, AlertTriangle, CheckCircle2, FileText } from "lucide-react";
+import { DollarSign, Search, AlertTriangle, CheckCircle2, FileText, History } from "lucide-react";
 
 interface TransactionLookup {
   jobId: number;
@@ -27,9 +28,10 @@ export default function AdminJobFeeOverride() {
   const [lookupResult, setLookupResult] = useState<TransactionLookup | null>(null);
   const [overrideResult, setOverrideResult] = useState<{ jobId: number; oldFee: string; newFeeCents: number } | null>(null);
 
-  // We use the overrideJobFee mutation which does the lookup internally,
-  // but we want to show a preview first. We'll use a separate lookup query.
   const utils = trpc.useUtils();
+
+  // History of all past overrides from the audit log
+  const { data: history, isLoading: historyLoading } = trpc.adminControl.listJobFeeOverrideHistory.useQuery({ limit: 50 });
 
   const overrideMutation = trpc.adminControl.overrideJobFee.useMutation({
     onSuccess: (data) => {
@@ -39,6 +41,7 @@ export default function AdminJobFeeOverride() {
       setJobIdInput("");
       setNewFeeInput("");
       setReason("");
+      utils.adminControl.listJobFeeOverrideHistory.invalidate();
     },
     onError: (err) => toast.error(err.message || "Failed to override fee"),
   });
@@ -55,10 +58,6 @@ export default function AdminJobFeeOverride() {
       toast.error("Enter a valid Job ID");
       return;
     }
-    // We'll attempt the override with a "dry run" by just calling the lookup.
-    // Since we don't have a separate lookup endpoint, we'll show a confirmation
-    // dialog that includes the entered values. The actual transaction details
-    // will be verified server-side.
     setLookupResult({
       jobId,
       transactionId: 0,
@@ -79,7 +78,7 @@ export default function AdminJobFeeOverride() {
   };
 
   return (
-    <div className="p-6 space-y-6 max-w-2xl">
+    <div className="p-6 space-y-6 max-w-3xl">
       <div>
         <h1 className="text-2xl font-bold flex items-center gap-2">
           <DollarSign className="h-6 w-6 text-primary" />
@@ -163,7 +162,7 @@ export default function AdminJobFeeOverride() {
                 </span>
               </div>
               <p className="text-xs text-muted-foreground mt-1">
-                Note: Actual current values will be shown in the Audit Log after the override is applied.
+                Actual current values will be shown in the history below after the override is applied.
               </p>
             </div>
           )}
@@ -172,7 +171,7 @@ export default function AdminJobFeeOverride() {
             <Label htmlFor="reason">Reason for Override * <span className="text-muted-foreground font-normal">(min 5 characters)</span></Label>
             <Textarea
               id="reason"
-              placeholder="e.g. Billing error — contractor was overcharged due to incorrect rate applied. Correcting to agreed rate."
+              placeholder="e.g. Billing error — contractor was overcharged due to incorrect rate applied."
               value={reason}
               onChange={(e) => setReason(e.target.value)}
               rows={3}
@@ -223,23 +222,46 @@ export default function AdminJobFeeOverride() {
                 Job #{overrideResult.jobId}: platform fee changed from{" "}
                 <span className="font-mono">${overrideResult.oldFee}</span> to{" "}
                 <span className="font-mono">${(overrideResult.newFeeCents / 100).toFixed(2)}</span>.
-                This change has been recorded in the Audit Log.
+                This change has been recorded in the history below.
               </p>
             </div>
           </CardContent>
         </Card>
       )}
 
-      <Card className="border-border/50">
+      {/* ─── Override History Panel ─────────────────────────────────────── */}
+      <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-sm text-muted-foreground">Usage Notes</CardTitle>
+          <CardTitle className="text-base flex items-center gap-2">
+            <History className="h-4 w-4 text-muted-foreground" />
+            Override History
+          </CardTitle>
+          <CardDescription>All past job fee overrides, most recent first.</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-2 text-xs text-muted-foreground">
-          <p>• Enter the Job ID (visible in the Jobs table or URL) and look it up before applying the override.</p>
-          <p>• The new fee is entered in dollars (e.g. <code className="font-mono bg-muted px-1 rounded">12.50</code> = $12.50).</p>
-          <p>• Only the <code className="font-mono bg-muted px-1 rounded">platformFee</code> column is modified. <code className="font-mono bg-muted px-1 rounded">contractorPayout</code> and <code className="font-mono bg-muted px-1 rounded">totalCharged</code> are unchanged.</p>
-          <p>• Every override is written to the Audit Log with your name, timestamp, old value, new value, and reason.</p>
-          <p>• To view past overrides, go to <strong>Audit Log</strong> and filter by action <code className="font-mono bg-muted px-1 rounded">override_job_fee</code>.</p>
+        <CardContent>
+          {historyLoading ? (
+            <div className="space-y-2">{[...Array(3)].map((_, i) => <Skeleton key={i} className="h-12 w-full" />)}</div>
+          ) : !history?.length ? (
+            <p className="text-sm text-muted-foreground text-center py-6">No overrides have been applied yet.</p>
+          ) : (
+            <div className="space-y-2">
+              {history.map((entry: any) => (
+                <div key={entry.id} className="rounded-lg border bg-muted/20 p-3 text-sm">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-foreground truncate">{entry.details}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        By <span className="font-medium">{entry.actorName}</span> · {new Date(entry.createdAt).toLocaleString()}
+                      </p>
+                    </div>
+                    {entry.targetId && (
+                      <Badge variant="outline" className="text-xs shrink-0">Job #{entry.targetId}</Badge>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

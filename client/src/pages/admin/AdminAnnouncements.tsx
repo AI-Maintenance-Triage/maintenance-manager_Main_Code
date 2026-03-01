@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { trpc } from "@/lib/trpc";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -12,7 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
-import { Plus, Pencil, Trash2, Megaphone } from "lucide-react";
+import { Plus, Pencil, Trash2, Megaphone, Clock } from "lucide-react";
 
 const TYPE_COLORS: Record<string, string> = {
   info: "bg-blue-500/10 text-blue-400 border-blue-500/20",
@@ -32,8 +32,12 @@ export default function AdminAnnouncements() {
   const [type, setType] = useState<"info" | "warning" | "success" | "error">("info");
   const [targetAudience, setTargetAudience] = useState<"all" | "companies" | "contractors">("all");
   const [isActive, setIsActive] = useState(true);
+  const [expiresAt, setExpiresAt] = useState(""); // datetime-local string
 
-  const resetForm = () => { setTitle(""); setMessage(""); setType("info"); setTargetAudience("all"); setIsActive(true); setEditItem(null); };
+  const resetForm = () => {
+    setTitle(""); setMessage(""); setType("info"); setTargetAudience("all");
+    setIsActive(true); setExpiresAt(""); setEditItem(null);
+  };
 
   const createMutation = trpc.adminControl.createAnnouncement.useMutation({
     onSuccess: () => { toast.success("Announcement created!"); setOpen(false); resetForm(); utils.adminControl.listAnnouncements.invalidate(); },
@@ -51,24 +55,42 @@ export default function AdminAnnouncements() {
   });
 
   const openEdit = (a: any) => {
-    setEditItem(a); setTitle(a.title); setMessage(a.message); setType(a.type); setTargetAudience(a.targetAudience); setIsActive(a.isActive); setOpen(true);
+    setEditItem(a);
+    setTitle(a.title);
+    setMessage(a.message);
+    setType(a.type);
+    setTargetAudience(a.targetAudience);
+    setIsActive(a.isActive);
+    // Convert stored timestamp to datetime-local string
+    if (a.expiresAt) {
+      const d = new Date(a.expiresAt);
+      // Format as YYYY-MM-DDTHH:MM for datetime-local input
+      const pad = (n: number) => String(n).padStart(2, "0");
+      setExpiresAt(`${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`);
+    } else {
+      setExpiresAt("");
+    }
+    setOpen(true);
   };
 
   const handleSubmit = () => {
     if (!title.trim() || !message.trim()) return toast.error("Title and message are required");
+    const expiresAtMs = expiresAt ? new Date(expiresAt).getTime() : undefined;
     if (editItem) {
-      updateMutation.mutate({ id: editItem.id, title, message, type, targetAudience, isActive });
+      updateMutation.mutate({ id: editItem.id, title, message, type, targetAudience, isActive, expiresAt: expiresAtMs });
     } else {
-      createMutation.mutate({ title, message, type, targetAudience, isActive });
+      createMutation.mutate({ title, message, type, targetAudience, isActive, expiresAt: expiresAtMs });
     }
   };
+
+  const isExpired = (a: any) => a.expiresAt && a.expiresAt < Date.now();
 
   return (
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-2"><Megaphone className="h-6 w-6 text-primary" /> Platform Announcements</h1>
-          <p className="text-muted-foreground text-sm mt-1">Broadcast messages to companies and/or contractors.</p>
+          <p className="text-muted-foreground text-sm mt-1">Broadcast messages to companies and/or contractors. Set an expiry to auto-deactivate.</p>
         </div>
         <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) resetForm(); }}>
           <DialogTrigger asChild>
@@ -77,8 +99,14 @@ export default function AdminAnnouncements() {
           <DialogContent className="max-w-lg">
             <DialogHeader><DialogTitle>{editItem ? "Edit Announcement" : "New Announcement"}</DialogTitle></DialogHeader>
             <div className="space-y-4 py-2">
-              <div className="space-y-1.5"><Label>Title</Label><Input value={title} onChange={e => setTitle(e.target.value)} placeholder="Scheduled maintenance tonight..." /></div>
-              <div className="space-y-1.5"><Label>Message</Label><Textarea value={message} onChange={e => setMessage(e.target.value)} rows={4} placeholder="Describe the announcement..." /></div>
+              <div className="space-y-1.5">
+                <Label>Title</Label>
+                <Input value={title} onChange={e => setTitle(e.target.value)} placeholder="Scheduled maintenance tonight..." />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Message</Label>
+                <Textarea value={message} onChange={e => setMessage(e.target.value)} rows={4} placeholder="Describe the announcement..." />
+              </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1.5">
                   <Label>Type</Label>
@@ -104,6 +132,23 @@ export default function AdminAnnouncements() {
                   </Select>
                 </div>
               </div>
+              <div className="space-y-1.5">
+                <Label className="flex items-center gap-1.5">
+                  <Clock className="h-3.5 w-3.5" />
+                  Expiry Date &amp; Time <span className="text-muted-foreground font-normal">(optional — leave blank for no expiry)</span>
+                </Label>
+                <Input
+                  type="datetime-local"
+                  value={expiresAt}
+                  onChange={e => setExpiresAt(e.target.value)}
+                  className="bg-background border-border"
+                />
+                {expiresAt && (
+                  <p className="text-xs text-muted-foreground">
+                    Will auto-deactivate on {new Date(expiresAt).toLocaleString()}
+                  </p>
+                )}
+              </div>
               <div className="flex items-center gap-3">
                 <Switch checked={isActive} onCheckedChange={setIsActive} />
                 <Label>Active (visible to users)</Label>
@@ -123,7 +168,7 @@ export default function AdminAnnouncements() {
       ) : (
         <div className="space-y-3">
           {announcements.map((a: any) => (
-            <Card key={a.id} className={`border ${!a.isActive ? "opacity-60" : ""}`}>
+            <Card key={a.id} className={`border ${(!a.isActive || isExpired(a)) ? "opacity-60" : ""}`}>
               <CardHeader className="pb-2">
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex items-center gap-2 flex-wrap">
@@ -131,6 +176,13 @@ export default function AdminAnnouncements() {
                     <Badge className={`text-xs border ${TYPE_COLORS[a.type] ?? ""}`}>{a.type}</Badge>
                     <Badge variant="outline" className="text-xs">{a.targetAudience}</Badge>
                     {!a.isActive && <Badge variant="secondary" className="text-xs">Inactive</Badge>}
+                    {isExpired(a) && <Badge variant="destructive" className="text-xs">Expired</Badge>}
+                    {a.expiresAt && !isExpired(a) && (
+                      <Badge variant="outline" className="text-xs text-amber-400 border-amber-500/30">
+                        <Clock className="h-3 w-3 mr-1" />
+                        Expires {new Date(a.expiresAt).toLocaleString()}
+                      </Badge>
+                    )}
                   </div>
                   <div className="flex gap-2 shrink-0">
                     <Button size="sm" variant="ghost" onClick={() => openEdit(a)}><Pencil className="h-3.5 w-3.5" /></Button>
@@ -139,7 +191,10 @@ export default function AdminAnnouncements() {
                         <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive"><Trash2 className="h-3.5 w-3.5" /></Button>
                       </AlertDialogTrigger>
                       <AlertDialogContent>
-                        <AlertDialogHeader><AlertDialogTitle>Delete Announcement?</AlertDialogTitle><AlertDialogDescription>This will permanently remove this announcement.</AlertDialogDescription></AlertDialogHeader>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Delete Announcement?</AlertDialogTitle>
+                          <AlertDialogDescription>This will permanently remove this announcement.</AlertDialogDescription>
+                        </AlertDialogHeader>
                         <AlertDialogFooter>
                           <AlertDialogCancel>Cancel</AlertDialogCancel>
                           <AlertDialogAction onClick={() => deleteMutation.mutate({ id: a.id })} className="bg-destructive hover:bg-destructive/90">Delete</AlertDialogAction>

@@ -20,6 +20,7 @@ import CompanyVerification from "./pages/company/CompanyVerification";
 import LiveTracking from "./pages/company/LiveTracking";
 import CompanyExpenseReport from "./pages/company/CompanyExpenseReport";
 import CompanyBilling from "./pages/company/CompanyBilling";
+import CompanyIntegrations from "./pages/company/CompanyIntegrations";
 import ContractorDashboard from "./pages/contractor/ContractorDashboard";
 import ContractorJobBoard from "./pages/contractor/ContractorJobBoard";
 import ContractorMyJobs from "./pages/contractor/ContractorMyJobs";
@@ -47,6 +48,7 @@ import AdminEmailBlast from "./pages/admin/AdminEmailBlast";
 import AdminJobFeeOverride from "./pages/admin/AdminJobFeeOverride";
 import CompanyPropertyReports from "./pages/company/CompanyPropertyReports";
 import ResetPassword from "./pages/ResetPassword";
+import ForgotPassword from "./pages/ForgotPassword";
 import InviteAccept from "./pages/InviteAccept";
 import { PWAInstallBanner } from "./components/PWAInstallBanner";
 
@@ -60,6 +62,7 @@ function Router() {
       <Route path="/signin" component={SignIn} />
       <Route path="/get-started" component={GetStarted} />
       <Route path="/reset-password" component={ResetPassword} />
+      <Route path="/forgot-password" component={ForgotPassword} />
       <Route path="/invite/:token" component={InviteAccept} />
       {/* Company Admin Routes */}
       <Route path="/company">
@@ -91,6 +94,9 @@ function Router() {
       </Route>
       <Route path="/company/billing">
         <DashboardLayout><CompanyBilling /></DashboardLayout>
+      </Route>
+      <Route path="/company/integrations">
+        <DashboardLayout><CompanyIntegrations /></DashboardLayout>
       </Route>
       {/* Contractor Routes */}
       <Route path="/contractor">

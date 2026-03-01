@@ -26,7 +26,7 @@ import {
   LayoutDashboard, LogOut, PanelLeft, Building2, Wrench,
   ClipboardList, MapPin, Settings, Briefcase,
   UserCircle, Shield, HardHat, ChevronDown, ArrowLeft, CheckSquare, Navigation2, DollarSign, BarChart2, BarChart3, CreditCard, Banknote, Webhook, Tag,
-  Megaphone, Flag, ScrollText, Ban, Gift, PauseCircle, Activity, Trophy, TrendingDown, Mail, AlertTriangle, Pencil,
+  Megaphone, Flag, ScrollText, Ban, Gift, PauseCircle, Activity, Trophy, TrendingDown, Mail, AlertTriangle, Pencil, Plug,
 } from "lucide-react";
 import { CSSProperties, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "wouter";
@@ -84,6 +84,7 @@ const companySections: MenuSection[] = [
       { icon: BarChart2, label: "Reports", path: "/company/reports" },
       { icon: BarChart3, label: "Property Reports", path: "/company/property-reports" },
       { icon: CreditCard, label: "Billing", path: "/company/billing" },
+      { icon: Plug, label: "Integrations", path: "/company/integrations" },
     ],
   },
 ];

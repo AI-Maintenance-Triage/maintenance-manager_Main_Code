@@ -11,6 +11,7 @@ import { notifyOwner } from "./_core/notification";
 import * as email from "./email";
 import { ENV } from "./_core/env";
 import { adminViewAsRouter } from "./routers/admin-viewas";
+import { SUPPORTED_PROVIDERS, getAdapter, encodeCredentials, decodeCredentials, runPmsSync } from "./pms/index";
 import {
   stripe,
   getPlatformSettings,
@@ -2601,6 +2602,12 @@ const adminControlRouter = router({
        await db.writeAuditLog({ actorId: ctx.user.id, actorName: "admin", action: "email_blast", details: `Sent email blast to ${sent}/${uniqueRecipients.length} recipients. Subject: ${input.subject}` });
       return { sent, total: uniqueRecipients.length };
     }),
+  // Job fee override history
+  listJobFeeOverrideHistory: adminProcedure
+    .input(z.object({ limit: z.number().int().min(1).max(100).default(50) }))
+    .query(async ({ input }) => {
+      return db.listAuditLogByAction("override_job_fee", input.limit);
+    }),
 });
 // ─── User-facing Announcements Router ─────────────────────────────────────────
 const announcementsRouter = router({
@@ -2642,6 +2649,100 @@ const companyReportsRouter = router({
   }),
 });
 
+// ─── PMS Integration Router ────────────────────────────────────────────────
+const pmsRouter = router({
+  // List all supported providers and their config requirements
+  listProviders: companyAdminProcedure.query(() => {
+    return SUPPORTED_PROVIDERS;
+  }),
+
+  // List this company's active integrations
+  list: companyAdminProcedure.query(async ({ ctx }) => {
+    const companyId = getEffectiveCompanyId(ctx);
+    const integrations = await db.listPmsIntegrations(companyId);
+    // Strip credentials from the response
+    return integrations.map(i => ({
+      id: i.id,
+      provider: i.provider,
+      authType: i.authType,
+      status: i.status,
+      lastSyncAt: i.lastSyncAt,
+      lastErrorMessage: i.lastErrorMessage,
+      webhookSecret: i.webhookSecret,
+      createdAt: i.createdAt,
+    }));
+  }),
+
+  // Connect a new PMS integration
+  connect: companyAdminProcedure
+    .input(z.object({
+      provider: z.string().min(1),
+      credentials: z.object({
+        apiKey: z.string().optional(),
+        clientId: z.string().optional(),
+        clientSecret: z.string().optional(),
+        accessToken: z.string().optional(),
+        baseUrl: z.string().optional(),
+      }),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const companyId = getEffectiveCompanyId(ctx);
+      const adapter = getAdapter(input.provider);
+      const providerConfig = SUPPORTED_PROVIDERS.find(p => p.id === input.provider);
+
+      // Test connection for API-key providers
+      if (providerConfig?.authType === "api_key") {
+        const test = await adapter.testConnection(input.credentials);
+        if (!test.ok) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: `Connection failed: ${test.error}` });
+        }
+      }
+
+      // Generate a webhook secret for this integration
+      const webhookSecret = `whsec_${Math.random().toString(36).slice(2)}${Math.random().toString(36).slice(2)}`;
+
+      const id = await db.createPmsIntegration({
+        companyId,
+        provider: input.provider,
+        authType: providerConfig?.authType ?? "webhook_only",
+        credentialsJson: encodeCredentials(input.credentials),
+        webhookSecret,
+        status: "connected",
+      });
+
+      return { id, webhookSecret };
+    }),
+
+  // Disconnect (delete) an integration
+  disconnect: companyAdminProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      const companyId = getEffectiveCompanyId(ctx);
+      await db.deletePmsIntegration(input.id, companyId);
+      return { success: true };
+    }),
+
+  // Trigger a manual sync
+  sync: companyAdminProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      const companyId = getEffectiveCompanyId(ctx);
+      const result = await runPmsSync(input.id, companyId);
+      if (result.error) {
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: result.error });
+      }
+      return result;
+    }),
+
+  // List recent webhook events for this company
+  webhookEvents: companyAdminProcedure
+    .input(z.object({ limit: z.number().min(1).max(100).default(50) }))
+    .query(async ({ ctx, input }) => {
+      const companyId = getEffectiveCompanyId(ctx);
+      return db.listPmsWebhookEvents(companyId, input.limit);
+    }),
+});
+
 export const appRouter = router({
   system: systemRouter,
   public: publicRouter,
@@ -2656,6 +2757,40 @@ export const appRouter = router({
       ctx.res.clearCookie(COOKIE_NAME, { ...cookieOptions, maxAge: -1 });
       return { success: true } as const;
     }),
+    // ─── Password Reset ────────────────────────────────────────────────────────
+    requestPasswordReset: publicProcedure
+      .input(z.object({
+        email: z.string().email(),
+        origin: z.string().url(),
+      }))
+      .mutation(async ({ input }) => {
+        // Always return success to prevent email enumeration
+        const user = await db.getUserByEmail(input.email);
+        if (!user) return { success: true };
+        const crypto = await import('node:crypto');
+        const token = crypto.randomBytes(32).toString('hex');
+        const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+        await db.createPasswordResetToken(user.id, token, expiresAt);
+        const resetUrl = `${input.origin}/reset-password?token=${token}`;
+        await email.sendPasswordResetEmail({ to: user.email ?? '', name: user.name ?? 'there', resetUrl });
+        return { success: true };
+      }),
+    confirmPasswordReset: publicProcedure
+      .input(z.object({
+        token: z.string().min(1),
+        newPassword: z.string().min(8),
+      }))
+      .mutation(async ({ input }) => {
+        const record = await db.getPasswordResetToken(input.token);
+        if (!record) throw new TRPCError({ code: 'BAD_REQUEST', message: 'Invalid or expired reset link.' });
+        if (record.expiresAt < new Date()) throw new TRPCError({ code: 'BAD_REQUEST', message: 'This reset link has expired. Please request a new one.' });
+        if (record.usedAt) throw new TRPCError({ code: 'BAD_REQUEST', message: 'This reset link has already been used.' });
+        const bcrypt = await import('bcryptjs');
+        const passwordHash = await bcrypt.hash(input.newPassword, 12);
+        await db.updateUserPassword(record.userId, passwordHash);
+        await db.markPasswordResetTokenUsed(record.id);
+        return { success: true };
+      }),
   }),
   company: companyRouter,
   settings: settingsRouter,
@@ -2680,6 +2815,7 @@ export const appRouter = router({
   adminControl: adminControlRouter,
   announcements: announcementsRouter,
   companyReports: companyReportsRouter,
+  pms: pmsRouter,
   admin: router({
     // Re-geocode all properties and contractor profiles that are missing coordinates.
     // Safe to run multiple times — only updates records with null lat/lng.

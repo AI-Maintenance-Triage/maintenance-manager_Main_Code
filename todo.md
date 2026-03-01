@@ -237,7 +237,7 @@
 - [ ] Backend: company.verifyJob mutation (approve → status=completed, reject → status=disputed)
 - [ ] Backend: company.getJobsAwaitingVerification query
 - [ ] Frontend: contractor My Jobs page — Mark Complete button with notes + photo upload
-- [ ] Frontend: company Jobs page — Pending Verification tab with approve/reject actions
+- [x] Frontend: company Jobs page — Pending Verification tab with approve/reject actions
 - [ ] Notify company owner when a job is marked complete (built-in notification)
 - [ ] Notify contractor when a job is verified or disputed
 
@@ -267,7 +267,7 @@
 - [ ] Backend: Stripe Connect Express account creation + onboarding link for contractors
 - [ ] Backend: Stripe Customer + SetupIntent for company card on file
 - [ ] Backend: On job verification — charge company (job cost + platform % fee + per-listing fee if enabled), transfer full job cost to contractor Stripe account
-- [ ] Backend: Stripe webhook handler at /api/stripe/webhook
+- [x] Backend: Stripe webhook handler at /api/stripe/webhook
 - [ ] Frontend: Contractor "Connect Bank Account" button in profile settings
 - [ ] Frontend: Company "Payment Setup" section in company settings
 - [ ] Frontend: Payment summary shown at verification step (breakdown: job cost + fees = total)
@@ -711,31 +711,31 @@
 - [x] Frontend: admin sidebar — Revenue nav item
 
 ## Job Board Real-Time Refresh (Current Session)
-- [ ] Frontend: poll jobBoard.list every 30s in background
-- [ ] Frontend: compare new result count vs cached count — show "X new jobs available" toast with Refresh button
+- [x] Frontend: poll jobBoard.list every 30s in background
+- [x] Frontend: compare new result count vs cached count — show "X new jobs available" toast with Refresh button
 - [ ] Frontend: auto-refresh job list when contractor returns to the tab (visibilitychange event)
-- [ ] Frontend: show last-refreshed timestamp on job board header
+- [x] Frontend: show last-refreshed timestamp on job board header
 
 ## Contractor Rating System (Current Session)
-- [ ] Schema: contractor_ratings table (id, jobId, companyId, contractorProfileId, stars, comment, createdAt)
-- [ ] Schema: push migration
-- [ ] Backend: ratings.create procedure — company submits rating after job is completed/paid
-- [ ] Backend: ratings.getForContractor procedure — list ratings for a contractor profile
-- [ ] Backend: contractor.getProfile — include avgRating and ratingCount in response
-- [ ] Frontend: company Jobs page — "Rate Contractor" button on completed/paid jobs
-- [ ] Frontend: rate contractor dialog — 1–5 star picker + optional comment
-- [ ] Frontend: contractor profile page — show star rating badge and recent reviews
-- [ ] Frontend: job board cards — show contractor's avg rating if they have one (after accepting)
+- [x] Schema: contractor_ratings table (id, jobId, companyId, contractorProfileId, stars, comment, createdAt)
+- [x] Schema: push migration
+- [x] Backend: ratings.create procedure — company submits rating after job is completed/paid
+- [x] Backend: ratings.getForContractor procedure — list ratings for a contractor profile
+- [x] Backend: contractor.getProfile — include avgRating and ratingCount in response
+- [x] Frontend: company Jobs page — "Rate Contractor" button on completed/paid jobs
+- [x] Frontend: rate contractor dialog — 1–5 star picker + optional comment
+- [x] Frontend: contractor profile page — show star rating badge and recent reviews
+- [x] Frontend: job board cards — show contractor's avg rating if they have one (after accepting)
 
 ## PMS Inbound Webhook Receiver (Current Session)
-- [ ] Backend: POST /api/webhooks/pms/:provider — generic inbound webhook endpoint
+- [x] Backend: POST /api/webhooks/pms/:provider — generic inbound webhook endpoint
 - [ ] Backend: validate webhook secret per provider (stored in integration connector settings)
 - [ ] Backend: parse payload and create maintenanceRequest + auto-classify with AI
 - [ ] Backend: map provider-specific fields to internal schema (unit, description, priority, tenant name)
 - [ ] Backend: log webhook events to a pms_webhook_events table for audit/debugging
 - [ ] Schema: pms_webhook_events table (id, provider, companyId, rawPayload, status, createdAt)
-- [ ] Schema: push migration
-- [ ] Frontend: company Settings integrations page — show webhook URL + secret for each connected provider
+- [x] Schema: push migration
+- [x] Frontend: company Settings integrations page — show webhook URL + secret for each connected provider
 - [ ] Frontend: admin platform dashboard — webhook events log viewer (recent events, status, provider)
 
 ## Admin Webhook Events UI (Session 18)
@@ -885,3 +885,85 @@
 - [x] Admin job fee override page (/admin/job-fee-override) — find job by ID, adjust platform fee, audit logged
 - [x] Backend: adminControl.overrideJobFee tRPC procedure (admin only, writes to transactions + audit log)
 - [x] Tests: 13 new vitest tests — 194 total across 11 files, all passing
+
+## Deferred Suggestions (from Session 28)
+- [x] Announcement expiry dates — optional "expires at" datetime field that auto-deactivates announcements
+- [x] Job Fee Override history panel — read-only table of past overrides queried from Audit Log
+- [x] Churn Risk auto-score refresh — nightly cron that recalculates scores and notifies admin when a company crosses to high risk
+
+## Session 29: PMS Integration + Ratings + Plans + Onboarding + Password Reset + Admin Polish
+
+### PMS Self-Service Integration
+- [ ] Schema: pms_integrations table (id, companyId, provider, authType, credentials encrypted, status, lastSyncAt, createdAt)
+- [ ] Schema: pms_webhook_events table (id, companyId, provider, rawPayload, status, errorMessage, createdAt)
+- [x] Schema: push migration
+- [x] Backend: pms.listIntegrations — list company's connected PMS integrations
+- [x] Backend: pms.connect — save API key / OAuth credentials for a provider
+- [x] Backend: pms.disconnect — remove integration
+- [x] Backend: pms.syncNow — manually trigger a sync (pull maintenance requests from PMS API)
+- [x] Backend: pms.listWebhookEvents — list recent inbound webhook events for a company
+- [x] Backend: POST /api/webhooks/pms/:provider — inbound webhook endpoint, auto-classify with AI
+- [x] Frontend: company Settings → Integrations page redesign with self-service PMS connector cards
+- [x] Frontend: per-provider setup dialog (API key entry for Buildium/Rent Manager, OAuth for AppFolio)
+- [x] Frontend: show sync status, last synced timestamp, and disconnect button per integration
+- [x] Frontend: webhook event log viewer on integrations page
+
+### Contractor Ratings
+- [x] Schema: contractor_ratings table (id, jobId, companyId, contractorProfileId, stars, comment, createdAt)
+- [x] Schema: push migration
+- [x] Backend: ratings.create — company submits 1–5 star rating + optional comment after job completed/paid
+- [x] Backend: ratings.getForContractor — list ratings for a contractor profile
+- [x] Backend: contractor.getProfile — include avgRating and ratingCount in response
+- [x] Frontend: company Jobs page — "Rate Contractor" button on completed/paid jobs (one rating per job)
+- [x] Frontend: rate contractor dialog — star picker + optional comment
+- [x] Frontend: contractor profile page — star rating badge and recent reviews section
+- [x] Frontend: job board cards — show contractor avg rating after they accept a job
+
+### Subscription Plans + Stripe
+- [x] Schema: subscriptionPlans table (id, name, price, billingInterval, features JSON, stripePriceId, isActive)
+- [x] Schema: companies.planId FK to subscriptionPlans
+- [x] Schema: push migration
+- [x] Backend: plans.list — public list of active plans
+- [x] Backend: plans.create / update / delete — admin only
+- [x] Backend: plans.assignToCompany — admin manually assigns plan
+- [x] Backend: billing.createCheckoutSession — company initiates Stripe checkout for a plan
+- [x] Backend: Stripe webhook handler — checkout.session.completed assigns plan to company
+- [x] Backend: Stripe webhook handler — customer.subscription.deleted / invoice.payment_failed handles cancellation/expiry
+- [x] Frontend: /admin/plans page — full plan CRUD with feature toggle matrix
+- [x] Frontend: company Billing page — "Upgrade Plan" button with plan selection and Stripe checkout
+- [x] Frontend: plan badge on company cards in admin dashboard
+
+### Contractor Onboarding Checklist
+- [x] Frontend: dismissible checklist card on contractor dashboard
+- [x] Checklist items: complete profile, set service area, accept first job, receive first rating
+- [x] Auto-hide when all items are complete
+- [x] Persist dismissed state per user (localStorage)
+
+### Job Board Live Refresh
+- [x] Frontend: poll jobBoard.list every 30s in background
+- [x] Frontend: compare new result count vs cached — show "X new jobs available" toast with Refresh button
+- [x] Frontend: auto-refresh when contractor returns to tab (visibilitychange event)
+- [x] Frontend: show last-refreshed timestamp on job board header
+
+### Password Reset Flow
+- [x] Backend: /api/auth/forgot-password endpoint — generate token, email link
+- [x] Backend: /api/auth/reset-password endpoint — validate token, update password hash
+- [x] Frontend: "Forgot password?" link on Sign In page
+- [x] Frontend: /forgot-password page with email input form
+- [x] Frontend: /reset-password?token=... page with new password form (already exists, needs wiring)
+
+### Admin Polish (Deferred from Session 28)
+- [x] Announcement expiry dates — optional "expires at" field, auto-deactivate when past
+- [x] Job Fee Override history panel — Audit Log entries for override_job_fee shown on override page
+- [x] Churn Risk auto-score refresh — nightly cron, notify admin when company crosses to high risk
+
+### PMS Data Flows (added per user spec)
+- [x] PMS sync: import all company properties from PMS into Properties tab on connect + on manual sync
+- [x] PMS sync: poll for new maintenance requests from PMS every N minutes, auto-create job + post to job board
+- [x] PMS writeback: when job status changes to completed/verified, update the maintenance request status in the PMS to "complete" (provider-specific mapping)
+- [x] Provider adapter layer: each supported PMS has its own adapter (buildium.ts, appfolio.ts, etc.) implementing connect(), importProperties(), fetchNewRequests(), markComplete()
+- [x] Buildium adapter: GET /rentals + /units for property import; GET /maintenancerequests for new requests; PATCH /maintenancerequests/{id} for completion writeback
+- [x] AppFolio adapter: OAuth flow + property/unit import + work order fetch + completion writeback
+- [x] Generic/Other adapter: webhook-only mode (no pull sync, just receive pushed events)
+- [x] Sync scheduler: cron job every 15 minutes per connected integration to pull new requests
+- [x] Duplicate guard: skip importing requests that already exist by externalId

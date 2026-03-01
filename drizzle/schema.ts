@@ -677,3 +677,39 @@ export const maintenanceMode = mysqlTable("maintenance_mode", {
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
 export type MaintenanceMode = typeof maintenanceMode.$inferSelect;
+
+// ─── PMS Integrations (self-service per company) ──────────────────────────
+// Stores API credentials for each company's connected property management system.
+// Credentials are stored as an encrypted JSON blob; the actual keys never leave the server.
+export const pmsIntegrations = mysqlTable("pms_integrations", {
+  id: int("id").autoincrement().primaryKey(),
+  companyId: int("companyId").notNull(),
+  // Provider identifier: buildium | appfolio | rentmanager | yardi | resman | doorloop | other
+  provider: varchar("provider", { length: 64 }).notNull(),
+  // How the integration authenticates: api_key | oauth | webhook_only
+  authType: varchar("authType", { length: 32 }).notNull(),
+  // Encrypted JSON blob: { apiKey?, clientId?, clientSecret?, accessToken?, refreshToken? }
+  credentialsJson: text("credentialsJson"),
+  // Secret used to verify inbound webhook payloads from this provider
+  webhookSecret: varchar("webhookSecret", { length: 255 }),
+  // connected | error | disconnected
+  status: varchar("status", { length: 32 }).default("connected").notNull(),
+  lastSyncAt: timestamp("lastSyncAt"),
+  lastErrorMessage: text("lastErrorMessage"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type PmsIntegration = typeof pmsIntegrations.$inferSelect;
+export type InsertPmsIntegration = typeof pmsIntegrations.$inferInsert;
+
+// ─── Password Reset Tokens ────────────────────────────────────────────────
+export const passwordResetTokens = mysqlTable("password_reset_tokens", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  token: varchar("token", { length: 255 }).notNull(),
+  expiresAt: timestamp("expiresAt").notNull(),
+  usedAt: timestamp("usedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type PasswordResetToken = typeof passwordResetTokens.$inferSelect;
+export type InsertPasswordResetToken = typeof passwordResetTokens.$inferInsert;

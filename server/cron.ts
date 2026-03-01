@@ -9,6 +9,7 @@
 import cron from "node-cron";
 import * as db from "./db";
 import * as email from "./email";
+import { runPmsSync } from "./pms/index";
 
 const PLATFORM_ORIGIN = process.env.PLATFORM_ORIGIN ?? "https://maintmanager-bbuqzrfk.manus.space";
 
@@ -205,6 +206,84 @@ export function startCronJobs(): void {
     { timezone: "UTC" }
   );
 
+  // Run every 15 minutes to sync all active PMS integrations
+  cron.schedule(
+    "*/15 * * * *",
+    async () => {
+      try {
+        await runPmsSyncAll();
+      } catch (e: any) {
+        console.error("[cron] Unhandled error in runPmsSyncAll:", e.message);
+      }
+    },
+    { timezone: "UTC" }
+  );
+
+  // Run every day at 08:00 UTC — churn risk check, notify admin if any company crosses to high risk
+  cron.schedule(
+    "0 8 * * *",
+    async () => {
+      try {
+        await runChurnRiskCheck();
+      } catch (e: any) {
+        console.error("[cron] Unhandled error in runChurnRiskCheck:", e.message);
+      }
+    },
+    { timezone: "UTC" }
+  );
+
   console.log("[cron] Scheduled: trial expiry check daily at midnight UTC");
   console.log("[cron] Scheduled: job escalation check every 15 minutes");
+  console.log("[cron] Scheduled: PMS sync every 15 minutes");
+  console.log("[cron] Scheduled: churn risk check daily at 08:00 UTC");
+}
+
+// ─── Churn Risk Check ────────────────────────────────────────────────────────
+/**
+ * Runs daily at 08:00 UTC. Queries all companies inactive for 30+ days,
+ * classifies them as high/medium risk, and notifies the platform admin
+ * if any company has crossed from medium to high risk (60+ days inactive).
+ */
+async function runChurnRiskCheck(): Promise<void> {
+  console.log(`[cron] runChurnRiskCheck started at ${new Date().toISOString()}`);
+  try {
+    const riskCompanies = await db.getChurnRiskCompanies();
+    // High risk = 60+ days inactive
+    const highRisk = riskCompanies.filter(c => c.daysSinceLastJob >= 60);
+    if (highRisk.length === 0) {
+      console.log("[cron] runChurnRiskCheck complete — no high-risk companies");
+      return;
+    }
+    const { notifyOwner } = await import("./_core/notification");
+    const companyList = highRisk
+      .slice(0, 10)
+      .map(c => `• ${c.name} (${c.email ?? "no email"}) — ${c.daysSinceLastJob} days inactive`)
+      .join("\n");
+    const moreCount = highRisk.length > 10 ? `\n...and ${highRisk.length - 10} more` : "";
+    await notifyOwner({
+      title: `⚠️ Churn Risk Alert: ${highRisk.length} High-Risk ${highRisk.length === 1 ? "Company" : "Companies"}`,
+      content: `The following companies have been inactive for 60+ days and are at high churn risk:\n\n${companyList}${moreCount}\n\nVisit the Churn Risk dashboard to send re-engagement emails.`,
+    });
+    console.log(`[cron] runChurnRiskCheck complete — notified admin of ${highRisk.length} high-risk companies`);
+  } catch (e: any) {
+    console.error("[cron] runChurnRiskCheck error:", e.message);
+  }
+}
+
+// ─── PMS Sync ─────────────────────────────────────────────────────────────────
+async function runPmsSyncAll(): Promise<void> {
+  const allCompanies = await db.listCompanies();
+  for (const company of allCompanies) {
+    const integrations = await db.listPmsIntegrations(company.id);
+    for (const integration of integrations.filter(i => i.status === "connected")) {
+      try {
+        const result = await runPmsSync(integration.id, company.id);
+        if (result.imported > 0 || result.jobs > 0) {
+          console.log(`[cron] PMS sync company=${company.id} provider=${integration.provider}: imported=${result.imported} jobs=${result.jobs}`);
+        }
+      } catch (e: any) {
+        console.error(`[cron] PMS sync error company=${company.id} provider=${integration.provider}:`, e.message);
+      }
+    }
+  }
 }

@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { KeyRound, CheckCircle2, XCircle, Eye, EyeOff } from "lucide-react";
+import { trpc } from "@/lib/trpc";
 
 export default function ResetPassword() {
   const [, navigate] = useLocation();
@@ -15,9 +16,18 @@ export default function ResetPassword() {
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState("");
+
+  const confirmReset = trpc.auth.confirmPasswordReset.useMutation({
+    onSuccess: () => {
+      setSuccess(true);
+      toast.success("Password reset successfully!");
+    },
+    onError: (err) => {
+      setError(err.message);
+    },
+  });
 
   if (!token) {
     return (
@@ -29,8 +39,8 @@ export default function ResetPassword() {
             <p className="text-sm text-muted-foreground mb-6">
               This password reset link is missing a token. Please request a new reset link.
             </p>
-            <Button onClick={() => navigate("/signin")} className="w-full">
-              Back to Sign In
+            <Button onClick={() => navigate("/forgot-password")} className="w-full">
+              Request New Link
             </Button>
           </CardContent>
         </Card>
@@ -48,7 +58,7 @@ export default function ResetPassword() {
             <p className="text-sm text-muted-foreground mb-6">
               Your password has been updated successfully. You can now sign in with your new password.
             </p>
-            <Button onClick={() => navigate("/signin")} className="w-full">
+            <Button onClick={() => navigate("/")} className="w-full">
               Sign In
             </Button>
           </CardContent>
@@ -57,12 +67,12 @@ export default function ResetPassword() {
     );
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
 
-    if (password.length < 6) {
-      setError("Password must be at least 6 characters.");
+    if (password.length < 8) {
+      setError("Password must be at least 8 characters.");
       return;
     }
     if (password !== confirm) {
@@ -70,25 +80,7 @@ export default function ResetPassword() {
       return;
     }
 
-    setLoading(true);
-    try {
-      const res = await fetch("/api/auth/reset-password", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token, password }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        setError(data.error ?? "Failed to reset password. Please try again.");
-      } else {
-        setSuccess(true);
-        toast.success("Password reset successfully!");
-      }
-    } catch {
-      setError("Network error. Please try again.");
-    } finally {
-      setLoading(false);
-    }
+    confirmReset.mutate({ token, newPassword: password });
   };
 
   return (
@@ -111,10 +103,10 @@ export default function ResetPassword() {
                   type={showPassword ? "text" : "password"}
                   value={password}
                   onChange={e => setPassword(e.target.value)}
-                  placeholder="At least 6 characters"
+                  placeholder="At least 8 characters"
                   className="bg-secondary border-border pr-10"
                   required
-                  minLength={6}
+                  minLength={8}
                 />
                 <button
                   type="button"
@@ -147,15 +139,15 @@ export default function ResetPassword() {
               </div>
             )}
 
-            <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? "Resetting..." : "Reset Password"}
+            <Button type="submit" className="w-full" disabled={confirmReset.isPending}>
+              {confirmReset.isPending ? "Resetting..." : "Reset Password"}
             </Button>
 
             <Button
               type="button"
               variant="ghost"
               className="w-full text-muted-foreground"
-              onClick={() => navigate("/signin")}
+              onClick={() => navigate("/")}
             >
               Back to Sign In
             </Button>
