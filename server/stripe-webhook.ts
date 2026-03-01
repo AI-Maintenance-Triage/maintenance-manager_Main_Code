@@ -94,6 +94,23 @@ export function registerStripeWebhookRoute(app: Express) {
         }
 
         default:
+          // Handle transfer events (not in Stripe SDK enum but valid webhook events)
+          if ((event.type as string) === "transfer.paid" || (event.type as string) === "transfer.failed") {
+            const transfer = (event as any).data.object as { id: string; metadata?: Record<string, string> };
+            const jobId = transfer.metadata?.jobId ? parseInt(transfer.metadata.jobId) : null;
+            if (jobId) {
+              const db = await getDb();
+              if (db) {
+                const newStatus = (event.type as string) === "transfer.paid" ? "paid_out" : "failed";
+                await db
+                  .update(transactions)
+                  .set({ status: newStatus })
+                  .where(eq(transactions.stripeTransferId, transfer.id));
+                console.log(`[Stripe Webhook] Transfer ${transfer.id} ${newStatus} for job ${jobId}`);
+              }
+            }
+            break;
+          }
           console.log(`[Stripe Webhook] Unhandled event type: ${event.type}`);
       }
 

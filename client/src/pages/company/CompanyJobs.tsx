@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useViewAs } from "@/contexts/ViewAsContext";
-import { Plus, Zap, Clock, CheckCircle, AlertTriangle, Globe, X, Route, DollarSign } from "lucide-react";
+import { Plus, Zap, Clock, CheckCircle, AlertTriangle, Globe, X, Route, DollarSign, FileDown } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { RouteReplayDialog } from "@/components/RouteReplayDialog";
@@ -254,6 +254,22 @@ export default function CompanyJobs() {
                           onClick={() => setReplayJob({ id: job.id, title: job.title })}
                         >
                           <Route className="h-3 w-3" /> View Route
+                        </Button>
+                      )}
+                      {/* Download Invoice button for verified/paid jobs */}
+                      {(job.status === "verified" || job.status === "paid") && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="text-xs gap-1 h-7 border-green-500/40 text-green-400 hover:bg-green-500/10"
+                          onClick={() => {
+                            const link = document.createElement("a");
+                            link.href = `/api/invoice/${job.id}`;
+                            link.download = `invoice-job-${job.id}.pdf`;
+                            link.click();
+                          }}
+                        >
+                          <FileDown className="h-3 w-3" /> Invoice
                         </Button>
                       )}
                       {/* Post/Remove from board for open jobs */}

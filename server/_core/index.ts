@@ -7,6 +7,7 @@ import { registerOAuthRoutes } from "./oauth";
 import { registerLocalAuthRoutes } from "../auth-local";
 import { registerUploadRoute } from "../upload";
 import { registerStripeWebhookRoute } from "../stripe-webhook";
+import { registerInvoiceRoute } from "../invoice";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
@@ -44,6 +45,8 @@ async function startServer() {
   registerLocalAuthRoutes(app);
   // File upload endpoint for completion photos
   registerUploadRoute(app);
+  // Invoice PDF download endpoint
+  registerInvoiceRoute(app);
   // tRPC API
   app.use(
     "/api/trpc",

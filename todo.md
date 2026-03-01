@@ -361,3 +361,12 @@
 - [x] Contractor earnings dashboard: monthly earnings bar chart (last 12 months)
 - [x] Contractor earnings dashboard: per-job transaction history table
 - [x] Contractor sidebar: Earnings nav item
+
+## Session 11: Stripe Payouts & Invoice PDF
+- [x] Stripe Connect: auto-transfer contractor payout on job verification (already wired in chargeJobAndPayContractor)
+- [x] Stripe Connect: update transaction status to paid_out via transfer.paid webhook event
+- [x] Stripe Connect: transfer.failed webhook updates transaction status to failed
+- [x] Invoice PDF: server-side PDF generation using pdfkit at /api/invoice/:jobId
+- [x] Invoice PDF: includes job details, labor hours/rate, parts cost, platform fee, total charged, payment references
+- [x] Invoice PDF: "Invoice" download button on verified/paid job cards in CompanyJobs
+- [x] Invoice PDF: auth-protected endpoint (company owner or admin only)
