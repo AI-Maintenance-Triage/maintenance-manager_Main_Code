@@ -183,3 +183,10 @@
 - [x] Fix: invalidate jobBoard.list + contractor.getProfile after any service area update (frontend)
 - [x] Fix: re-geocode contractor base ZIP in updateProfile mutation (backend)
 - [x] Added 10 job board / Haversine unit tests including the exact reported bug scenario
+
+## Skill Tier Restrictions for Company Users
+- [x] Hide "Add Skill Tier" button on company settings page (company users only; admin keeps it)
+- [x] Hide "Delete" button on each skill tier row for company users (admin keeps it)
+- [x] Company users can still edit hourly rate / emergency multiplier on existing tiers
+- [x] Edit dialog shows tier name and description as read-only text for company users (editable for admin)
+- [x] Backend: skillTiers.create and skillTiers.delete throw FORBIDDEN for company_admin role (admin only)

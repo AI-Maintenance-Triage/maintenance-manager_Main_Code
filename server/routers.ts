@@ -115,6 +115,7 @@ const skillTiersRouter = router({
   create: companyAdminProcedure
     .input(z.object({ name: z.string().min(1), description: z.string().optional(), hourlyRate: z.string(), emergencyMultiplier: z.string().optional(), sortOrder: z.number().optional() }))
     .mutation(async ({ ctx, input }) => {
+      if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN", message: "Only platform admins can add skill tiers" });
       if (!getEffectiveCompanyId(ctx)) throw new TRPCError({ code: "NOT_FOUND" });
       const id = await db.createSkillTier({ companyId: getEffectiveCompanyId(ctx), ...input });
       return { id };
@@ -132,6 +133,7 @@ const skillTiersRouter = router({
   delete: companyAdminProcedure
     .input(z.object({ id: z.number() }))
     .mutation(async ({ ctx, input }) => {
+      if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN", message: "Only platform admins can delete skill tiers" });
       if (!getEffectiveCompanyId(ctx)) throw new TRPCError({ code: "NOT_FOUND" });
       await db.deleteSkillTier(input.id, getEffectiveCompanyId(ctx));
       return { success: true };

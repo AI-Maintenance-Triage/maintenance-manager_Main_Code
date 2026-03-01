@@ -36,7 +36,7 @@ export default function CompanySettings() {
           <TabsTrigger value="integrations"><Link2 className="h-4 w-4 mr-1.5" />Integrations</TabsTrigger>
         </TabsList>
         <TabsContent value="general"><GeneralSettings readOnly={false} companyId={isViewingAsCompany ? viewAs.companyId! : undefined} /></TabsContent>
-        <TabsContent value="rates"><SkillTiersSettings readOnly={false} companyId={isViewingAsCompany ? viewAs.companyId! : undefined} /></TabsContent>
+        <TabsContent value="rates"><SkillTiersSettings readOnly={false} isAdmin={isAdmin} companyId={isViewingAsCompany ? viewAs.companyId! : undefined} /></TabsContent>
         <TabsContent value="tracking"><TrackingSettings readOnly={false} companyId={isViewingAsCompany ? viewAs.companyId! : undefined} /></TabsContent>
         <TabsContent value="integrations"><IntegrationSettings readOnly={false} companyId={isViewingAsCompany ? viewAs.companyId! : undefined} /></TabsContent>
       </Tabs>
@@ -122,7 +122,7 @@ function GeneralSettings({ readOnly, companyId }: { readOnly: boolean; companyId
   );
 }
 
-function SkillTiersSettings({ readOnly, companyId }: { readOnly: boolean; companyId?: number }) {
+function SkillTiersSettings({ readOnly, isAdmin, companyId }: { readOnly: boolean; isAdmin?: boolean; companyId?: number }) {
   const utils = trpc.useUtils();
   const regularTiers = trpc.skillTiers.list.useQuery(undefined, { enabled: !readOnly });
   const viewAsTiers = trpc.adminViewAs.companySkillTiers.useQuery({ companyId: companyId! }, { enabled: readOnly && !!companyId });
@@ -155,7 +155,7 @@ function SkillTiersSettings({ readOnly, companyId }: { readOnly: boolean; compan
             <CardTitle className="text-card-foreground">Skill Tiers & Hourly Rates</CardTitle>
             <CardDescription>Define the skill tiers and their hourly rates. The AI uses these to classify incoming jobs.</CardDescription>
           </div>
-          {!readOnly && (
+          {!readOnly && isAdmin && (
             <Dialog open={open} onOpenChange={setOpen}>
               <DialogTrigger asChild><Button size="sm" className="gap-1"><Plus className="h-4 w-4" /> Add Tier</Button></DialogTrigger>
               <DialogContent className="bg-card">
@@ -193,9 +193,11 @@ function SkillTiersSettings({ readOnly, companyId }: { readOnly: boolean; compan
                       <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-primary" onClick={() => { setEditForm({ id: tier.id, name: tier.name, hourlyRate: tier.hourlyRate, description: tier.description || "", emergencyMultiplier: String(tier.emergencyMultiplier) }); setEditOpen(true); }}>
                         <Pencil className="h-4 w-4" />
                       </Button>
-                      <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-destructive" onClick={() => deleteTier.mutate({ id: tier.id })}>
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                      {isAdmin && (
+                        <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-destructive" onClick={() => deleteTier.mutate({ id: tier.id })}>
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      )}
                     </div>
                   )}
                 </div>
@@ -210,9 +212,21 @@ function SkillTiersSettings({ readOnly, companyId }: { readOnly: boolean; compan
         <DialogContent className="bg-card">
           <DialogHeader><DialogTitle className="text-card-foreground">Edit Skill Tier</DialogTitle></DialogHeader>
           <div className="space-y-4">
-            <div className="space-y-2"><Label>Tier Name</Label><Input value={editForm.name} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} /></div>
+            <div className="space-y-2">
+              <Label>Tier Name</Label>
+              {isAdmin
+                ? <Input value={editForm.name} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} />
+                : <p className="text-sm font-medium text-foreground py-2">{editForm.name}</p>
+              }
+            </div>
             <div className="space-y-2"><Label>Hourly Rate ($)</Label><Input type="number" value={editForm.hourlyRate} onChange={(e) => setEditForm({ ...editForm, hourlyRate: e.target.value })} /></div>
-            <div className="space-y-2"><Label>Description</Label><Input value={editForm.description} onChange={(e) => setEditForm({ ...editForm, description: e.target.value })} /></div>
+            <div className="space-y-2">
+              <Label>Description</Label>
+              {isAdmin
+                ? <Input value={editForm.description} onChange={(e) => setEditForm({ ...editForm, description: e.target.value })} />
+                : <p className="text-sm text-muted-foreground py-1">{editForm.description || <span className="italic">No description</span>}</p>
+              }
+            </div>
             <div className="space-y-2"><Label>Emergency Multiplier</Label><Input type="number" step="0.1" value={editForm.emergencyMultiplier} onChange={(e) => setEditForm({ ...editForm, emergencyMultiplier: e.target.value })} /></div>
             <Button onClick={() => updateTier.mutate({ id: editForm.id, name: editForm.name, hourlyRate: editForm.hourlyRate, description: editForm.description || undefined, emergencyMultiplier: editForm.emergencyMultiplier })} disabled={!editForm.name || !editForm.hourlyRate || updateTier.isPending} className="w-full">
               {updateTier.isPending ? "Saving..." : "Save Changes"}
