@@ -90,3 +90,11 @@
 - [x] Admin can create test companies directly from admin dashboard
 - [x] Admin can create test contractors directly from admin dashboard
 - [x] Created test entities appear in View As dropdowns immediately
+
+## Auth & Registration Fixes (Session 2)
+- [x] Fix sign-out to redirect to homepage (/) instead of showing blank sign-in screen
+- [x] Fix homepage CTA buttons to route to /register after login for new users
+- [x] Add "Sign In" vs "Register" distinction on homepage nav
+- [x] Ensure company registration flow completes and redirects to /company dashboard
+- [x] Ensure contractor registration flow completes and redirects to /contractor dashboard
+- [x] Fix DashboardLayout to redirect to / instead of showing inline sign-in when unauthenticated

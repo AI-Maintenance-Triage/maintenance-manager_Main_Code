@@ -51,7 +51,7 @@ export default function Home() {
               Sign In
             </Button>
             <Button onClick={() => { window.location.href = getLoginUrl(); }} className="gap-2">
-              Get Started <ArrowRight className="h-4 w-4" />
+              Get Started Free <ArrowRight className="h-4 w-4" />
             </Button>
           </div>
         </div>
@@ -179,7 +179,7 @@ export default function Home() {
                 ))}
               </ul>
               <Button onClick={() => { window.location.href = getLoginUrl(); }} className="w-full mt-8 gap-2">
-                Register as Property Manager <ArrowRight className="h-4 w-4" />
+                Get Started as Property Manager <ArrowRight className="h-4 w-4" />
               </Button>
             </div>
 
@@ -210,7 +210,7 @@ export default function Home() {
                 ))}
               </ul>
               <Button onClick={() => { window.location.href = getLoginUrl(); }} variant="outline" className="w-full mt-8 gap-2 border-primary/30 text-foreground hover:bg-primary/10">
-                Register as Contractor <ArrowRight className="h-4 w-4" />
+                Get Started as Contractor <ArrowRight className="h-4 w-4" />
               </Button>
             </div>
           </div>
