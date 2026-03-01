@@ -1002,3 +1002,36 @@
 - [x] CompanyIntegrations: error badge on integration card when last sync had errors
 - [x] Backend: pms.getSyncLog — return last N webhook events for a company's integration
 - [x] Backend: pms.testConnection — return detailed connection result (properties found, API version, account name)
+
+## Session 31: Rent Manager + DoorLoop Adapters + Contractor Payout Badge + Admin Webhook Log
+
+### Rent Manager PMS Adapter
+- [x] server/pms/rentmanager.ts — REST API key adapter (importProperties, fetchNewRequests, markComplete)
+- [x] Register RentManager in adapter registry (server/pms/index.ts)
+- [x] Add "Rent Manager" to provider list in CompanyIntegrations UI with setup instructions
+
+### DoorLoop PMS Adapter
+- [x] server/pms/doorloop.ts — API key + webhook adapter (importProperties, fetchNewRequests, markComplete)
+- [x] Register DoorLoop in adapter registry (server/pms/index.ts)
+- [x] Add "DoorLoop" to provider list in CompanyIntegrations UI with setup instructions
+
+### Contractor Payout Status Badge
+- [x] ContractorDashboard: prominent payout status card (Not Set Up / Pending KYC / Active)
+- [x] "Complete Setup" button opens Stripe Connect onboarding in new tab
+- [x] Contractor sidebar: payout status indicator dot on Earnings nav item
+
+### Admin Global Webhook Event Log
+- [x] Backend: platform.webhookEvents — paginated, filterable by provider/status/company
+- [x] Frontend: /admin/webhooks page with table of all inbound PMS events across all companies
+- [x] Columns: timestamp, company, provider, event type, status, job created, error message
+- [x] Filter bar: by provider, by status (processed/failed/ignored)
+- [x] "Webhook Log" nav item in admin sidebar
+
+### Tests
+- [x] Vitest tests for Rent Manager and DoorLoop adapter logic (session-31.test.ts, 32 tests)
+- [x] Vitest tests for payout status badge logic (session-31.test.ts)
+- [x] Vitest tests for admin webhook log filtering (session-31.test.ts)
+
+### Bug Fix: Contractor Free Plan Display
+- [x] ContractorDashboard PlanWidget shows "Free Plan" when no paid plan assigned
+- [x] Free badge shown instead of "No Plan" when contractor has no paid subscription

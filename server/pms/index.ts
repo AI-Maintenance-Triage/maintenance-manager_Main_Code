@@ -5,6 +5,8 @@
 
 import { buildiumAdapter } from "./buildium";
 import { appfolioAdapter } from "./appfolio";
+import { rentManagerAdapter } from "./rentmanager";
+import { doorloopAdapter } from "./doorloop";
 import { genericAdapter } from "./generic";
 import type { PmsAdapter, PmsCredentials } from "./types";
 
@@ -13,11 +15,11 @@ import type { PmsAdapter, PmsCredentials } from "./types";
 const ADAPTERS: Record<string, PmsAdapter> = {
   buildium: buildiumAdapter,
   appfolio: appfolioAdapter,
-  // Webhook-only / generic fallback for all other providers
-  rentmanager: { ...genericAdapter, provider: "rentmanager" },
+  rentmanager: rentManagerAdapter,
+  doorloop: doorloopAdapter,
+  // Webhook-only fallback for providers without a REST API adapter
   yardi: { ...genericAdapter, provider: "yardi" },
   resman: { ...genericAdapter, provider: "resman" },
-  doorloop: { ...genericAdapter, provider: "doorloop" },
   other: { ...genericAdapter, provider: "other" },
 };
 
@@ -54,12 +56,13 @@ export const SUPPORTED_PROVIDERS = [
   {
     id: "rentmanager",
     name: "Rent Manager",
-    authType: "webhook_only",
-    fields: [],
-    supportsPropertyImport: false,
-    supportsRequestSync: false,
-    supportsWriteback: false,
-    webhookNote: "Rent Manager sends maintenance requests via webhook. Configure the webhook URL in your Rent Manager portal.",
+    authType: "api_key",
+    fields: [
+      { key: "apiKey", label: "API Key", type: "password", required: true },
+    ],
+    supportsPropertyImport: true,
+    supportsRequestSync: true,
+    supportsWriteback: true,
   },
   {
     id: "yardi",
@@ -84,12 +87,13 @@ export const SUPPORTED_PROVIDERS = [
   {
     id: "doorloop",
     name: "DoorLoop",
-    authType: "webhook_only",
-    fields: [],
-    supportsPropertyImport: false,
-    supportsRequestSync: false,
-    supportsWriteback: false,
-    webhookNote: "DoorLoop sends maintenance requests via webhook. Configure the webhook URL in your DoorLoop portal.",
+    authType: "api_key",
+    fields: [
+      { key: "apiKey", label: "API Key", type: "password", required: true },
+    ],
+    supportsPropertyImport: true,
+    supportsRequestSync: true,
+    supportsWriteback: true,
   },
   {
     id: "other",

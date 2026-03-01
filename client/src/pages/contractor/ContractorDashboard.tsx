@@ -9,6 +9,7 @@ import { Progress } from "@/components/ui/progress";
 import { useLocation } from "wouter";
 import { AnnouncementBanner } from "@/components/AnnouncementBanner";
 import { ContractorOnboardingChecklist } from "@/components/ContractorOnboardingChecklist";
+import { ContractorPayoutStatusCard } from "@/components/ContractorPayoutStatusCard";
 
 export default function ContractorDashboard() {
   const { user } = useAuth();
@@ -74,6 +75,7 @@ export default function ContractorDashboard() {
       {profile && !isViewingAsContractor && (
         <ContractorOnboardingChecklist profile={profile} />
       )}
+      {!isViewingAsContractor && <ContractorPayoutStatusCard />}
       <div>
         <h1 className="text-2xl font-bold text-foreground">Contractor Dashboard</h1>
         <p className="text-muted-foreground mt-1">
@@ -152,6 +154,9 @@ function ContractorPlanWidget() {
   const maxActiveJobs = features.maxActiveJobs as number | null | undefined;
   const activeJobCount = planData?.usage?.activeJobs ?? 0;
   const isNearLimit = maxActiveJobs != null && maxActiveJobs > 0 && activeJobCount / maxActiveJobs >= 0.8;
+  // When no paid plan is assigned, display as Free Plan
+  const displayPlanName = plan?.name ?? "Free Plan";
+  const isFree = !plan;
 
   return (
     <Card className={`bg-card border-border ${isNearLimit ? "border-amber-500/40" : ""}`}>
@@ -161,7 +166,7 @@ function ContractorPlanWidget() {
           Plan Usage
         </CardTitle>
         <div className="flex items-center gap-1.5">
-          {!plan && <Badge variant="secondary" className="text-xs">No Plan</Badge>}
+          {isFree && <Badge variant="secondary" className="text-xs">Free</Badge>}
           {planStatus === "active" && (
             <Badge className="bg-green-500/15 text-green-400 border-green-500/30 text-xs">Active</Badge>
           )}
@@ -178,53 +183,47 @@ function ContractorPlanWidget() {
         </div>
       </CardHeader>
       <CardContent className="space-y-3">
-        {plan ? (
-          <>
-            <p className="text-xs text-muted-foreground font-medium">{plan.name}</p>
-            <div className="space-y-1">
-              <div className="flex items-center justify-between text-xs">
-                <span className="flex items-center gap-1 text-muted-foreground">
-                  <Briefcase className="h-3 w-3" /> Active Jobs
-                </span>
-                <span className={`font-medium ${
-                  maxActiveJobs != null && maxActiveJobs > 0 && activeJobCount / maxActiveJobs >= 0.8
-                    ? "text-amber-400" : "text-foreground"
-                }`}>
-                  {activeJobCount}{maxActiveJobs != null ? ` / ${maxActiveJobs === 0 ? "∞" : maxActiveJobs}` : " / ∞"}
-                </span>
-              </div>
-              {maxActiveJobs != null && maxActiveJobs > 0 ? (
-                <Progress
-                  value={Math.min(100, (activeJobCount / maxActiveJobs) * 100)}
-                  className={`h-1.5 ${
-                    activeJobCount / maxActiveJobs >= 0.9 ? "[&>div]:bg-red-400" :
-                    activeJobCount / maxActiveJobs >= 0.8 ? "[&>div]:bg-amber-400" : ""
-                  }`}
-                />
-              ) : (
-                <div className="h-1.5 rounded-full bg-secondary" />
-              )}
-            </div>
-            {(isNearLimit || planStatus === "expired") && (
-              <button
-                onClick={() => setLocation("/contractor/billing")}
-                className="w-full mt-1 flex items-center justify-center gap-1.5 text-xs text-primary hover:underline"
-              >
-                <ArrowUpRight className="h-3 w-3" />
-                {planStatus === "expired" ? "Renew subscription" : "Upgrade plan"}
-              </button>
-            )}
-          </>
-        ) : (
-          <div className="text-center py-2">
-            <p className="text-xs text-muted-foreground mb-2">No subscription plan assigned.</p>
-            <button
-              onClick={() => setLocation("/contractor/billing")}
-              className="text-xs text-primary hover:underline flex items-center gap-1 mx-auto"
-            >
-              <ArrowUpRight className="h-3 w-3" /> View available plans
-            </button>
+        <p className="text-xs text-muted-foreground font-medium">{displayPlanName}</p>
+        <div className="space-y-1">
+          <div className="flex items-center justify-between text-xs">
+            <span className="flex items-center gap-1 text-muted-foreground">
+              <Briefcase className="h-3 w-3" /> Active Jobs
+            </span>
+            <span className={`font-medium ${
+              maxActiveJobs != null && maxActiveJobs > 0 && activeJobCount / maxActiveJobs >= 0.8
+                ? "text-amber-400" : "text-foreground"
+            }`}>
+              {activeJobCount}{maxActiveJobs != null ? ` / ${maxActiveJobs === 0 ? "∞" : maxActiveJobs}` : " / ∞"}
+            </span>
           </div>
+          {maxActiveJobs != null && maxActiveJobs > 0 ? (
+            <Progress
+              value={Math.min(100, (activeJobCount / maxActiveJobs) * 100)}
+              className={`h-1.5 ${
+                activeJobCount / maxActiveJobs >= 0.9 ? "[&>div]:bg-red-400" :
+                activeJobCount / maxActiveJobs >= 0.8 ? "[&>div]:bg-amber-400" : ""
+              }`}
+            />
+          ) : (
+            <div className="h-1.5 rounded-full bg-secondary" />
+          )}
+        </div>
+        {(isNearLimit || planStatus === "expired") && (
+          <button
+            onClick={() => setLocation("/contractor/billing")}
+            className="w-full mt-1 flex items-center justify-center gap-1.5 text-xs text-primary hover:underline"
+          >
+            <ArrowUpRight className="h-3 w-3" />
+            {planStatus === "expired" ? "Renew subscription" : "Upgrade plan"}
+          </button>
+        )}
+        {isFree && (
+          <button
+            onClick={() => setLocation("/contractor/billing")}
+            className="w-full mt-1 flex items-center justify-center gap-1.5 text-xs text-primary hover:underline"
+          >
+            <ArrowUpRight className="h-3 w-3" /> View available plans
+          </button>
         )}
       </CardContent>
     </Card>
