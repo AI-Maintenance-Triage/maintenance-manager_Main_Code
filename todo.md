@@ -311,3 +311,15 @@
 - [x] Live Tracking nav item added to company sidebar
 - [x] 9 GPS tracking unit tests (Haversine distance, auto clock-out logic) — all passing
 - [x] 47 total tests passing, 0 TypeScript errors
+
+## Enhancements: Notifications, Route Replay, ETA (Session 8)
+- [x] Push notification to company owner when contractor clocks in on a job
+- [x] Push notification to company owner when contractor clocks out on a job
+- [x] Trip history route replay: "View Route" button on completed/verified jobs
+- [x] Route replay: draws full breadcrumb polyline on Google Maps from clock-in to clock-out
+- [x] Route replay: shows clock-in pin, clock-out pin, and all intermediate pings
+- [x] Route replay: accessible from CompanyJobs verification/completed job cards
+- [x] Contractor ETA on Live Tracking map using Google Maps Directions API
+- [x] ETA displayed in the selected contractor info overlay on the map
+- [x] ETA displayed in the left-panel contractor list card
+- [x] Route to job site drawn on map when contractor is selected (blue polyline via Directions API)

@@ -1,9 +1,9 @@
 import { trpc } from "@/lib/trpc";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { MapView } from "@/components/Map";
-import { Navigation2, Clock, MapPin, User, RefreshCw, WifiOff } from "lucide-react";
+import { Navigation2, Clock, MapPin, User, RefreshCw, WifiOff, Timer } from "lucide-react";
 import { useRef, useEffect, useCallback, useState } from "react";
 import { Button } from "@/components/ui/button";
 
@@ -48,8 +48,13 @@ export default function LiveTracking() {
   const mapRef = useRef<google.maps.Map | null>(null);
   const markersRef = useRef<Map<number, google.maps.marker.AdvancedMarkerElement>>(new Map());
   const jobMarkersRef = useRef<Map<number, google.maps.marker.AdvancedMarkerElement>>(new Map());
+  const directionsServiceRef = useRef<google.maps.DirectionsService | null>(null);
+  const directionsRendererRef = useRef<google.maps.DirectionsRenderer | null>(null);
+
   const [selectedSessionId, setSelectedSessionId] = useState<number | null>(null);
   const [lastRefresh, setLastRefresh] = useState(Date.now());
+  // ETA state: sessionId → { text, duration } | "loading" | null
+  const [etaMap, setEtaMap] = useState<Map<number, { text: string; duration: string } | "loading" | null>>(new Map());
 
   // Poll every 5 seconds for fresh positions
   const { data: sessions, isLoading, refetch } = trpc.timeTracking.getActiveSessionsForCompany.useQuery(undefined, {
@@ -61,6 +66,38 @@ export default function LiveTracking() {
     refetch();
     setLastRefresh(Date.now());
   };
+
+  // Calculate ETA for a session using Directions API
+  const calculateEta = useCallback((session: ActiveSession) => {
+    if (!directionsServiceRef.current) return;
+    const lat = parseFloat(session.latestLat ?? session.clockInLat ?? "0");
+    const lng = parseFloat(session.latestLng ?? session.clockInLng ?? "0");
+    const jobLat = parseFloat(session.jobLat ?? "0");
+    const jobLng = parseFloat(session.jobLng ?? "0");
+    if (!lat || !lng || !jobLat || !jobLng) return;
+
+    // Mark as loading
+    setEtaMap(prev => new Map(prev).set(session.sessionId, "loading"));
+
+    directionsServiceRef.current.route(
+      {
+        origin: { lat, lng },
+        destination: { lat: jobLat, lng: jobLng },
+        travelMode: google.maps.TravelMode.DRIVING,
+      },
+      (result, status) => {
+        if (status === google.maps.DirectionsStatus.OK && result?.routes?.[0]?.legs?.[0]) {
+          const leg = result.routes[0].legs[0];
+          setEtaMap(prev => new Map(prev).set(session.sessionId, {
+            text: leg.duration?.text ?? "Unknown",
+            duration: leg.distance?.text ?? "",
+          }));
+        } else {
+          setEtaMap(prev => new Map(prev).set(session.sessionId, null));
+        }
+      }
+    );
+  }, []);
 
   // Update markers whenever sessions data changes
   const updateMarkers = useCallback((map: google.maps.Map, data: ActiveSession[]) => {
@@ -92,7 +129,6 @@ export default function LiveTracking() {
       if (markersRef.current.has(session.sessionId)) {
         const existing = markersRef.current.get(session.sessionId)!;
         existing.position = contractorPos;
-        // Update content color based on staleness
         (existing.content as HTMLElement).style.backgroundColor = isStale ? "#6b7280" : "#3b82f6";
       } else {
         const el = document.createElement("div");
@@ -113,7 +149,10 @@ export default function LiveTracking() {
           title: session.contractorName ?? "Contractor",
           content: el,
         });
-        marker.addListener("click", () => setSelectedSessionId(session.sessionId));
+        marker.addListener("click", () => {
+          setSelectedSessionId(session.sessionId);
+          calculateEta(session);
+        });
         markersRef.current.set(session.sessionId, marker);
       }
 
@@ -158,10 +197,21 @@ export default function LiveTracking() {
         if (data.length === 1) map.setZoom(Math.min(map.getZoom() ?? 14, 14));
       }
     }
-  }, []);
+  }, [calculateEta]);
 
   const handleMapReady = useCallback((map: google.maps.Map) => {
     mapRef.current = map;
+    // Initialize Directions service and renderer
+    directionsServiceRef.current = new google.maps.DirectionsService();
+    directionsRendererRef.current = new google.maps.DirectionsRenderer({
+      map,
+      suppressMarkers: true,
+      polylineOptions: {
+        strokeColor: "#3b82f6",
+        strokeOpacity: 0.6,
+        strokeWeight: 3,
+      },
+    });
     if (sessions) updateMarkers(map, sessions as ActiveSession[]);
   }, [sessions, updateMarkers]);
 
@@ -170,6 +220,43 @@ export default function LiveTracking() {
       updateMarkers(mapRef.current, sessions as ActiveSession[]);
     }
   }, [sessions, updateMarkers]);
+
+  // When selected session changes, recalculate ETA and show route on map
+  useEffect(() => {
+    if (!selectedSessionId || !sessions) return;
+    const session = (sessions as ActiveSession[]).find(s => s.sessionId === selectedSessionId);
+    if (!session) return;
+    calculateEta(session);
+
+    // Draw route on map
+    if (directionsServiceRef.current && directionsRendererRef.current) {
+      const lat = parseFloat(session.latestLat ?? session.clockInLat ?? "0");
+      const lng = parseFloat(session.latestLng ?? session.clockInLng ?? "0");
+      const jobLat = parseFloat(session.jobLat ?? "0");
+      const jobLng = parseFloat(session.jobLng ?? "0");
+      if (lat && lng && jobLat && jobLng) {
+        directionsServiceRef.current.route(
+          {
+            origin: { lat, lng },
+            destination: { lat: jobLat, lng: jobLng },
+            travelMode: google.maps.TravelMode.DRIVING,
+          },
+          (result, status) => {
+            if (status === google.maps.DirectionsStatus.OK) {
+              directionsRendererRef.current?.setDirections(result);
+            }
+          }
+        );
+      }
+    }
+  }, [selectedSessionId, sessions, calculateEta]);
+
+  // Clear route when deselected
+  useEffect(() => {
+    if (!selectedSessionId && directionsRendererRef.current) {
+      directionsRendererRef.current.setDirections({ routes: [] } as any);
+    }
+  }, [selectedSessionId]);
 
   // Cleanup markers on unmount
   useEffect(() => {
@@ -180,6 +267,7 @@ export default function LiveTracking() {
   }, []);
 
   const selectedSession = sessions?.find((s: any) => s.sessionId === selectedSessionId) as ActiveSession | undefined;
+  const selectedEta = selectedSessionId ? etaMap.get(selectedSessionId) : undefined;
 
   return (
     <div className="space-y-4 h-full">
@@ -221,19 +309,22 @@ export default function LiveTracking() {
             (sessions as ActiveSession[]).map((session) => {
               const isStale = Date.now() - session.latestPingTime > 120_000;
               const isSelected = selectedSessionId === session.sessionId;
+              const eta = etaMap.get(session.sessionId);
               return (
                 <Card
                   key={session.sessionId}
                   className={`bg-card border-border cursor-pointer transition-all hover:border-primary/50 ${isSelected ? "border-primary ring-1 ring-primary/30" : ""}`}
                   onClick={() => {
-                    setSelectedSessionId(session.sessionId);
-                    // Pan map to contractor
-                    if (mapRef.current) {
-                      const lat = parseFloat(session.latestLat ?? session.clockInLat ?? "0");
-                      const lng = parseFloat(session.latestLng ?? session.clockInLng ?? "0");
-                      if (lat && lng) {
-                        mapRef.current.panTo({ lat, lng });
-                        mapRef.current.setZoom(15);
+                    setSelectedSessionId(isSelected ? null : session.sessionId);
+                    if (!isSelected) {
+                      // Pan map to contractor
+                      if (mapRef.current) {
+                        const lat = parseFloat(session.latestLat ?? session.clockInLat ?? "0");
+                        const lng = parseFloat(session.latestLng ?? session.clockInLng ?? "0");
+                        if (lat && lng) {
+                          mapRef.current.panTo({ lat, lng });
+                          mapRef.current.setZoom(14);
+                        }
                       }
                     }
                   }}
@@ -246,7 +337,7 @@ export default function LiveTracking() {
                           {session.contractorName ?? "Contractor"}
                         </span>
                       </div>
-                      <Badge variant="outline" className="text-[10px] shrink-0 border-blue-500/30 text-blue-400">
+                      <Badge variant="outline" className={`text-[10px] shrink-0 ${isStale ? "border-gray-500/30 text-gray-400" : "border-blue-500/30 text-blue-400"}`}>
                         {isStale ? "Offline" : "Live"}
                       </Badge>
                     </div>
@@ -259,10 +350,25 @@ export default function LiveTracking() {
                     {session.jobAddress && (
                       <p className="text-xs text-muted-foreground truncate pl-4">{session.jobAddress}</p>
                     )}
+                    {/* ETA row — only shown when selected */}
+                    {isSelected && (
+                      <div className="flex items-center gap-1.5 text-xs pt-0.5">
+                        <Timer className="h-3 w-3 text-green-400 shrink-0" />
+                        {eta === "loading" ? (
+                          <span className="text-muted-foreground">Calculating ETA…</span>
+                        ) : eta ? (
+                          <span className="text-green-400 font-medium">
+                            ETA: {eta.text}{eta.duration ? ` · ${eta.duration}` : ""}
+                          </span>
+                        ) : (
+                          <span className="text-muted-foreground">ETA unavailable</span>
+                        )}
+                      </div>
+                    )}
                     <div className="flex items-center justify-between text-xs text-muted-foreground pt-1">
                       <span className="flex items-center gap-1">
                         <Clock className="h-3 w-3" />
-                        On clock: {formatElapsed(session.clockInTime)}
+                        {formatElapsed(session.clockInTime)}
                       </span>
                       <span>{formatLastSeen(session.latestPingTime)}</span>
                     </div>
@@ -312,6 +418,20 @@ export default function LiveTracking() {
                 {selectedSession.jobAddress && (
                   <p className="pl-5">{selectedSession.jobAddress}</p>
                 )}
+                {/* ETA in overlay */}
+                <div className="flex items-center gap-1.5 pt-1 border-t border-border mt-2">
+                  <Timer className="h-3.5 w-3.5 text-green-400 shrink-0" />
+                  {selectedEta === "loading" ? (
+                    <span>Calculating ETA…</span>
+                  ) : selectedEta ? (
+                    <span className="text-green-400 font-medium">
+                      ETA to job site: {selectedEta.text}
+                      {selectedEta.duration && <span className="text-muted-foreground font-normal"> · {selectedEta.duration}</span>}
+                    </span>
+                  ) : (
+                    <span>ETA unavailable</span>
+                  )}
+                </div>
                 <p className="flex items-center gap-1.5 pt-1">
                   <Clock className="h-3.5 w-3.5 shrink-0" />
                   On clock for {formatElapsed(selectedSession.clockInTime)}
@@ -339,6 +459,10 @@ export default function LiveTracking() {
                 <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
               </div>
               <span className="text-muted-foreground">Job site</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="h-1 w-6 bg-blue-400/60 rounded-full" />
+              <span className="text-muted-foreground">Route to job</span>
             </div>
           </div>
         </div>

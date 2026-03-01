@@ -10,9 +10,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useViewAs } from "@/contexts/ViewAsContext";
-import { Plus, Zap, Clock, CheckCircle, AlertTriangle, Globe, X } from "lucide-react";
+import { Plus, Zap, Clock, CheckCircle, AlertTriangle, Globe, X, Route } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
+import { RouteReplayDialog } from "@/components/RouteReplayDialog";
 
 const priorityColors: Record<string, string> = {
   emergency: "bg-red-500/20 text-red-400 border-red-500/30",
@@ -38,6 +39,7 @@ export default function CompanyJobs() {
 
   const [open, setOpen] = useState(false);
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [replayJob, setReplayJob] = useState<{ id: number; title: string } | null>(null);
   const utils = trpc.useUtils();
 
   // Use adminViewAs for admin impersonation, regular for company admin
@@ -212,6 +214,16 @@ export default function CompanyJobs() {
                       {statusIcons[job.status]}
                       <span className="capitalize">{job.status.replace("_", " ")}</span>
                     </span>
+                    {(job.status === "completed" || job.status === "verified" || job.status === "paid") && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="text-xs gap-1 h-7 border-blue-500/40 text-blue-400 hover:bg-blue-500/10"
+                        onClick={() => setReplayJob({ id: job.id, title: job.title })}
+                      >
+                        <Route className="h-3 w-3" /> View Route
+                      </Button>
+                    )}
                     {canCreate && job.status === "open" && (
                       job.postedToBoard ? (
                         <Button
@@ -241,6 +253,14 @@ export default function CompanyJobs() {
             </Card>
           ))}
         </div>
+      )}
+      {replayJob && (
+        <RouteReplayDialog
+          open={!!replayJob}
+          onOpenChange={(open) => { if (!open) setReplayJob(null); }}
+          jobId={replayJob.id}
+          jobTitle={replayJob.title}
+        />
       )}
     </div>
   );

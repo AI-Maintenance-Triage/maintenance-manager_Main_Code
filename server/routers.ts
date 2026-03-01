@@ -7,6 +7,7 @@ import { publicProcedure, protectedProcedure, adminProcedure, router } from "./_
 import * as db from "./db";
 import type { ContractorProfile } from "../drizzle/schema";
 import { classifyMaintenanceRequest } from "./ai-classify";
+import { notifyOwner } from "./_core/notification";
 import { adminViewAsRouter } from "./routers/admin-viewas";
 import {
   stripe,
@@ -636,6 +637,15 @@ const timeTrackingRouter = router({
         await db.updateMaintenanceRequest(input.jobId, { status: "in_progress" });
       }
 
+      // Notify company owner that contractor clocked in
+      try {
+        const contractorDisplayName = profile.businessName ?? ctx.user.name ?? "A contractor";
+        await notifyOwner({
+          title: `\uD83D\uDCCD Contractor Clocked In \u2014 ${job.title}`,
+          content: `${contractorDisplayName} has clocked in on "${job.title}". Live GPS tracking is now active.`,
+        });
+      } catch { /* non-critical — don't fail the clock-in */ }
+
       return { sessionId: id };
     }),
 
@@ -646,7 +656,7 @@ const timeTrackingRouter = router({
       longitude: z.string(),
       method: z.enum(["manual", "auto_geofence", "auto_timeout"]).optional(),
     }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ ctx, input }) => {
       const clockOutTime = Date.now();
       await db.updateTimeSession(input.sessionId, {
         clockOutTime,
@@ -655,6 +665,20 @@ const timeTrackingRouter = router({
         clockOutMethod: input.method ?? "manual",
         status: "completed",
       });
+
+      // Notify company owner that contractor clocked out
+      try {
+        const profile = await getEffectiveContractorProfile(ctx);
+        const contractorDisplayName = profile.businessName ?? ctx.user.name ?? "A contractor";
+        const methodLabel =
+          input.method === "auto_geofence" ? " (auto \u2014 returned to origin)" :
+          input.method === "auto_timeout" ? " (auto \u2014 session timeout)" : "";
+        await notifyOwner({
+          title: `\u23F1\uFE0F Contractor Clocked Out${methodLabel}`,
+          content: `${contractorDisplayName} has clocked out${methodLabel}. GPS tracking has stopped.`,
+        });
+      } catch { /* non-critical */ }
+
       return { success: true };
     }),
 
