@@ -527,3 +527,25 @@ export async function listAllContractors() {
     .innerJoin(users, eq(contractorProfiles.userId, users.id))
     .orderBy(desc(contractorProfiles.createdAt));
 }
+
+// ─── Admin: Delete Company ─────────────────────────────────────────────────
+export async function deleteCompany(id: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.delete(companies).where(eq(companies.id, id));
+}
+
+// ─── Admin: Delete Contractor Profile ─────────────────────────────────────
+export async function deleteContractorProfile(id: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.delete(contractorProfiles).where(eq(contractorProfiles.id, id));
+}
+
+// ─── Admin: Update Contractor Profile ─────────────────────────────────────
+export async function adminUpdateContractorProfile(id: number, data: Partial<InsertContractorProfile>) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(contractorProfiles).set(data).where(eq(contractorProfiles.id, id));
+}
+

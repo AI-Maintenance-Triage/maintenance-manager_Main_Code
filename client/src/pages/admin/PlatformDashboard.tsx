@@ -8,13 +8,15 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
-import { Building2, HardHat, ClipboardList, DollarSign, Plus, Wrench } from "lucide-react";
+import { Building2, HardHat, ClipboardList, DollarSign, Plus, Wrench, Pencil, Trash2 } from "lucide-react";
 
 const TRADE_OPTIONS = [
   "General Handyman", "Plumbing", "Electrical", "HVAC",
   "Carpentry", "Painting", "Roofing", "Appliance Repair",
   "Locksmith", "Landscaping", "Pest Control", "Cleaning",
+  "Flooring", "Drywall", "Concrete", "Welding",
 ];
 
 export default function PlatformDashboard() {
@@ -37,7 +39,28 @@ export default function PlatformDashboard() {
       setCompanyName(""); setCompanyAddress(""); setCompanyPhone(""); setCompanyEmail("");
       utils.platform.stats.invalidate();
       utils.platform.companies.invalidate();
-      utils.company.listAll.invalidate();
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
+  // ─── Edit Company ───────────────────────────────────────────────────
+  const [editCompanyOpen, setEditCompanyOpen] = useState(false);
+  const [editCompany, setEditCompany] = useState<any>(null);
+
+  const updateCompany = trpc.adminViewAs.updateCompany.useMutation({
+    onSuccess: () => {
+      toast.success("Company updated!");
+      setEditCompanyOpen(false);
+      utils.platform.companies.invalidate();
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
+  const deleteCompany = trpc.adminViewAs.deleteCompany.useMutation({
+    onSuccess: () => {
+      toast.success("Company deleted");
+      utils.platform.stats.invalidate();
+      utils.platform.companies.invalidate();
     },
     onError: (err) => toast.error(err.message),
   });
@@ -63,16 +86,46 @@ export default function PlatformDashboard() {
     onError: (err) => toast.error(err.message),
   });
 
-  // ─── Link Contractor to Company ─────────────────────────────────────
-  const linkContractor = trpc.adminViewAs.linkContractorToCompany.useMutation({
+  // ─── Edit Contractor ────────────────────────────────────────────────
+  const [editContractorOpen, setEditContractorOpen] = useState(false);
+  const [editContractor, setEditContractor] = useState<any>(null);
+  const [editContractorTrades, setEditContractorTrades] = useState<string[]>([]);
+
+  const updateContractor = trpc.adminViewAs.updateContractor.useMutation({
     onSuccess: () => {
-      toast.success("Contractor linked to company!");
+      toast.success("Contractor updated!");
+      setEditContractorOpen(false);
+      utils.adminViewAs.allContractors.invalidate();
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
+  const deleteContractor = trpc.adminViewAs.deleteContractor.useMutation({
+    onSuccess: () => {
+      toast.success("Contractor deleted");
+      utils.platform.stats.invalidate();
+      utils.adminViewAs.allContractors.invalidate();
     },
     onError: (err) => toast.error(err.message),
   });
 
   const toggleTrade = (trade: string) => {
     setSelectedTrades(prev => prev.includes(trade) ? prev.filter(t => t !== trade) : [...prev, trade]);
+  };
+
+  const toggleEditTrade = (trade: string) => {
+    setEditContractorTrades(prev => prev.includes(trade) ? prev.filter(t => t !== trade) : [...prev, trade]);
+  };
+
+  const openEditCompany = (c: any) => {
+    setEditCompany({ ...c });
+    setEditCompanyOpen(true);
+  };
+
+  const openEditContractor = (c: any) => {
+    setEditContractor({ ...c.profile, userName: c.user.name, userEmail: c.user.email });
+    setEditContractorTrades(c.profile.trades || []);
+    setEditContractorOpen(true);
   };
 
   return (
@@ -137,8 +190,8 @@ export default function PlatformDashboard() {
               </DialogHeader>
               <div className="space-y-4 pt-2">
                 <div className="space-y-2">
-                  <Label className="text-foreground">Business Name *</Label>
-                  <Input value={contractorName} onChange={e => setContractorName(e.target.value)} placeholder="e.g. Mike's Plumbing" className="bg-secondary border-border" />
+                  <Label className="text-foreground">Business Name / Full Name *</Label>
+                  <Input value={contractorName} onChange={e => setContractorName(e.target.value)} placeholder="e.g. Mike's Plumbing or John Smith" className="bg-secondary border-border" />
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-2">
@@ -155,11 +208,7 @@ export default function PlatformDashboard() {
                   <div className="grid grid-cols-2 gap-2">
                     {TRADE_OPTIONS.map(trade => (
                       <div key={trade} className="flex items-center gap-2">
-                        <Checkbox
-                          id={`trade-${trade}`}
-                          checked={selectedTrades.includes(trade)}
-                          onCheckedChange={() => toggleTrade(trade)}
-                        />
+                        <Checkbox id={`trade-${trade}`} checked={selectedTrades.includes(trade)} onCheckedChange={() => toggleTrade(trade)} />
                         <label htmlFor={`trade-${trade}`} className="text-sm text-foreground cursor-pointer">{trade}</label>
                       </div>
                     ))}
@@ -245,7 +294,7 @@ export default function PlatformDashboard() {
           ) : !companies || companies.length === 0 ? (
             <div className="text-center py-8">
               <Building2 className="h-8 w-8 text-muted-foreground mx-auto mb-3" />
-              <p className="text-sm text-muted-foreground">No companies yet. Click "Add Company" above to create one for testing.</p>
+              <p className="text-sm text-muted-foreground">No companies registered yet.</p>
             </div>
           ) : (
             <div className="space-y-2">
@@ -260,12 +309,35 @@ export default function PlatformDashboard() {
                       <p className="text-xs text-muted-foreground">
                         ID: {c.id} • Created {new Date(c.createdAt).toLocaleDateString()}
                         {c.phone ? ` • ${c.phone}` : ""}
+                        {c.email ? ` • ${c.email}` : ""}
                       </p>
                     </div>
                   </div>
-                  <Badge variant="secondary" className="bg-green-600/20 text-green-400 border-green-600/30 text-xs">
-                    {c.subscriptionStatus || "trialing"}
-                  </Badge>
+                  <div className="flex items-center gap-2">
+                    <Badge variant="secondary" className="bg-green-600/20 text-green-400 border-green-600/30 text-xs">
+                      {c.subscriptionStatus || "trialing"}
+                    </Badge>
+                    <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground" onClick={() => openEditCompany(c)}>
+                      <Pencil className="h-3.5 w-3.5" />
+                    </Button>
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive">
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent className="bg-card border-border">
+                        <AlertDialogHeader>
+                          <AlertDialogTitle className="text-card-foreground">Delete Company</AlertDialogTitle>
+                          <AlertDialogDescription>Are you sure you want to delete "{c.name}"? This action cannot be undone.</AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                          <AlertDialogAction onClick={() => deleteCompany.mutate({ id: c.id })} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Delete</AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  </div>
                 </div>
               ))}
             </div>
@@ -285,54 +357,168 @@ export default function PlatformDashboard() {
           ) : !contractors || contractors.length === 0 ? (
             <div className="text-center py-8">
               <HardHat className="h-8 w-8 text-muted-foreground mx-auto mb-3" />
-              <p className="text-sm text-muted-foreground">No contractors yet. Click "Add Contractor" above to create one for testing.</p>
+              <p className="text-sm text-muted-foreground">No contractors registered yet.</p>
             </div>
           ) : (
             <div className="space-y-2">
-              {contractors.map((c: any) => (
-                <div key={c.id} className="flex items-center justify-between p-3 rounded-lg bg-secondary/50 hover:bg-secondary/80 transition-colors">
-                  <div className="flex items-center gap-3">
-                    <div className="h-9 w-9 rounded-lg bg-green-500/10 flex items-center justify-center">
-                      <Wrench className="h-4 w-4 text-green-400" />
+              {contractors.map((c: any) => {
+                const displayName = c.profile.businessName || c.user.name || `Contractor #${c.profile.id}`;
+                const trades: string[] = Array.isArray(c.profile.trades) ? c.profile.trades : [];
+                return (
+                  <div key={c.profile.id} className="flex items-center justify-between p-3 rounded-lg bg-secondary/50 hover:bg-secondary/80 transition-colors">
+                    <div className="flex items-center gap-3">
+                      <div className="h-9 w-9 rounded-lg bg-green-500/10 flex items-center justify-center">
+                        <Wrench className="h-4 w-4 text-green-400" />
+                      </div>
+                      <div>
+                        <p className="font-medium text-foreground">{displayName}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {c.user.email ? `${c.user.email} • ` : ""}
+                          {trades.length > 0 ? trades.slice(0, 3).join(", ") + (trades.length > 3 ? ` +${trades.length - 3} more` : "") : "No trades listed"}
+                          {c.profile.phone ? ` • ${c.profile.phone}` : ""}
+                        </p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="font-medium text-foreground">{c.businessName || "Unnamed"}</p>
-                      <p className="text-xs text-muted-foreground">
-                        ID: {c.id} •
-                        {c.trades && Array.isArray(c.trades) ? ` ${(c.trades as string[]).join(", ")}` : " No trades listed"}
-                        {c.phone ? ` • ${c.phone}` : ""}
-                      </p>
+                    <div className="flex items-center gap-2">
+                      <Badge variant={c.profile.isAvailable ? "default" : "secondary"} className={c.profile.isAvailable ? "bg-green-600/20 text-green-400 border-green-600/30 text-xs" : "text-xs"}>
+                        {c.profile.isAvailable ? "Available" : "Unavailable"}
+                      </Badge>
+                      <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground" onClick={() => openEditContractor(c)}>
+                        <Pencil className="h-3.5 w-3.5" />
+                      </Button>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive">
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent className="bg-card border-border">
+                          <AlertDialogHeader>
+                            <AlertDialogTitle className="text-card-foreground">Delete Contractor</AlertDialogTitle>
+                            <AlertDialogDescription>Are you sure you want to delete "{displayName}"? This action cannot be undone.</AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction onClick={() => deleteContractor.mutate({ id: c.profile.id })} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Delete</AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    {/* Link to company dropdown */}
-                    {companies && companies.length > 0 && (
-                      <select
-                        className="text-xs bg-secondary border border-border rounded px-2 py-1 text-foreground"
-                        defaultValue=""
-                        onChange={(e) => {
-                          if (e.target.value) {
-                            linkContractor.mutate({ contractorProfileId: c.id, companyId: parseInt(e.target.value) });
-                            e.target.value = "";
-                          }
-                        }}
-                      >
-                        <option value="">Link to company...</option>
-                        {companies.map((co: any) => (
-                          <option key={co.id} value={co.id}>{co.name}</option>
-                        ))}
-                      </select>
-                    )}
-                    <Badge variant={c.isAvailable ? "default" : "secondary"} className={c.isAvailable ? "bg-green-600/20 text-green-400 border-green-600/30 text-xs" : "text-xs"}>
-                      {c.isAvailable ? "Available" : "Unavailable"}
-                    </Badge>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </CardContent>
       </Card>
+
+      {/* Edit Company Dialog */}
+      {editCompany && (
+        <Dialog open={editCompanyOpen} onOpenChange={setEditCompanyOpen}>
+          <DialogContent className="bg-card border-border sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle className="text-card-foreground">Edit Company</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 pt-2">
+              <div className="space-y-2">
+                <Label className="text-foreground">Company Name *</Label>
+                <Input value={editCompany.name} onChange={e => setEditCompany({ ...editCompany, name: e.target.value })} className="bg-secondary border-border" />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-foreground">Address</Label>
+                <Input value={editCompany.address || ""} onChange={e => setEditCompany({ ...editCompany, address: e.target.value })} className="bg-secondary border-border" />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <Label className="text-foreground">Phone</Label>
+                  <Input value={editCompany.phone || ""} onChange={e => setEditCompany({ ...editCompany, phone: e.target.value })} className="bg-secondary border-border" />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-foreground">Email</Label>
+                  <Input value={editCompany.email || ""} onChange={e => setEditCompany({ ...editCompany, email: e.target.value })} className="bg-secondary border-border" />
+                </div>
+              </div>
+              <Button
+                className="w-full"
+                disabled={!editCompany.name?.trim() || updateCompany.isPending}
+                onClick={() => updateCompany.mutate({ id: editCompany.id, name: editCompany.name, address: editCompany.address || undefined, phone: editCompany.phone || undefined, email: editCompany.email || undefined })}
+              >
+                {updateCompany.isPending ? "Saving..." : "Save Changes"}
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {/* Edit Contractor Dialog */}
+      {editContractor && (
+        <Dialog open={editContractorOpen} onOpenChange={setEditContractorOpen}>
+          <DialogContent className="bg-card border-border sm:max-w-lg max-h-[85vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="text-card-foreground">Edit Contractor</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 pt-2">
+              <div className="space-y-1">
+                <p className="text-xs text-muted-foreground">Account: {editContractor.userEmail || editContractor.userName}</p>
+              </div>
+              <div className="space-y-2">
+                <Label className="text-foreground">Business Name / Full Name</Label>
+                <Input value={editContractor.businessName || ""} onChange={e => setEditContractor({ ...editContractor, businessName: e.target.value })} placeholder="Business name or first & last name" className="bg-secondary border-border" />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <Label className="text-foreground">Phone</Label>
+                  <Input value={editContractor.phone || ""} onChange={e => setEditContractor({ ...editContractor, phone: e.target.value })} className="bg-secondary border-border" />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-foreground">License #</Label>
+                  <Input value={editContractor.licenseNumber || ""} onChange={e => setEditContractor({ ...editContractor, licenseNumber: e.target.value })} className="bg-secondary border-border" />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label className="text-foreground">Trades</Label>
+                <div className="grid grid-cols-2 gap-2">
+                  {TRADE_OPTIONS.map(trade => (
+                    <div key={trade} className="flex items-center gap-2">
+                      <Checkbox id={`edit-trade-${trade}`} checked={editContractorTrades.includes(trade)} onCheckedChange={() => toggleEditTrade(trade)} />
+                      <label htmlFor={`edit-trade-${trade}`} className="text-sm text-foreground cursor-pointer">{trade}</label>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <Label className="text-foreground">Service Area Zips</Label>
+                  <Input
+                    value={Array.isArray(editContractor.serviceAreaZips) ? editContractor.serviceAreaZips.join(", ") : ""}
+                    onChange={e => setEditContractor({ ...editContractor, serviceAreaZips: e.target.value.split(",").map((z: string) => z.trim()).filter(Boolean) })}
+                    className="bg-secondary border-border"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-foreground">Service Radius (mi)</Label>
+                  <Input type="number" value={editContractor.serviceRadiusMiles || 25} onChange={e => setEditContractor({ ...editContractor, serviceRadiusMiles: parseInt(e.target.value) || 25 })} className="bg-secondary border-border" />
+                </div>
+              </div>
+              <Button
+                className="w-full"
+                disabled={updateContractor.isPending}
+                onClick={() => updateContractor.mutate({
+                  id: editContractor.id,
+                  businessName: editContractor.businessName || undefined,
+                  phone: editContractor.phone || undefined,
+                  trades: editContractorTrades,
+                  serviceAreaZips: editContractor.serviceAreaZips || undefined,
+                  serviceRadiusMiles: editContractor.serviceRadiusMiles || undefined,
+                  licenseNumber: editContractor.licenseNumber || undefined,
+                })}
+              >
+                {updateContractor.isPending ? "Saving..." : "Save Changes"}
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 }

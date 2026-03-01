@@ -2,13 +2,16 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Wrench, ArrowRight, Loader2, Eye, EyeOff, Mail, Lock, User } from "lucide-react";
+import { Wrench, ArrowRight, Loader2, Eye, EyeOff, Mail, Lock, User, Building2, HardHat } from "lucide-react";
 import { useState } from "react";
-import { useLocation } from "wouter";
+import { useLocation, useSearch } from "wouter";
 import { toast } from "sonner";
 
 export default function SignUp() {
   const [, setLocation] = useLocation();
+  const search = useSearch();
+  const params = new URLSearchParams(search);
+  const roleIntent = params.get("role") as "company" | "contractor" | null;
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -56,8 +59,8 @@ export default function SignUp() {
       }
 
       toast.success("Account created! Let's set up your profile.");
-      // After registration, redirect to role selection / onboarding
-      window.location.href = "/register";
+      // After registration, redirect to role selection / onboarding (pass role intent if present)
+      window.location.href = roleIntent ? `/register?role=${roleIntent}` : "/register";
     } catch (err) {
       toast.error("Something went wrong. Please try again.");
     } finally {
@@ -90,7 +93,7 @@ export default function SignUp() {
           <CardHeader className="text-center pb-4">
             <CardTitle className="text-2xl">Create your account</CardTitle>
             <CardDescription>
-              Sign up to manage properties or find maintenance jobs
+              {roleIntent === "company" ? "Create your property management company account" : roleIntent === "contractor" ? "Create your contractor account to find maintenance jobs" : "Sign up to manage properties or find maintenance jobs"}
             </CardDescription>
           </CardHeader>
           <CardContent>

@@ -64,7 +64,7 @@ export default function CompanyProperties() {
               <DialogHeader><DialogTitle className="text-card-foreground">Add Property</DialogTitle></DialogHeader>
               <div className="space-y-4">
                 <div className="space-y-2">
-                  <Label>Property Name</Label>
+                  <Label>Property Name <span className="text-muted-foreground text-xs">(optional — defaults to address)</span></Label>
                   <Input placeholder="e.g. Sunset Apartments" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
                 </div>
                 <div className="space-y-2">
@@ -91,11 +91,11 @@ export default function CompanyProperties() {
                 </div>
                 <Button
                   onClick={() => createProperty.mutate({
-                    name: form.name, address: form.address,
+                    name: form.name || undefined, address: form.address,
                     city: form.city || undefined, state: form.state || undefined,
                     zipCode: form.zipCode || undefined, units: form.units ? Number(form.units) : undefined,
                   })}
-                  disabled={!form.name || !form.address || createProperty.isPending}
+                  disabled={!form.address || createProperty.isPending}
                   className="w-full"
                 >
                   {createProperty.isPending ? "Adding..." : "Add Property"}

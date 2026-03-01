@@ -118,3 +118,16 @@
 ## Admin Login Fix
 - [x] Add "Sign in with Manus" button to SignIn page for admin OAuth access
 - [x] Add "Sign in with Manus" option to SignUp page as alternative
+
+## User Feedback Fixes (Session 3)
+- [x] Fix contractor names showing as "Unnamed" and no trades on admin dashboard
+- [x] Remove company-linking from admin dashboard (contractors are independent, find jobs via job board)
+- [x] Add edit/delete for registered companies on admin dashboard (edit all profile fields)
+- [x] Add edit/delete for registered contractors on admin dashboard (edit all profile fields)
+- [x] Fix View As Company/Contractor to fully mimic their view — no admin UI visible
+- [x] Homepage "Get Started" goes directly to role-specific sign-up (?role=company or ?role=contractor)
+- [x] Remove website field from company registration form
+- [ ] Add first/last name option for contractors (not all have a business name)
+- [x] Make property name optional when adding a property (defaults to address)
+- [ ] Add interactive map with ZIP code + radius slider for contractor service area
+- [ ] Make all company settings editable (skill tier prices, GPS settings, integrations)

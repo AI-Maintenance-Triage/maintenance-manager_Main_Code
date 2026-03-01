@@ -131,10 +131,11 @@ const propertiesRouter = router({
     }),
 
   create: companyAdminProcedure
-    .input(z.object({ name: z.string().min(1), address: z.string().min(1), city: z.string().optional(), state: z.string().optional(), zipCode: z.string().optional(), latitude: z.string().optional(), longitude: z.string().optional(), units: z.number().optional() }))
+    .input(z.object({ name: z.string().optional(), address: z.string().min(1), city: z.string().optional(), state: z.string().optional(), zipCode: z.string().optional(), latitude: z.string().optional(), longitude: z.string().optional(), units: z.number().optional() }))
     .mutation(async ({ ctx, input }) => {
       if (!ctx.user.companyId) throw new TRPCError({ code: "NOT_FOUND" });
-      const id = await db.createProperty({ companyId: ctx.user.companyId, ...input });
+      const name = input.name?.trim() || input.address.trim();
+      const id = await db.createProperty({ companyId: ctx.user.companyId, ...input, name });
       return { id };
     }),
 

@@ -227,4 +227,52 @@ export const adminViewAsRouter = router({
     .query(async ({ input }) => {
       return db.getContractorProfileById(input.contractorProfileId);
     }),
+
+  // ─── Admin: Edit/Delete Companies ────────────────────────────────────────
+  updateCompany: adminProcedure
+    .input(z.object({
+      id: z.number(),
+      name: z.string().optional(),
+      address: z.string().optional(),
+      phone: z.string().optional(),
+      email: z.string().optional(),
+    }))
+    .mutation(async ({ input }) => {
+      const { id, ...data } = input;
+      await db.updateCompany(id, data);
+      return { success: true };
+    }),
+
+  deleteCompany: adminProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ input }) => {
+      await db.deleteCompany(input.id);
+      return { success: true };
+    }),
+
+  // ─── Admin: Edit/Delete Contractors ──────────────────────────────────────
+  updateContractor: adminProcedure
+    .input(z.object({
+      id: z.number(),
+      businessName: z.string().optional(),
+      phone: z.string().optional(),
+      trades: z.array(z.string()).optional(),
+      serviceAreaZips: z.array(z.string()).optional(),
+      serviceRadiusMiles: z.number().optional(),
+      licenseNumber: z.string().optional(),
+      insuranceInfo: z.string().optional(),
+      isAvailable: z.boolean().optional(),
+    }))
+    .mutation(async ({ input }) => {
+      const { id, ...data } = input;
+      await db.adminUpdateContractorProfile(id, data);
+      return { success: true };
+    }),
+
+  deleteContractor: adminProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ input }) => {
+      await db.deleteContractorProfile(input.id);
+      return { success: true };
+    }),
 });

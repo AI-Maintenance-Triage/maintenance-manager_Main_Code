@@ -178,7 +178,7 @@ export default function Home() {
                   </li>
                 ))}
               </ul>
-              <Button onClick={() => setLocation("/signup")} className="w-full mt-8 gap-2">
+              <Button onClick={() => setLocation("/signup?role=company")} className="w-full mt-8 gap-2">
                 Get Started as Property Manager <ArrowRight className="h-4 w-4" />
               </Button>
             </div>
@@ -209,7 +209,7 @@ export default function Home() {
                   </li>
                 ))}
               </ul>
-              <Button onClick={() => setLocation("/signup")} variant="outline" className="w-full mt-8 gap-2 border-primary/30 text-foreground hover:bg-primary/10">
+              <Button onClick={() => setLocation("/signup?role=contractor")} variant="outline" className="w-full mt-8 gap-2 border-primary/30 text-foreground hover:bg-primary/10">
                 Get Started as Contractor <ArrowRight className="h-4 w-4" />
               </Button>
             </div>

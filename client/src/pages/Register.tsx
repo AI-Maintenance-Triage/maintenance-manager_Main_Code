@@ -7,10 +7,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { trpc } from "@/lib/trpc";
 import {
   Building2, HardHat, ArrowRight, ArrowLeft, CheckCircle2, Wrench, Loader2,
-  Phone, MapPin, Globe, Briefcase, Shield, FileText,
+  Phone, MapPin, Briefcase, Shield, FileText,
 } from "lucide-react";
-import { useState } from "react";
-import { useLocation } from "wouter";
+import { useState, useEffect } from "react";
+import { useLocation, useSearch } from "wouter";
 import { toast } from "sonner";
 
 type Step = "choose" | "company-form" | "contractor-form" | "done-company" | "done-contractor";
@@ -18,7 +18,14 @@ type Step = "choose" | "company-form" | "contractor-form" | "done-company" | "do
 export default function Register() {
   const { user, loading, refresh } = useAuth({ redirectOnUnauthenticated: true });
   const [, setLocation] = useLocation();
-  const [step, setStep] = useState<Step>("choose");
+  const search = useSearch();
+  const params = new URLSearchParams(search);
+  const roleIntent = params.get("role") as "company" | "contractor" | null;
+  const [step, setStep] = useState<Step>(() => {
+    if (roleIntent === "company") return "company-form";
+    if (roleIntent === "contractor") return "contractor-form";
+    return "choose";
+  });
 
   if (loading || !user) {
     return (
@@ -215,7 +222,6 @@ function CompanyForm({ userId, onBack, onDone }: { userId: number; onBack: () =>
   const [city, setCity] = useState("");
   const [state, setState] = useState("");
   const [zipCode, setZipCode] = useState("");
-  const [website, setWebsite] = useState("");
 
   const createCompany = trpc.company.create.useMutation({
     onSuccess: () => {
@@ -239,7 +245,6 @@ function CompanyForm({ userId, onBack, onDone }: { userId: number; onBack: () =>
       city: city.trim() || undefined,
       state: state.trim() || undefined,
       zipCode: zipCode.trim() || undefined,
-      website: website.trim() || undefined,
     });
   };
 
@@ -334,21 +339,6 @@ function CompanyForm({ userId, onBack, onDone }: { userId: number; onBack: () =>
               <div className="space-y-2">
                 <Label htmlFor="zip">ZIP Code</Label>
                 <Input id="zip" value={zipCode} onChange={(e) => setZipCode(e.target.value)} placeholder="90210" />
-              </div>
-            </div>
-
-            {/* Website */}
-            <div className="space-y-2">
-              <Label htmlFor="website">Website</Label>
-              <div className="relative">
-                <Input
-                  id="website"
-                  value={website}
-                  onChange={(e) => setWebsite(e.target.value)}
-                  placeholder="https://yourcompany.com"
-                  className="pl-9"
-                />
-                <Globe className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               </div>
             </div>
 
