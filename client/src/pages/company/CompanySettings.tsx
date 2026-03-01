@@ -25,7 +25,7 @@ export default function CompanySettings() {
       <div>
         <h1 className="text-2xl font-bold text-foreground">Settings</h1>
         <p className="text-muted-foreground mt-1">
-          {isViewingAsCompany ? `Viewing settings for ${viewAs.companyName} (read-only)` : "Configure your company's maintenance operations"}
+          {isViewingAsCompany ? `Managing settings for ${viewAs.companyName}` : "Configure your company's maintenance operations"}
         </p>
       </div>
       <Tabs defaultValue="general" className="space-y-6">
@@ -35,10 +35,10 @@ export default function CompanySettings() {
           <TabsTrigger value="tracking"><MapPin className="h-4 w-4 mr-1.5" />GPS & Time</TabsTrigger>
           <TabsTrigger value="integrations"><Link2 className="h-4 w-4 mr-1.5" />Integrations</TabsTrigger>
         </TabsList>
-        <TabsContent value="general"><GeneralSettings readOnly={!!isViewingAsCompany} companyId={isViewingAsCompany ? viewAs.companyId! : undefined} /></TabsContent>
-        <TabsContent value="rates"><SkillTiersSettings readOnly={!!isViewingAsCompany} companyId={isViewingAsCompany ? viewAs.companyId! : undefined} /></TabsContent>
-        <TabsContent value="tracking"><TrackingSettings readOnly={!!isViewingAsCompany} companyId={isViewingAsCompany ? viewAs.companyId! : undefined} /></TabsContent>
-        <TabsContent value="integrations"><IntegrationSettings readOnly={!!isViewingAsCompany} companyId={isViewingAsCompany ? viewAs.companyId! : undefined} /></TabsContent>
+        <TabsContent value="general"><GeneralSettings readOnly={false} companyId={isViewingAsCompany ? viewAs.companyId! : undefined} /></TabsContent>
+        <TabsContent value="rates"><SkillTiersSettings readOnly={false} companyId={isViewingAsCompany ? viewAs.companyId! : undefined} /></TabsContent>
+        <TabsContent value="tracking"><TrackingSettings readOnly={false} companyId={isViewingAsCompany ? viewAs.companyId! : undefined} /></TabsContent>
+        <TabsContent value="integrations"><IntegrationSettings readOnly={false} companyId={isViewingAsCompany ? viewAs.companyId! : undefined} /></TabsContent>
       </Tabs>
     </div>
   );

@@ -152,3 +152,12 @@
 - [x] Add "Accept Job" button that assigns the job to the contractor
 - [x] Wire company maintenance request submission to set job status to "posted" on the board
 - [x] Add job board nav item to contractor sidebar
+
+## Admin Impersonation Rebuild
+- [x] Rebuild DashboardLayout: when impersonating, show ZERO admin UI — only the impersonated user's full sidebar/nav
+- [x] Add a thin "Exit to Admin" banner at the very top as the only impersonation indicator
+- [x] Rename "View as Company" / "View as Contractor" to "Login as Company" / "Login as Contractor"
+- [x] All company pages (properties, jobs, settings, etc.) work with full functionality when admin impersonates
+- [x] All contractor pages work with full functionality when admin impersonates
+- [x] Fix property add button missing in company view
+- [x] Remove dual-query pattern (adminViewAs vs regular) — use a single transparent impersonation layer

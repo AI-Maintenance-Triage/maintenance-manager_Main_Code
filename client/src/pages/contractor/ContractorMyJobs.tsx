@@ -26,6 +26,7 @@ export default function ContractorMyJobs() {
   const jobs = isViewingAsContractor ? adminJobs : myJobs;
   const isLoading = isViewingAsContractor ? adminLoading : myLoading;
 
+  // Admin who hasn't selected a contractor yet — show prompt
   if (!isViewingAsContractor && isAdmin) {
     return (
       <div className="space-y-6">
@@ -33,7 +34,7 @@ export default function ContractorMyJobs() {
         <Card className="bg-card border-border">
           <CardContent className="p-12 text-center">
             <AlertCircle className="h-10 w-10 text-muted-foreground mx-auto mb-4" />
-            <p className="text-muted-foreground">Select a contractor from the "View as Contractor" dropdown above to see their jobs.</p>
+            <p className="text-muted-foreground">Select a contractor from the admin dashboard to impersonate them and see their jobs.</p>
           </CardContent>
         </Card>
       </div>
@@ -65,7 +66,7 @@ export default function ContractorMyJobs() {
             <Clock className="h-5 w-5 text-yellow-400" /> Active Jobs
           </h2>
           {activeJobs.map((job: any) => (
-            <JobCard key={job.id} job={job} readOnly={!!isViewingAsContractor} onUpdate={() => {
+            <JobCard key={job.id} job={job} readOnly={false} onUpdate={() => {
               if (isViewingAsContractor) {
                 utils.adminViewAs.contractorJobs.invalidate();
               } else {
@@ -201,9 +202,7 @@ function JobCard({ job, readOnly, onUpdate }: { job: any; readOnly: boolean; onU
               )}
             </div>
           )}
-          {readOnly && (
-            <Badge variant="outline" className="shrink-0 text-muted-foreground">View Only</Badge>
-          )}
+
         </div>
       </CardContent>
     </Card>

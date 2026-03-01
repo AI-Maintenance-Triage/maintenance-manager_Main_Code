@@ -33,7 +33,7 @@ export default function ContractorProfile() {
 
   const profile = isViewingAsContractor ? adminProfile : myProfile;
   const isLoading = isViewingAsContractor ? adminLoading : myLoading;
-  const readOnly = !!isViewingAsContractor;
+  const readOnly = false; // Admin impersonating a contractor has full access
 
   const updateProfile = trpc.contractor.updateProfile.useMutation({
     onSuccess: () => toast.success("Profile updated!"),
@@ -70,7 +70,7 @@ export default function ContractorProfile() {
         <Card className="bg-card border-border">
           <CardContent className="p-12 text-center">
             <AlertCircle className="h-10 w-10 text-muted-foreground mx-auto mb-4" />
-            <p className="text-muted-foreground">Select a contractor from the "View as Contractor" dropdown above to see their profile.</p>
+            <p className="text-muted-foreground">Select a contractor from the admin dashboard to impersonate them and manage their profile.</p>
           </CardContent>
         </Card>
       </div>
@@ -86,7 +86,7 @@ export default function ContractorProfile() {
           {readOnly ? `${profile?.businessName || "Contractor"}'s Profile` : "My Profile"}
         </h1>
         <p className="text-muted-foreground mt-1">
-          {readOnly ? "Viewing contractor profile (read-only)" : "Manage your contractor profile and availability"}
+          {isViewingAsContractor ? `Managing profile for ${profile?.businessName || viewAs.contractorName || "Contractor"}` : "Manage your contractor profile and availability"}
         </p>
       </div>
 

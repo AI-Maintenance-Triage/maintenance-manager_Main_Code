@@ -93,8 +93,8 @@ export default function CompanyJobs() {
     onError: (err: any) => toast.error(err.message),
   });
 
-  // Admin viewing as company can't create jobs (read-only view)
-  const canCreate = !isViewingAsCompany;
+  // Admin impersonating a company can create jobs using the company's context
+  const canCreate = true;
 
   return (
     <div className="space-y-6">
@@ -102,7 +102,7 @@ export default function CompanyJobs() {
         <div>
           <h1 className="text-2xl font-bold text-foreground">Maintenance Jobs</h1>
           <p className="text-muted-foreground mt-1">
-            {isViewingAsCompany ? `Viewing jobs for ${viewAs.companyName}` : "Manage maintenance requests across your properties"}
+            {isViewingAsCompany ? `Managing jobs for ${viewAs.companyName}` : "Manage maintenance requests across your properties"}
           </p>
         </div>
         {canCreate && (
@@ -178,7 +178,7 @@ export default function CompanyJobs() {
         <Card className="bg-card border-border">
           <CardContent className="p-12 text-center">
             <AlertTriangle className="h-10 w-10 text-muted-foreground mx-auto mb-4" />
-            <p className="text-muted-foreground">No maintenance jobs found. {canCreate ? "Create your first job to get started." : ""}</p>
+            <p className="text-muted-foreground">No maintenance jobs found. Create your first job to get started.</p>
           </CardContent>
         </Card>
       ) : (

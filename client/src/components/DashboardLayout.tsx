@@ -19,14 +19,13 @@ import {
   SidebarTrigger,
   useSidebar,
 } from "@/components/ui/sidebar";
-import { getLoginUrl } from "@/const";
 import { useIsMobile } from "@/hooks/useMobile";
 import { useViewAs } from "@/contexts/ViewAsContext";
 import { trpc } from "@/lib/trpc";
 import {
   LayoutDashboard, LogOut, PanelLeft, Building2, Wrench,
-  ClipboardList, MapPin, Users, Settings, Briefcase,
-  UserCircle, Shield, HardHat, ChevronDown, Eye, X,
+  ClipboardList, MapPin, Settings, Briefcase,
+  UserCircle, Shield, HardHat, ChevronDown, ArrowLeft,
 } from "lucide-react";
 import { CSSProperties, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "wouter";
@@ -91,7 +90,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   if (loading) return <DashboardLayoutSkeleton />;
 
   if (!user) {
-    // Redirect to sign-in page instead of showing inline sign-in
     window.location.href = "/signin";
     return <DashboardLayoutSkeleton />;
   }
@@ -114,15 +112,34 @@ function DashboardLayoutContent({ children, setSidebarWidth }: { children: React
   const viewAs = useViewAs();
   const isAdmin = user?.role === "admin";
 
+  // When admin is impersonating, show ONLY the impersonated role's sections
+  // When not impersonating, show the user's own sections
+  const isImpersonating = isAdmin && viewAs.mode !== "admin";
+
   const sections = useMemo(() => {
-    if (isAdmin) {
-      if (viewAs.mode === "company") return [...adminSections, ...companySections];
-      if (viewAs.mode === "contractor") return [...adminSections, ...contractorSections];
-      return adminSections;
+    if (isImpersonating) {
+      // Full impersonation: show ONLY the target role's sidebar, no admin sections
+      if (viewAs.mode === "company") return companySections;
+      if (viewAs.mode === "contractor") return contractorSections;
     }
+    if (isAdmin) return adminSections;
     if (user?.role === "contractor") return contractorSections;
     return companySections;
-  }, [user?.role, isAdmin, viewAs.mode]);
+  }, [user?.role, isAdmin, isImpersonating, viewAs.mode]);
+
+  // Display name and role label for the sidebar footer
+  const displayName = useMemo(() => {
+    if (isImpersonating) {
+      if (viewAs.mode === "company") return viewAs.companyName ?? "Company";
+      if (viewAs.mode === "contractor") return viewAs.contractorName ?? "Contractor";
+    }
+    return user?.name || "-";
+  }, [isImpersonating, viewAs, user?.name]);
+
+  const displayRole = useMemo(() => {
+    if (isImpersonating) return viewAs.mode;
+    return user?.role ?? "user";
+  }, [isImpersonating, viewAs.mode, user?.role]);
 
   const allItems = sections.flatMap(s => s.items);
   const activeMenuItem = allItems.find(item => item.path === location)
@@ -206,19 +223,21 @@ function DashboardLayoutContent({ children, setSidebarWidth }: { children: React
                 <button className="flex items-center gap-3 rounded-lg px-1 py-1 hover:bg-accent/50 transition-colors w-full text-left group-data-[collapsible=icon]:justify-center">
                   <Avatar className="h-9 w-9 border shrink-0">
                     <AvatarFallback className="text-xs font-medium bg-primary/10 text-primary">
-                      {user?.name?.charAt(0).toUpperCase() ?? "?"}
+                      {displayName?.charAt(0).toUpperCase() ?? "?"}
                     </AvatarFallback>
                   </Avatar>
                   <div className="flex-1 min-w-0 group-data-[collapsible=icon]:hidden">
-                    <p className="text-sm font-medium truncate leading-none text-foreground">{user?.name || "-"}</p>
-                    <p className="text-xs text-muted-foreground truncate mt-1.5">{user?.role ?? "user"}</p>
+                    <p className="text-sm font-medium truncate leading-none text-foreground">{displayName}</p>
+                    <p className="text-xs text-muted-foreground truncate mt-1.5 capitalize">{displayRole}</p>
                   </div>
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-48">
-                <DropdownMenuItem onClick={logout} className="cursor-pointer text-destructive focus:text-destructive">
-                  <LogOut className="mr-2 h-4 w-4" /><span>Sign out</span>
-                </DropdownMenuItem>
+                {!isImpersonating && (
+                  <DropdownMenuItem onClick={logout} className="cursor-pointer text-destructive focus:text-destructive">
+                    <LogOut className="mr-2 h-4 w-4" /><span>Sign out</span>
+                  </DropdownMenuItem>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
           </SidebarFooter>
@@ -231,8 +250,11 @@ function DashboardLayoutContent({ children, setSidebarWidth }: { children: React
       </div>
 
       <SidebarInset>
-        {/* Admin View As Banner */}
-        {isAdmin && <AdminViewAsBanner />}
+        {/* Impersonation banner — only shown when admin is impersonating */}
+        {isImpersonating && <ImpersonationBanner />}
+
+        {/* Admin selector banner — only shown when admin is NOT impersonating */}
+        {isAdmin && !isImpersonating && <AdminSelectorBanner />}
 
         {isMobile && (
           <div className="flex border-b h-14 items-center justify-between bg-background/95 px-2 backdrop-blur sticky top-0 z-40">
@@ -248,105 +270,113 @@ function DashboardLayoutContent({ children, setSidebarWidth }: { children: React
   );
 }
 
-function AdminViewAsBanner() {
+/** Thin banner shown when admin is impersonating — the ONLY indicator of impersonation */
+function ImpersonationBanner() {
   const viewAs = useViewAs();
   const [, setLocation] = useLocation();
 
-  // Fetch companies and contractors for the dropdowns
+  const label = viewAs.mode === "company"
+    ? `Logged in as Company: ${viewAs.companyName}`
+    : `Logged in as Contractor: ${viewAs.contractorName}`;
+
+  return (
+    <div className="bg-amber-500/10 border-b border-amber-500/30 px-4 py-2 flex items-center justify-between gap-4 sticky top-0 z-50">
+      <div className="flex items-center gap-2 text-sm text-amber-400">
+        <Shield className="h-4 w-4 shrink-0" />
+        <span className="font-medium">Admin Impersonation:</span>
+        <span>{label}</span>
+      </div>
+      <Button
+        variant="outline"
+        size="sm"
+        className="h-7 text-xs gap-1.5 border-amber-500/40 text-amber-400 hover:bg-amber-500/10 shrink-0"
+        onClick={() => {
+          viewAs.resetViewAs();
+          setLocation("/admin");
+        }}
+      >
+        <ArrowLeft className="h-3 w-3" />
+        Exit to Admin
+      </Button>
+    </div>
+  );
+}
+
+/** Banner shown on admin's own view (not impersonating) — lets admin pick who to impersonate */
+function AdminSelectorBanner() {
+  const viewAs = useViewAs();
+  const [, setLocation] = useLocation();
+
   const { data: companies } = trpc.company.listAll.useQuery();
   const { data: contractors } = trpc.adminViewAs.allContractors.useQuery();
 
   return (
     <div className="bg-primary/5 border-b border-primary/20 px-4 py-2.5">
-      <div className="flex items-center gap-4 flex-wrap">
+      <div className="flex items-center gap-3 flex-wrap">
         <div className="flex items-center gap-2 text-sm font-medium text-primary">
-          <Eye className="h-4 w-4" />
+          <Shield className="h-4 w-4" />
           <span>Admin View</span>
         </div>
 
-        <div className="flex items-center gap-2">
-          {/* View as Company dropdown */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm" className={`gap-2 h-8 text-xs ${viewAs.mode === "company" ? "border-primary bg-primary/10 text-primary" : "border-border"}`}>
-                <Building2 className="h-3.5 w-3.5" />
-                {viewAs.mode === "company" ? viewAs.companyName : "View as Company"}
-                <ChevronDown className="h-3 w-3" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="max-h-60 overflow-y-auto">
-              {companies && companies.length > 0 ? (
-                companies.map((c) => (
-                  <DropdownMenuItem
-                    key={c.id}
-                    onClick={() => {
-                      viewAs.setViewAsCompany(c.id, c.name);
-                      setLocation("/company");
-                    }}
-                    className="cursor-pointer"
-                  >
-                    <Building2 className="mr-2 h-3.5 w-3.5 text-muted-foreground" />
-                    {c.name}
-                  </DropdownMenuItem>
-                ))
-              ) : (
-                <DropdownMenuItem disabled>No companies registered yet</DropdownMenuItem>
-              )}
-            </DropdownMenuContent>
-          </DropdownMenu>
-
-          {/* View as Contractor dropdown */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm" className={`gap-2 h-8 text-xs ${viewAs.mode === "contractor" ? "border-primary bg-primary/10 text-primary" : "border-border"}`}>
-                <HardHat className="h-3.5 w-3.5" />
-                {viewAs.mode === "contractor" ? viewAs.contractorName : "View as Contractor"}
-                <ChevronDown className="h-3 w-3" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="max-h-60 overflow-y-auto">
-              {contractors && contractors.length > 0 ? (
-                contractors.map((c) => (
-                  <DropdownMenuItem
-                    key={c.profile.id}
-                    onClick={() => {
-                      viewAs.setViewAsContractor(c.profile.id, c.user.name || c.profile.businessName || `Contractor #${c.profile.id}`);
-                      setLocation("/contractor");
-                    }}
-                    className="cursor-pointer"
-                  >
-                    <HardHat className="mr-2 h-3.5 w-3.5 text-muted-foreground" />
-                    {c.user.name || c.profile.businessName || `Contractor #${c.profile.id}`}
-                  </DropdownMenuItem>
-                ))
-              ) : (
-                <DropdownMenuItem disabled>No contractors registered yet</DropdownMenuItem>
-              )}
-            </DropdownMenuContent>
-          </DropdownMenu>
-
-          {/* Reset button */}
-          {viewAs.mode !== "admin" && (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-8 text-xs gap-1 text-muted-foreground hover:text-foreground"
-              onClick={() => {
-                viewAs.resetViewAs();
-                setLocation("/admin");
-              }}
-            >
-              <X className="h-3 w-3" />
-              Reset
+        {/* Login as Company */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" size="sm" className="gap-2 h-8 text-xs border-border">
+              <Building2 className="h-3.5 w-3.5" />
+              Login as Company
+              <ChevronDown className="h-3 w-3" />
             </Button>
-          )}
-        </div>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start" className="max-h-60 overflow-y-auto">
+            {companies && companies.length > 0 ? (
+              companies.map((c: any) => (
+                <DropdownMenuItem
+                  key={c.id}
+                  onClick={() => {
+                    viewAs.setViewAsCompany(c.id, c.name);
+                    setLocation("/company");
+                  }}
+                  className="cursor-pointer"
+                >
+                  <Building2 className="mr-2 h-3.5 w-3.5 text-muted-foreground" />
+                  {c.name}
+                </DropdownMenuItem>
+              ))
+            ) : (
+              <DropdownMenuItem disabled>No companies registered yet</DropdownMenuItem>
+            )}
+          </DropdownMenuContent>
+        </DropdownMenu>
 
-        {viewAs.mode !== "admin" && (
-          <span className="text-xs text-muted-foreground ml-auto">
-            Viewing as: <span className="font-medium text-foreground">{viewAs.mode === "company" ? viewAs.companyName : viewAs.contractorName}</span>
-          </span>
-        )}
+        {/* Login as Contractor */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" size="sm" className="gap-2 h-8 text-xs border-border">
+              <HardHat className="h-3.5 w-3.5" />
+              Login as Contractor
+              <ChevronDown className="h-3 w-3" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start" className="max-h-60 overflow-y-auto">
+            {contractors && contractors.length > 0 ? (
+              contractors.map((c: any) => (
+                <DropdownMenuItem
+                  key={c.profile.id}
+                  onClick={() => {
+                    viewAs.setViewAsContractor(c.profile.id, c.user.name || c.profile.businessName || `Contractor #${c.profile.id}`);
+                    setLocation("/contractor");
+                  }}
+                  className="cursor-pointer"
+                >
+                  <HardHat className="mr-2 h-3.5 w-3.5 text-muted-foreground" />
+                  {c.user.name || c.profile.businessName || `Contractor #${c.profile.id}`}
+                </DropdownMenuItem>
+              ))
+            ) : (
+              <DropdownMenuItem disabled>No contractors registered yet</DropdownMenuItem>
+            )}
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
     </div>
   );
