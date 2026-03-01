@@ -456,6 +456,9 @@ function PlansTab({ planType }: { planType: "company" | "contractor" }) {
   const [createOpen, setCreateOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<any>(null);
+  // Price-change warning state
+  const [pendingUpdate, setPendingUpdate] = useState<{ id: number; payload: any } | null>(null);
+  const [priceWarnOpen, setPriceWarnOpen] = useState(false);
 
   const invalidate = () => {
     utils.adminViewAs.listCompanyPlans.invalidate();
@@ -472,6 +475,21 @@ function PlansTab({ planType }: { planType: "company" | "contractor" }) {
     onSuccess: () => { toast.success("Plan updated!"); setEditOpen(false); invalidate(); },
     onError: err => toast.error(err.message),
   });
+
+  /** Called when the edit form is submitted. Shows price-change warning if price changed on a plan with subscribers. */
+  const handleEditSubmit = (form: any) => {
+    const payload = { id: editTarget.id, ...formToMutationInput(form, planType) as any };
+    const subscriberCount = countForPlan(editTarget.id);
+    const priceChanged =
+      (payload.priceMonthly !== undefined && parseFloat(String(payload.priceMonthly)) !== parseFloat(String(editTarget.priceMonthly ?? "0"))) ||
+      (payload.priceAnnual !== undefined && parseFloat(String(payload.priceAnnual)) !== parseFloat(String(editTarget.priceAnnual ?? "0")));
+    if (priceChanged && subscriberCount > 0) {
+      setPendingUpdate(payload);
+      setPriceWarnOpen(true);
+    } else {
+      updatePlan.mutate(payload);
+    }
+  };
   const deletePlan = trpc.adminViewAs.deletePlan.useMutation({
     onSuccess: () => { toast.success("Plan deleted."); invalidate(); },
     onError: err => toast.error(err.message),
@@ -539,10 +557,44 @@ function PlansTab({ planType }: { planType: "company" | "contractor" }) {
           open={editOpen} onOpenChange={setEditOpen}
           title={`Edit Plan: ${editTarget.name}`}
           initialForm={planToForm(editTarget, planType)}
-          onSubmit={form => updatePlan.mutate({ id: editTarget.id, ...formToMutationInput(form, planType) as any })}
+          onSubmit={handleEditSubmit}
           isPending={updatePlan.isPending} planType={planType}
         />
       )}
+
+      {/* Price-change warning dialog */}
+      <AlertDialog open={priceWarnOpen} onOpenChange={setPriceWarnOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirm Price Change</AlertDialogTitle>
+            <AlertDialogDescription className="space-y-2">
+              <span className="block">
+                This plan has <strong>{countForPlan(editTarget?.id ?? 0)} active subscriber{countForPlan(editTarget?.id ?? 0) !== 1 ? "s" : ""}</strong>.
+              </span>
+              <span className="block">
+                Changing the price will create a new Stripe price for <strong>new checkouts only</strong>. Existing subscribers will continue to be billed at their current rate until they cancel and re-subscribe.
+              </span>
+              <span className="block text-muted-foreground text-xs">
+                To move existing subscribers to the new price, you would need to contact them individually or update their subscriptions in the Stripe dashboard.
+              </span>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => { setPriceWarnOpen(false); setPendingUpdate(null); }}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (pendingUpdate) updatePlan.mutate(pendingUpdate);
+                setPriceWarnOpen(false);
+                setPendingUpdate(null);
+              }}
+            >
+              Update Price
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

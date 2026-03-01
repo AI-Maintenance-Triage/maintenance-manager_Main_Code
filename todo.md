@@ -800,3 +800,8 @@
 - [x] updatePlan: archive old Stripe price + create new price when monthly/annual price changes
 - [x] Admin Plans UI: replace manual Stripe Price ID fields with "Stripe Auto-Sync Enabled" notice
 - [x] Admin Plans UI: plan cards show "Stripe Synced" (green) or "Stripe Pending" (yellow) badge
+
+## Next 3 Features (Session 21)
+- [x] Contractor billing page (/contractor/billing) — Free vs Pro plan cards, 20-min early access badge, subscribe button, Stripe invoice history
+- [x] Plan deactivation Stripe sync — archive Stripe product when admin toggles plan to Inactive
+- [x] Price-change warning dialog — warn admin when editing price on a plan that has active subscribers

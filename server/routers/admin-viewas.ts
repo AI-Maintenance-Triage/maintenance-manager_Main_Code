@@ -460,6 +460,15 @@ export const adminViewAsRouter = router({
         );
       }
 
+      // ── isActive toggle → archive/unarchive Stripe product ───────────────
+      if (rest.isActive !== undefined && current?.stripeProductId) {
+        try {
+          await stripe.products.update(current.stripeProductId, { active: rest.isActive });
+        } catch {
+          // ignore — product may not exist in Stripe yet
+        }
+      }
+
       // ── Monthly price changed → archive old price, create new one ─────────
       if (priceMonthly !== undefined) {
         dbUpdate.priceMonthly = String(priceMonthly);

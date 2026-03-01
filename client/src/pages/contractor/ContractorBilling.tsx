@@ -11,7 +11,7 @@ import {
   Receipt, DollarSign, TrendingUp, Briefcase, Calendar, Download,
   Check, X, ClipboardList, Building2, ArrowUpRight, Zap,
   Star, Shield, Crown, CheckCircle2, AlertCircle, XCircle, CreditCard,
-  Link2, ExternalLink, RefreshCw,
+  Link2, ExternalLink, RefreshCw, Clock, FileText,
 } from "lucide-react";
 
 const CONTRACTOR_FEATURE_LABELS: Record<string, string> = {
@@ -239,6 +239,7 @@ export default function ContractorBilling() {
   const { data: earnings, isLoading: earningsLoading } = trpc.contractor.getEarnings.useQuery();
   const { data: planData, isLoading: planLoading } = trpc.contractor.getMyPlan.useQuery();
   const { data: availablePlans, isLoading: plansLoading } = trpc.contractor.listAvailablePlans.useQuery();
+  const { data: invoiceData, isLoading: invoicesLoading } = trpc.stripePayments.getContractorInvoices.useQuery();
 
   const createCheckout = trpc.stripePayments.createContractorPlanCheckout.useMutation({
     onSuccess: (data) => {
@@ -461,6 +462,15 @@ export default function ContractorBilling() {
                     </div>
                   </CardHeader>
                   <CardContent className="flex-1 flex flex-col gap-4">
+                    {/* Early Notification Badge */}
+                    {(p as any).earlyNotificationMinutes > 0 && (
+                      <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md bg-amber-500/10 border border-amber-500/20">
+                        <Clock className="h-3.5 w-3.5 text-amber-400 shrink-0" />
+                        <span className="text-xs font-medium text-amber-400">
+                          {(p as any).earlyNotificationMinutes}-min early job access
+                        </span>
+                      </div>
+                    )}
                     {/* Limits */}
                     <div className="space-y-1 text-xs">
                       {[
@@ -523,31 +533,68 @@ export default function ContractorBilling() {
         )}
       </div>
 
-      {/* Subscription Fees Section */}
+      {/* Subscription Invoice History */}
       <div>
-        <h2 className="text-lg font-semibold text-foreground mb-4">Subscription Fees</h2>
+        <h2 className="text-lg font-semibold text-foreground mb-4">Subscription Invoice History</h2>
         <Card className="bg-card border-border">
-          <CardContent className="p-6">
-            {plan ? (
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-medium text-foreground">{plan.name}</p>
-                    <p className="text-xs text-muted-foreground">Monthly subscription</p>
-                  </div>
-                  <p className="text-lg font-bold text-foreground">${parseFloat(plan.priceMonthly ?? "0").toFixed(2)}/mo</p>
-                </div>
-                {parseFloat(plan.priceAnnual ?? "0") > 0 && (
-                  <p className="text-xs text-muted-foreground">Annual option: ${parseFloat(plan.priceAnnual ?? "0").toFixed(2)}/yr (saves ~${(parseFloat(plan.priceMonthly ?? "0") * 12 - parseFloat(plan.priceAnnual ?? "0")).toFixed(0)})</p>
-                )}
-                <p className="text-xs text-muted-foreground pt-2 border-t border-border">
-                  Subscription charges are billed directly by Stripe. View your invoices in the Stripe customer portal.
-                </p>
+          <CardContent className="p-0">
+            {invoicesLoading ? (
+              <div className="p-6 space-y-3">{[1, 2, 3].map(i => <Skeleton key={i} className="h-12 w-full" />)}</div>
+            ) : !invoiceData?.invoices?.length ? (
+              <div className="p-10 text-center">
+                <FileText className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
+                <p className="text-muted-foreground text-sm">No subscription invoices yet. Subscribe to a plan to see billing history here.</p>
               </div>
             ) : (
-              <div className="text-center py-6">
-                <CreditCard className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
-                <p className="text-muted-foreground text-sm">No active subscription. Choose a plan above to get started.</p>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-border">
+                      <th className="text-left px-4 py-3 text-muted-foreground font-medium">Date</th>
+                      <th className="text-left px-4 py-3 text-muted-foreground font-medium">Invoice #</th>
+                      <th className="text-left px-4 py-3 text-muted-foreground font-medium">Description</th>
+                      <th className="text-right px-4 py-3 text-muted-foreground font-medium">Amount</th>
+                      <th className="text-center px-4 py-3 text-muted-foreground font-medium">Status</th>
+                      <th className="text-center px-4 py-3 text-muted-foreground font-medium">Invoice</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {invoiceData.invoices.map((inv: any) => (
+                      <tr key={inv.id} className="border-b border-border/50 hover:bg-secondary/30 transition-colors">
+                        <td className="px-4 py-3 text-muted-foreground whitespace-nowrap">
+                          {new Date(inv.created * 1000).toLocaleDateString()}
+                        </td>
+                        <td className="px-4 py-3 text-foreground font-mono text-xs">{inv.number ?? inv.id.slice(0, 12)}</td>
+                        <td className="px-4 py-3 text-foreground max-w-[200px] truncate">
+                          {inv.description ?? `${plan?.name ?? "Subscription"} — ${new Date(inv.periodStart * 1000).toLocaleDateString()} to ${new Date(inv.periodEnd * 1000).toLocaleDateString()}`}
+                        </td>
+                        <td className="px-4 py-3 text-right font-semibold text-foreground">
+                          ${(inv.amountPaid / 100).toFixed(2)} {inv.currency?.toUpperCase()}
+                        </td>
+                        <td className="px-4 py-3 text-center">
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border ${
+                            inv.status === "paid" ? "bg-green-500/15 text-green-400 border-green-500/30" :
+                            inv.status === "open" ? "bg-yellow-500/15 text-yellow-400 border-yellow-500/30" :
+                            "bg-secondary text-muted-foreground border-border"
+                          }`}>{inv.status}</span>
+                        </td>
+                        <td className="px-4 py-3 text-center">
+                          {inv.invoicePdf ? (
+                            <Button variant="ghost" size="sm" className="h-7 px-2 text-xs text-primary hover:text-primary"
+                              onClick={() => window.open(inv.invoicePdf, "_blank")}>
+                              <Download className="h-3.5 w-3.5 mr-1" /> PDF
+                            </Button>
+                          ) : inv.hostedInvoiceUrl ? (
+                            <Button variant="ghost" size="sm" className="h-7 px-2 text-xs text-primary hover:text-primary"
+                              onClick={() => window.open(inv.hostedInvoiceUrl, "_blank")}>
+                              <ExternalLink className="h-3.5 w-3.5 mr-1" /> View
+                            </Button>
+                          ) : <span className="text-xs text-muted-foreground">—</span>}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             )}
           </CardContent>
