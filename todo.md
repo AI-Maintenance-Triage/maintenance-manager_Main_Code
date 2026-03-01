@@ -844,3 +844,35 @@
 - [x] Admin revenue report by company (date range filter + bar chart on Revenue page)
 - [x] Job escalation notifications (email + in-app via notifyOwner, cron every 15 min, escalationNotifiedAt field)
 - [x] Bug: contractor invite email not sending — diagnosed (Resend domain restriction), added copy-link fallback, improved error logging
+
+## Session 27: Promo Cycles Display + Per-Property Reports + Admin Dashboard Expansion
+- [x] Promo code: show cycles remaining on company billing active discounts section
+- [x] Per-property billing report on company reports page (cost by property/unit over date range)
+- [x] Admin dashboard expansion (11 new pages)
+
+## Session 27: Full Admin Dashboard Expansion + Company Features
+
+### Platform Operations
+- [x] Global announcement banner (admin posts, shown on all company/contractor dashboards, dismissible)
+- [x] Platform maintenance mode toggle (locks all logins except admin, custom message)
+- [x] Feature flags (toggle platform features on/off per user type without code changes)
+- [x] Bulk email blast (compose + send to all companies, all contractors, or filtered subset)
+- [x] Account suspension (suspend company/contractor with reason, locked screen, one-click reinstatement)
+- [x] Audit log (searchable log of all admin actions with timestamp and actor)
+
+### Financial Controls
+- [x] Manual credit/adjustment (issue one-time credit or debit to a company's account)
+- [x] Payout hold (hold a contractor's payouts pending review, release when ready)
+
+### Analytics & Monitoring
+- [x] Real-time activity feed on admin overview (new job, completion, signup, payment)
+- [x] Contractor performance leaderboard (jobs completed, avg rating, on-time rate, flag underperformers)
+- [x] Churn risk dashboard (companies inactive 30+ days, one-click re-engagement email)
+
+### Company-Side Features
+- [x] Promo code cycles remaining display on company billing active discounts section
+- [x] Per-property billing report on company reports page (cost by property/unit over date range)
+
+### Tests
+- [x] 39 new vitest tests for all admin control features (all passing)
+- [x] Full test suite: 181 tests across 11 files, all passing

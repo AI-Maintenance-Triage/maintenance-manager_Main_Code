@@ -227,6 +227,7 @@ function PromoCodeSection() {
   const utils = trpc.useUtils();
   const [code, setCode] = useState("");
   const { data: activePromos, isLoading: promosLoading } = trpc.promoCodes.myRedemptions.useQuery();
+  const { data: cycleInfo } = trpc.companyReports.promoCycleInfo.useQuery();
 
   const redeemMutation = trpc.promoCodes.redeem.useMutation({
     onSuccess: (data) => {
@@ -311,13 +312,27 @@ function PromoCodeSection() {
                           p.affectsListingFee && "listing fee",
                         ].filter(Boolean).join(" + ")}
                       </p>
-                      <p className="text-xs text-muted-foreground mt-0.5">
-                        {p.billingCycles == null ? (
-                          <span className="flex items-center gap-1"><Infinity className="h-3 w-3" /> Applies forever</span>
-                        ) : (
-                          `${p.cyclesRemaining ?? p.billingCycles} billing cycle${(p.cyclesRemaining ?? p.billingCycles) !== 1 ? "s" : ""} remaining`
-                        )}
-                      </p>
+                      {(() => {
+                        const cycle = cycleInfo?.find((c: any) => c.promoCode === p.code);
+                        const total = cycle?.billingCycles ?? p.billingCycles;
+                        const remaining = cycle?.cyclesRemaining ?? p.cyclesRemaining ?? p.billingCycles;
+                        if (total == null) {
+                          return <p className="text-xs text-muted-foreground mt-0.5"><span className="flex items-center gap-1"><Infinity className="h-3 w-3" /> Applies forever</span></p>;
+                        }
+                        const used = total - (remaining ?? 0);
+                        const pct = total > 0 ? Math.round((used / total) * 100) : 0;
+                        return (
+                          <div className="mt-1.5 space-y-1">
+                            <div className="flex justify-between text-xs text-muted-foreground">
+                              <span>{remaining} of {total} cycle{total !== 1 ? "s" : ""} remaining</span>
+                              <span>{pct}% used</span>
+                            </div>
+                            <div className="w-full h-1.5 rounded-full bg-muted overflow-hidden">
+                              <div className={`h-full rounded-full transition-all ${pct >= 80 ? "bg-red-500" : pct >= 50 ? "bg-yellow-500" : "bg-amber-400"}`} style={{ width: `${pct}%` }} />
+                            </div>
+                          </div>
+                        );
+                      })()}
                     </div>
                   </div>
                   <p className="text-xs text-muted-foreground">

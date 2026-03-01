@@ -26,6 +26,7 @@ import {
   LayoutDashboard, LogOut, PanelLeft, Building2, Wrench,
   ClipboardList, MapPin, Settings, Briefcase,
   UserCircle, Shield, HardHat, ChevronDown, ArrowLeft, CheckSquare, Navigation2, DollarSign, BarChart2, BarChart3, CreditCard, Banknote, Webhook, Tag,
+  Megaphone, Flag, ScrollText, Ban, Gift, PauseCircle, Activity, Trophy, TrendingDown, Mail, AlertTriangle,
 } from "lucide-react";
 import { CSSProperties, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "wouter";
@@ -50,6 +51,22 @@ const adminSections: MenuSection[] = [
       { icon: Webhook, label: "Webhooks", path: "/admin/webhooks" },
     ],
   },
+  {
+    title: "Platform Controls",
+    items: [
+      { icon: Megaphone, label: "Announcements", path: "/admin/announcements" },
+      { icon: AlertTriangle, label: "Maintenance Mode", path: "/admin/maintenance-mode" },
+      { icon: Flag, label: "Feature Flags", path: "/admin/feature-flags" },
+      { icon: Mail, label: "Email Blast", path: "/admin/email-blast" },
+      { icon: Ban, label: "Suspensions", path: "/admin/suspensions" },
+      { icon: ScrollText, label: "Audit Log", path: "/admin/audit-log" },
+      { icon: Gift, label: "Credits", path: "/admin/credits" },
+      { icon: PauseCircle, label: "Payout Holds", path: "/admin/payout-holds" },
+      { icon: Activity, label: "Activity Feed", path: "/admin/activity" },
+      { icon: Trophy, label: "Leaderboard", path: "/admin/leaderboard" },
+      { icon: TrendingDown, label: "Churn Risk", path: "/admin/churn-risk" },
+    ],
+  },
 ];
 
 const companySections: MenuSection[] = [
@@ -64,6 +81,7 @@ const companySections: MenuSection[] = [
       { icon: Navigation2, label: "Live Tracking", path: "/company/live-tracking" },
       { icon: Settings, label: "Settings", path: "/company/settings" },
       { icon: BarChart2, label: "Reports", path: "/company/reports" },
+      { icon: BarChart3, label: "Property Reports", path: "/company/property-reports" },
       { icon: CreditCard, label: "Billing", path: "/company/billing" },
     ],
   },

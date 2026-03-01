@@ -23,6 +23,16 @@ import {
   contractorInvites, InsertContractorInvite,
   promoCodes, InsertPromoCode,
   companyPromoRedemptions,
+  platformAnnouncements, InsertPlatformAnnouncement,
+  dismissedAnnouncements,
+  featureFlags, InsertFeatureFlag,
+  auditLog, InsertAuditLogEntry,
+  accountSuspensions, InsertAccountSuspension,
+  accountCredits, InsertAccountCredit,
+  payoutHolds, InsertPayoutHold,
+  activityEvents, InsertActivityEvent,
+  maintenanceMode,
+  companyPaymentMethods,
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
@@ -2475,4 +2485,355 @@ export async function markJobEscalationNotified(jobId: number, notifiedAt: numbe
     .update(maintenanceRequests)
     .set({ escalationNotifiedAt: notifiedAt })
     .where(eq(maintenanceRequests.id, jobId));
+}
+
+// ─── Platform Announcements ────────────────────────────────────────────────
+export async function createAnnouncement(data: InsertPlatformAnnouncement) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  const result = await db.insert(platformAnnouncements).values(data);
+  return result[0].insertId;
+}
+
+export async function listAnnouncements() {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(platformAnnouncements).orderBy(desc(platformAnnouncements.createdAt));
+}
+
+export async function getActiveAnnouncementsForUser(userId: number, userType: "company" | "contractor") {
+  const db = await getDb();
+  if (!db) return [];
+  const now = Date.now();
+  const dismissed = await db.select({ announcementId: dismissedAnnouncements.announcementId })
+    .from(dismissedAnnouncements).where(eq(dismissedAnnouncements.userId, userId));
+  const dismissedIds = dismissed.map(d => d.announcementId);
+  const all = await db.select().from(platformAnnouncements)
+    .where(and(
+      eq(platformAnnouncements.isActive, true),
+      or(
+        isNull(platformAnnouncements.expiresAt),
+        gte(platformAnnouncements.expiresAt, now)
+      )
+    ))
+    .orderBy(desc(platformAnnouncements.createdAt));
+  return all.filter(a => {
+    if (dismissedIds.includes(a.id)) return false;
+    if (a.targetAudience === "all") return true;
+    if (a.targetAudience === "companies" && userType === "company") return true;
+    if (a.targetAudience === "contractors" && userType === "contractor") return true;
+    return false;
+  });
+}
+
+export async function updateAnnouncement(id: number, data: Partial<InsertPlatformAnnouncement>) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(platformAnnouncements).set(data).where(eq(platformAnnouncements.id, id));
+}
+
+export async function deleteAnnouncement(id: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.delete(platformAnnouncements).where(eq(platformAnnouncements.id, id));
+}
+
+export async function dismissAnnouncement(userId: number, announcementId: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.insert(dismissedAnnouncements).values({ userId, announcementId }).onDuplicateKeyUpdate({ set: { userId } });
+}
+
+// ─── Feature Flags ─────────────────────────────────────────────────────────
+export async function listFeatureFlags() {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(featureFlags).orderBy(featureFlags.key);
+}
+
+export async function upsertFeatureFlag(data: InsertFeatureFlag) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  await db.insert(featureFlags).values(data).onDuplicateKeyUpdate({
+    set: {
+      label: data.label,
+      description: data.description,
+      enabledForCompanies: data.enabledForCompanies,
+      enabledForContractors: data.enabledForContractors,
+      updatedBy: data.updatedBy,
+    }
+  });
+}
+
+export async function updateFeatureFlag(key: string, data: Partial<InsertFeatureFlag>) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(featureFlags).set(data).where(eq(featureFlags.key, key));
+}
+
+// ─── Audit Log ─────────────────────────────────────────────────────────────
+export async function writeAuditLog(entry: InsertAuditLogEntry) {
+  const db = await getDb();
+  if (!db) return;
+  await db.insert(auditLog).values(entry);
+}
+
+export async function listAuditLog(limit = 100, offset = 0, search?: string) {
+  const db = await getDb();
+  if (!db) return [];
+  const query = db.select().from(auditLog).orderBy(desc(auditLog.createdAt)).limit(limit).offset(offset);
+  return query;
+}
+
+// ─── Account Suspensions ──────────────────────────────────────────────────
+export async function suspendAccount(data: InsertAccountSuspension) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  // Deactivate any existing active suspension for this target
+  await db.update(accountSuspensions)
+    .set({ isActive: false })
+    .where(and(
+      eq(accountSuspensions.targetType, data.targetType),
+      eq(accountSuspensions.targetId, data.targetId),
+      eq(accountSuspensions.isActive, true)
+    ));
+  const result = await db.insert(accountSuspensions).values(data);
+  return result[0].insertId;
+}
+
+export async function reinstateAccount(targetType: string, targetId: number, reinstatedBy: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(accountSuspensions)
+    .set({ isActive: false, reinstatedAt: new Date(), reinstatedBy })
+    .where(and(
+      eq(accountSuspensions.targetType, targetType),
+      eq(accountSuspensions.targetId, targetId),
+      eq(accountSuspensions.isActive, true)
+    ));
+}
+
+export async function getActiveSuspension(targetType: string, targetId: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(accountSuspensions)
+    .where(and(
+      eq(accountSuspensions.targetType, targetType),
+      eq(accountSuspensions.targetId, targetId),
+      eq(accountSuspensions.isActive, true)
+    )).limit(1);
+  return result[0];
+}
+
+export async function listSuspensions() {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(accountSuspensions).orderBy(desc(accountSuspensions.suspendedAt));
+}
+
+// ─── Manual Account Credits ───────────────────────────────────────────────
+export async function issueAccountCredit(data: InsertAccountCredit) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  const result = await db.insert(accountCredits).values(data);
+  return result[0].insertId;
+}
+
+export async function listAccountCredits(companyId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(accountCredits)
+    .where(eq(accountCredits.companyId, companyId))
+    .orderBy(desc(accountCredits.createdAt));
+}
+
+export async function listAllAccountCredits() {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(accountCredits).orderBy(desc(accountCredits.createdAt));
+}
+
+// ─── Payout Holds ─────────────────────────────────────────────────────────
+export async function placePayoutHold(data: InsertPayoutHold) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  const result = await db.insert(payoutHolds).values(data);
+  return result[0].insertId;
+}
+
+export async function releasePayoutHold(contractorId: number, releasedBy: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(payoutHolds)
+    .set({ isActive: false, releasedAt: new Date(), releasedBy })
+    .where(and(eq(payoutHolds.contractorId, contractorId), eq(payoutHolds.isActive, true)));
+}
+
+export async function getActivePayoutHold(contractorId: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(payoutHolds)
+    .where(and(eq(payoutHolds.contractorId, contractorId), eq(payoutHolds.isActive, true))).limit(1);
+  return result[0];
+}
+
+export async function listPayoutHolds() {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(payoutHolds).orderBy(desc(payoutHolds.placedAt));
+}
+
+// ─── Activity Events ──────────────────────────────────────────────────────
+export async function logActivityEvent(data: InsertActivityEvent) {
+  const db = await getDb();
+  if (!db) return;
+  await db.insert(activityEvents).values(data);
+  // Keep only the last 500 events to avoid unbounded growth
+  const countResult = await db.select({ count: count() }).from(activityEvents);
+  if (countResult[0]?.count > 500) {
+    const oldest = await db.select({ id: activityEvents.id })
+      .from(activityEvents).orderBy(activityEvents.createdAt).limit(50);
+    if (oldest.length > 0) {
+      await db.delete(activityEvents).where(inArray(activityEvents.id, oldest.map(e => e.id)));
+    }
+  }
+}
+
+export async function listActivityEvents(limit = 50) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(activityEvents).orderBy(desc(activityEvents.createdAt)).limit(limit);
+}
+
+// ─── Maintenance Mode ─────────────────────────────────────────────────────
+export async function getMaintenanceMode() {
+  const db = await getDb();
+  if (!db) return { isEnabled: false, message: null };
+  const result = await db.select().from(maintenanceMode).limit(1);
+  if (result.length === 0) return { isEnabled: false, message: null };
+  return result[0];
+}
+
+export async function setMaintenanceMode(isEnabled: boolean, message: string | null, enabledBy: number) {
+  const db = await getDb();
+  if (!db) return;
+  const existing = await db.select().from(maintenanceMode).limit(1);
+  if (existing.length === 0) {
+    await db.insert(maintenanceMode).values({
+      isEnabled,
+      message,
+      enabledBy: isEnabled ? enabledBy : null,
+      enabledAt: isEnabled ? new Date() : null,
+    });
+  } else {
+    await db.update(maintenanceMode).set({
+      isEnabled,
+      message,
+      enabledBy: isEnabled ? enabledBy : null,
+      enabledAt: isEnabled ? new Date() : null,
+    }).where(eq(maintenanceMode.id, existing[0].id));
+  }
+}
+
+// ─── Contractor Performance (for leaderboard) ─────────────────────────────
+export async function getContractorLeaderboard(limit = 20) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select({
+    id: contractorProfiles.id,
+    userId: contractorProfiles.userId,
+    businessName: contractorProfiles.businessName,
+    rating: contractorProfiles.rating,
+    completedJobs: contractorProfiles.completedJobs,
+    isAvailable: contractorProfiles.isAvailable,
+  }).from(contractorProfiles)
+    .orderBy(desc(contractorProfiles.completedJobs))
+    .limit(limit);
+}
+
+// ─── Churn Risk (companies inactive 30+ days) ─────────────────────────────
+export async function getChurnRiskCompanies() {
+  const db = await getDb();
+  if (!db) return [];
+  const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
+  // Get companies with their last job posted date
+  const allCompanies = await db.select({
+    id: companies.id,
+    name: companies.name,
+    email: companies.email,
+    planStatus: companies.planStatus,
+    createdAt: companies.createdAt,
+  }).from(companies);
+
+  const result = [];
+  for (const company of allCompanies) {
+    const lastJob = await db.select({ createdAt: maintenanceRequests.createdAt })
+      .from(maintenanceRequests)
+      .where(eq(maintenanceRequests.companyId, company.id))
+      .orderBy(desc(maintenanceRequests.createdAt))
+      .limit(1);
+    const lastJobDate = lastJob[0]?.createdAt?.getTime() ?? company.createdAt.getTime();
+    if (lastJobDate < thirtyDaysAgo) {
+      result.push({
+        ...company,
+        lastJobAt: lastJobDate,
+        daysSinceLastJob: Math.floor((Date.now() - lastJobDate) / (24 * 60 * 60 * 1000)),
+      });
+    }
+  }
+  return result.sort((a, b) => b.daysSinceLastJob - a.daysSinceLastJob);
+}
+
+// ─── Per-Property Revenue Report ──────────────────────────────────────────
+export async function getRevenueByProperty(companyId: number, fromMs?: number, toMs?: number) {
+  const db = await getDb();
+  if (!db) return [];
+  const allJobs = await db.select({
+    propertyId: maintenanceRequests.propertyId,
+    id: maintenanceRequests.id,
+    status: maintenanceRequests.status,
+    createdAt: maintenanceRequests.createdAt,
+  }).from(maintenanceRequests)
+    .where(eq(maintenanceRequests.companyId, companyId));
+
+  const paidJobIds = allJobs
+    .filter(j => {
+      if (!["paid", "verified"].includes(j.status)) return false;
+      if (fromMs && j.createdAt.getTime() < fromMs) return false;
+      if (toMs && j.createdAt.getTime() > toMs) return false;
+      return true;
+    })
+    .map(j => j.id);
+
+  if (paidJobIds.length === 0) return [];
+
+  const txns = await db.select({
+    maintenanceRequestId: transactions.maintenanceRequestId,
+    totalCharged: transactions.totalCharged,
+    platformFee: transactions.platformFee,
+    laborCost: transactions.laborCost,
+    partsCost: transactions.partsCost,
+  }).from(transactions).where(inArray(transactions.maintenanceRequestId, paidJobIds));
+
+  const props = await db.select().from(properties).where(eq(properties.companyId, companyId));
+
+  // Group by propertyId
+  const map = new Map<number, { propertyId: number; propertyName: string; totalCharged: number; platformFee: number; laborCost: number; partsCost: number; jobCount: number }>();
+  for (const job of allJobs.filter(j => paidJobIds.includes(j.id))) {
+    const txn = txns.find(t => t.maintenanceRequestId === job.id);
+    if (!txn) continue;
+    const prop = props.find(p => p.id === job.propertyId);
+    const entry = map.get(job.propertyId) ?? {
+      propertyId: job.propertyId,
+      propertyName: prop?.name ?? `Property #${job.propertyId}`,
+      totalCharged: 0, platformFee: 0, laborCost: 0, partsCost: 0, jobCount: 0,
+    };
+    entry.totalCharged += Number(txn.totalCharged ?? 0);
+    entry.platformFee += Number(txn.platformFee ?? 0);
+    entry.laborCost += Number(txn.laborCost ?? 0);
+    entry.partsCost += Number(txn.partsCost ?? 0);
+    entry.jobCount += 1;
+    map.set(job.propertyId, entry);
+  }
+  return Array.from(map.values()).sort((a, b) => b.totalCharged - a.totalCharged);
 }

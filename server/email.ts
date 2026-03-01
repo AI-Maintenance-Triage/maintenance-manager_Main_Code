@@ -57,7 +57,7 @@ function layout(title: string, body: string): string {
 }
 
 // ─── Core send helper ─────────────────────────────────────────────────────
-async function sendEmail(opts: {
+export async function sendEmail(opts: {
   to: string;
   subject: string;
   html: string;

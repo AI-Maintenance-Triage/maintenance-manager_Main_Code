@@ -2339,6 +2339,284 @@ const promoCodesRouter = router({
     }),
 });
 
+// ─── Admin Control Router ─────────────────────────────────────────────────────
+const adminControlRouter = router({
+  // 1. Platform Announcements
+  listAnnouncements: adminProcedure.query(async () => {
+    return db.listAnnouncements();
+  }),
+  createAnnouncement: adminProcedure
+    .input(z.object({
+      title: z.string().min(1),
+      message: z.string().min(1),
+      type: z.enum(["info", "warning", "success", "error"]),
+      targetAudience: z.enum(["all", "companies", "contractors"]),
+      expiresAt: z.number().optional(),
+      isActive: z.boolean().default(true),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const id = await db.createAnnouncement({
+        title: input.title,
+        message: input.message,
+        type: input.type,
+        targetAudience: input.targetAudience,
+        expiresAt: input.expiresAt ?? null,
+        isActive: input.isActive,
+      });
+      await db.writeAuditLog({ actorId: ctx.user.id, actorName: "admin", action: "create_announcement", details: `Created announcement: ${input.title}` });
+      return { id };
+    }),
+  updateAnnouncement: adminProcedure
+    .input(z.object({
+      id: z.number(),
+      title: z.string().min(1).optional(),
+      message: z.string().min(1).optional(),
+      type: z.enum(["info", "warning", "success", "error"]).optional(),
+      targetAudience: z.enum(["all", "companies", "contractors"]).optional(),
+      expiresAt: z.number().nullable().optional(),
+      isActive: z.boolean().optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const { id, ...data } = input;
+      await db.updateAnnouncement(id, data);
+      await db.writeAuditLog({ actorId: ctx.user.id, actorName: "admin", action: "update_announcement", details: `Updated announcement #${id}` });
+    }),
+  deleteAnnouncement: adminProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      await db.deleteAnnouncement(input.id);
+      await db.writeAuditLog({ actorId: ctx.user.id, actorName: "admin", action: "delete_announcement", details: `Deleted announcement #${input.id}` });
+    }),
+
+  // 2. Maintenance Mode
+  getMaintenanceMode: adminProcedure.query(async () => {
+    return db.getMaintenanceMode();
+  }),
+  setMaintenanceMode: adminProcedure
+    .input(z.object({
+      isEnabled: z.boolean(),
+      message: z.string().nullable().optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      await db.setMaintenanceMode(input.isEnabled, input.message ?? null, ctx.user.id);
+      await db.writeAuditLog({ actorId: ctx.user.id, actorName: "admin", action: "set_maintenance_mode", details: `Maintenance mode ${input.isEnabled ? "enabled" : "disabled"}` });
+    }),
+
+  // 3. Feature Flags
+  listFeatureFlags: adminProcedure.query(async () => {
+    return db.listFeatureFlags();
+  }),
+  upsertFeatureFlag: adminProcedure
+    .input(z.object({
+      key: z.string().min(1),
+      label: z.string().min(1),
+      description: z.string().optional(),
+      enabledForCompanies: z.boolean().default(true),
+      enabledForContractors: z.boolean().default(true),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      await db.upsertFeatureFlag({ ...input, description: input.description ?? null, updatedBy: ctx.user.id });
+      await db.writeAuditLog({ actorId: ctx.user.id, actorName: "admin", action: "upsert_feature_flag", details: `Upserted flag: ${input.key}` });
+    }),
+  updateFeatureFlag: adminProcedure
+    .input(z.object({
+      key: z.string(),
+      enabledForCompanies: z.boolean().optional(),
+      enabledForContractors: z.boolean().optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const { key, ...data } = input;
+      await db.updateFeatureFlag(key, data);
+      await db.writeAuditLog({ actorId: ctx.user.id, actorName: "admin", action: "update_feature_flag", details: `Updated flag: ${key}` });
+    }),
+
+  // 4. Account Suspensions
+  listSuspensions: adminProcedure.query(async () => {
+    return db.listSuspensions();
+  }),
+  suspendAccount: adminProcedure
+    .input(z.object({
+      targetType: z.enum(["company", "contractor"]),
+      targetId: z.number(),
+      reason: z.string().min(1),
+      suspendedUntil: z.number().optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const id = await db.suspendAccount({
+        targetType: input.targetType,
+        targetId: input.targetId,
+        reason: input.reason,
+        suspendedBy: ctx.user.id,
+        isActive: true,
+      });
+      await db.writeAuditLog({ actorId: ctx.user.id, actorName: "admin", action: "suspend_account", details: `Suspended ${input.targetType} #${input.targetId}: ${input.reason}` });
+      return { id };
+    }),
+  reinstateAccount: adminProcedure
+    .input(z.object({
+      targetType: z.enum(["company", "contractor"]),
+      targetId: z.number(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      await db.reinstateAccount(input.targetType, input.targetId, ctx.user.id);
+      await db.writeAuditLog({ actorId: ctx.user.id, actorName: "admin", action: "reinstate_account", details: `Reinstated ${input.targetType} #${input.targetId}` });
+    }),
+
+  // 5. Audit Log
+  listAuditLog: adminProcedure
+    .input(z.object({ limit: z.number().default(100), offset: z.number().default(0) }))
+    .query(async ({ input }) => {
+      return db.listAuditLog(input.limit, input.offset);
+    }),
+
+  // 6. Manual Credits / Adjustments
+  listAllCredits: adminProcedure.query(async () => {
+    return db.listAllAccountCredits();
+  }),
+  issueCredit: adminProcedure
+    .input(z.object({
+      companyId: z.number(),
+      amountCents: z.number().int().positive(),
+      description: z.string().min(1),
+      expiresAt: z.number().optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const id = await db.issueAccountCredit({
+        companyId: input.companyId,
+        amountCents: input.amountCents,
+        reason: input.description,
+        issuedBy: ctx.user.id,
+      });
+      await db.writeAuditLog({ actorId: ctx.user.id, actorName: "admin", action: "issue_credit", details: `Issued $${(input.amountCents / 100).toFixed(2)} credit to company #${input.companyId}: ${input.description}` });
+      return { id };
+    }),
+
+  // 7. Payout Holds
+  listPayoutHolds: adminProcedure.query(async () => {
+    return db.listPayoutHolds();
+  }),
+  placePayoutHold: adminProcedure
+    .input(z.object({
+      contractorId: z.number(),
+      reason: z.string().min(1),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const id = await db.placePayoutHold({
+        contractorId: input.contractorId,
+        reason: input.reason,
+        placedBy: ctx.user.id,
+        isActive: true,
+      });
+      await db.writeAuditLog({ actorId: ctx.user.id, actorName: "admin", action: "place_payout_hold", details: `Placed payout hold on contractor #${input.contractorId}: ${input.reason}` });
+      return { id };
+    }),
+  releasePayoutHold: adminProcedure
+    .input(z.object({ contractorId: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      await db.releasePayoutHold(input.contractorId, ctx.user.id);
+      await db.writeAuditLog({ actorId: ctx.user.id, actorName: "admin", action: "release_payout_hold", details: `Released payout hold on contractor #${input.contractorId}` });
+    }),
+
+  // 8. Activity Feed
+  listActivityEvents: adminProcedure
+    .input(z.object({ limit: z.number().default(50) }))
+    .query(async ({ input }) => {
+      return db.listActivityEvents(input.limit);
+    }),
+
+  // 9. Contractor Leaderboard
+  contractorLeaderboard: adminProcedure
+    .input(z.object({ limit: z.number().default(20) }))
+    .query(async ({ input }) => {
+      return db.getContractorLeaderboard(input.limit);
+    }),
+
+  // 10. Churn Risk Dashboard
+  churnRisk: adminProcedure.query(async () => {
+    return db.getChurnRiskCompanies();
+  }),
+
+  // 11. Per-job fee override (logged in audit trail)
+  overrideJobFee: adminProcedure
+    .input(z.object({
+      jobId: z.number(),
+      newFeePercent: z.number().min(0).max(100),
+      reason: z.string().min(1),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      await db.writeAuditLog({
+        actorId: ctx.user.id,
+        actorName: "admin",
+        action: "override_job_fee",
+        details: `Overrode fee for job #${input.jobId} to ${input.newFeePercent}%: ${input.reason}`,
+        targetType: "job",
+        targetId: input.jobId,
+      });
+      return { success: true };
+    }),
+
+  // 12. Bulk email blast
+  sendEmailBlast: adminProcedure
+    .input(z.object({
+      subject: z.string().min(1),
+      body: z.string().min(1),
+      targetAudience: z.enum(["all", "companies", "contractors"]),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const allCompanies = await db.listCompanies();
+      const allContractors = await db.listAllContractors();
+      const recipients: string[] = [];
+      if (input.targetAudience === "all" || input.targetAudience === "companies") {
+        allCompanies.forEach(c => { if (c.email) recipients.push(c.email); });
+      }
+      if (input.targetAudience === "all" || input.targetAudience === "contractors") {
+        allContractors.forEach(c => { if (c.user?.email) recipients.push(c.user.email); });
+      }
+      let sent = 0;
+      const uniqueRecipients = Array.from(new Set(recipients));
+      for (const recipientEmail of uniqueRecipients) {
+        try {
+          await email.sendEmail({
+            to: recipientEmail,
+            subject: input.subject,
+            html: `<div style="font-family:sans-serif;max-width:600px;margin:0 auto">${input.body.replace(/\n/g, "<br>")}</div>`,
+          });
+          sent++;
+        } catch (_e) {
+          // Continue on individual failures
+        }
+      }
+      await db.writeAuditLog({ actorId: ctx.user.id, actorName: "admin", action: "email_blast", details: `Sent email blast to ${sent}/${uniqueRecipients.length} recipients. Subject: ${input.subject}` });
+      return { sent, total: uniqueRecipients.length };
+    }),
+});
+
+// ─── Company Reports Router ────────────────────────────────────────────────────
+const companyReportsRouter = router({
+  revenueByProperty: companyAdminProcedure
+    .input(z.object({
+      fromMs: z.number().optional(),
+      toMs: z.number().optional(),
+    }))
+    .query(async ({ ctx, input }) => {
+      const companyId = getEffectiveCompanyId(ctx);
+      return db.getRevenueByProperty(companyId, input.fromMs, input.toMs);
+    }),
+  promoCycleInfo: companyAdminProcedure.query(async ({ ctx }) => {
+    const companyId = getEffectiveCompanyId(ctx);
+    const redemptions = await db.getCompanyPromoRedemptions(companyId);
+    return redemptions
+      .filter(r => r.isActive)
+      .map(r => ({
+        promoCode: r.code,
+        discountPercent: r.discountPercent,
+        billingCycles: r.billingCycles,
+        cyclesRemaining: r.cyclesRemaining,
+        redeemedAt: r.redeemedAt,
+      }));
+  }),
+});
+
 export const appRouter = router({
   system: systemRouter,
   public: publicRouter,
@@ -2374,6 +2652,8 @@ export const appRouter = router({
   invites: invitesRouter,
   adminViewAs: adminViewAsRouter,
   promoCodes: promoCodesRouter,
+  adminControl: adminControlRouter,
+  companyReports: companyReportsRouter,
   admin: router({
     // Re-geocode all properties and contractor profiles that are missing coordinates.
     // Safe to run multiple times — only updates records with null lat/lng.

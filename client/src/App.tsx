@@ -33,6 +33,18 @@ import AdminSubscriptionPlans from "./pages/admin/AdminSubscriptionPlans";
 import AdminRevenue from "./pages/admin/AdminRevenue";
 import AdminPromoCodes from "./pages/admin/AdminPromoCodes";
 import AdminWebhookEvents from "./pages/AdminWebhookEvents";
+import AdminAnnouncements from "./pages/admin/AdminAnnouncements";
+import AdminMaintenanceMode from "./pages/admin/AdminMaintenanceMode";
+import AdminFeatureFlags from "./pages/admin/AdminFeatureFlags";
+import AdminSuspensions from "./pages/admin/AdminSuspensions";
+import AdminAuditLog from "./pages/admin/AdminAuditLog";
+import AdminCredits from "./pages/admin/AdminCredits";
+import AdminPayoutHolds from "./pages/admin/AdminPayoutHolds";
+import AdminActivityFeed from "./pages/admin/AdminActivityFeed";
+import AdminLeaderboard from "./pages/admin/AdminLeaderboard";
+import AdminChurnRisk from "./pages/admin/AdminChurnRisk";
+import AdminEmailBlast from "./pages/admin/AdminEmailBlast";
+import CompanyPropertyReports from "./pages/company/CompanyPropertyReports";
 import ResetPassword from "./pages/ResetPassword";
 import InviteAccept from "./pages/InviteAccept";
 import { PWAInstallBanner } from "./components/PWAInstallBanner";
@@ -72,6 +84,9 @@ function Router() {
       </Route>
       <Route path="/company/reports">
         <DashboardLayout><CompanyExpenseReport /></DashboardLayout>
+      </Route>
+      <Route path="/company/property-reports">
+        <DashboardLayout><CompanyPropertyReports /></DashboardLayout>
       </Route>
       <Route path="/company/billing">
         <DashboardLayout><CompanyBilling /></DashboardLayout>
@@ -113,6 +128,39 @@ function Router() {
       </Route>
       <Route path="/admin/webhooks">
         <DashboardLayout><AdminWebhookEvents /></DashboardLayout>
+      </Route>
+      <Route path="/admin/announcements">
+        <DashboardLayout><AdminAnnouncements /></DashboardLayout>
+      </Route>
+      <Route path="/admin/maintenance-mode">
+        <DashboardLayout><AdminMaintenanceMode /></DashboardLayout>
+      </Route>
+      <Route path="/admin/feature-flags">
+        <DashboardLayout><AdminFeatureFlags /></DashboardLayout>
+      </Route>
+      <Route path="/admin/suspensions">
+        <DashboardLayout><AdminSuspensions /></DashboardLayout>
+      </Route>
+      <Route path="/admin/audit-log">
+        <DashboardLayout><AdminAuditLog /></DashboardLayout>
+      </Route>
+      <Route path="/admin/credits">
+        <DashboardLayout><AdminCredits /></DashboardLayout>
+      </Route>
+      <Route path="/admin/payout-holds">
+        <DashboardLayout><AdminPayoutHolds /></DashboardLayout>
+      </Route>
+      <Route path="/admin/activity">
+        <DashboardLayout><AdminActivityFeed /></DashboardLayout>
+      </Route>
+      <Route path="/admin/leaderboard">
+        <DashboardLayout><AdminLeaderboard /></DashboardLayout>
+      </Route>
+      <Route path="/admin/churn-risk">
+        <DashboardLayout><AdminChurnRisk /></DashboardLayout>
+      </Route>
+      <Route path="/admin/email-blast">
+        <DashboardLayout><AdminEmailBlast /></DashboardLayout>
       </Route>
       <Route path="/admin">
         <DashboardLayout><PlatformDashboard /></DashboardLayout>

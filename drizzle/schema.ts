@@ -556,3 +556,124 @@ export const companyPromoRedemptions = mysqlTable("company_promo_redemptions", {
 });
 export type CompanyPromoRedemption = typeof companyPromoRedemptions.$inferSelect;
 export type InsertCompanyPromoRedemption = typeof companyPromoRedemptions.$inferInsert;
+
+// ─── Platform Announcements ────────────────────────────────────────────────
+export const platformAnnouncements = mysqlTable("platform_announcements", {
+  id: int("id").autoincrement().primaryKey(),
+  title: varchar("title", { length: 255 }).notNull(),
+  message: text("message").notNull(),
+  type: varchar("type", { length: 32 }).default("info").notNull(), // info | warning | critical
+  targetAudience: varchar("targetAudience", { length: 32 }).default("all").notNull(), // all | companies | contractors
+  isActive: boolean("isActive").default(true).notNull(),
+  expiresAt: bigint("expiresAt", { mode: "number" }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type PlatformAnnouncement = typeof platformAnnouncements.$inferSelect;
+export type InsertPlatformAnnouncement = typeof platformAnnouncements.$inferInsert;
+
+// ─── Dismissed Announcements ──────────────────────────────────────────────
+export const dismissedAnnouncements = mysqlTable("dismissed_announcements", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  announcementId: int("announcementId").notNull(),
+  dismissedAt: timestamp("dismissedAt").defaultNow().notNull(),
+});
+
+// ─── Feature Flags ─────────────────────────────────────────────────────────
+export const featureFlags = mysqlTable("feature_flags", {
+  id: int("id").autoincrement().primaryKey(),
+  key: varchar("key", { length: 128 }).notNull().unique(),
+  label: varchar("label", { length: 255 }).notNull(),
+  description: text("description"),
+  enabledForCompanies: boolean("enabledForCompanies").default(true).notNull(),
+  enabledForContractors: boolean("enabledForContractors").default(true).notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  updatedBy: int("updatedBy"),
+});
+export type FeatureFlag = typeof featureFlags.$inferSelect;
+export type InsertFeatureFlag = typeof featureFlags.$inferInsert;
+
+// ─── Audit Log ─────────────────────────────────────────────────────────────
+export const auditLog = mysqlTable("audit_log", {
+  id: int("id").autoincrement().primaryKey(),
+  actorId: int("actorId").notNull(),
+  actorName: varchar("actorName", { length: 255 }).notNull(),
+  action: varchar("action", { length: 128 }).notNull(),
+  targetType: varchar("targetType", { length: 64 }),
+  targetId: int("targetId"),
+  targetName: varchar("targetName", { length: 255 }),
+  details: text("details"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type AuditLogEntry = typeof auditLog.$inferSelect;
+export type InsertAuditLogEntry = typeof auditLog.$inferInsert;
+
+// ─── Account Suspensions ──────────────────────────────────────────────────
+export const accountSuspensions = mysqlTable("account_suspensions", {
+  id: int("id").autoincrement().primaryKey(),
+  targetType: varchar("targetType", { length: 32 }).notNull(), // company | contractor
+  targetId: int("targetId").notNull(),
+  reason: text("reason").notNull(),
+  suspendedBy: int("suspendedBy").notNull(),
+  suspendedAt: timestamp("suspendedAt").defaultNow().notNull(),
+  reinstatedAt: timestamp("reinstatedAt"),
+  reinstatedBy: int("reinstatedBy"),
+  isActive: boolean("isActive").default(true).notNull(),
+});
+export type AccountSuspension = typeof accountSuspensions.$inferSelect;
+export type InsertAccountSuspension = typeof accountSuspensions.$inferInsert;
+
+// ─── Manual Account Credits ───────────────────────────────────────────────
+export const accountCredits = mysqlTable("account_credits", {
+  id: int("id").autoincrement().primaryKey(),
+  companyId: int("companyId").notNull(),
+  amountCents: int("amountCents").notNull(), // positive = credit, negative = debit
+  reason: text("reason").notNull(),
+  issuedBy: int("issuedBy").notNull(),
+  appliedToJobId: int("appliedToJobId"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type AccountCredit = typeof accountCredits.$inferSelect;
+export type InsertAccountCredit = typeof accountCredits.$inferInsert;
+
+// ─── Payout Holds ─────────────────────────────────────────────────────────
+export const payoutHolds = mysqlTable("payout_holds", {
+  id: int("id").autoincrement().primaryKey(),
+  contractorId: int("contractorId").notNull(),
+  reason: text("reason").notNull(),
+  placedBy: int("placedBy").notNull(),
+  placedAt: timestamp("placedAt").defaultNow().notNull(),
+  releasedAt: timestamp("releasedAt"),
+  releasedBy: int("releasedBy"),
+  isActive: boolean("isActive").default(true).notNull(),
+});
+export type PayoutHold = typeof payoutHolds.$inferSelect;
+export type InsertPayoutHold = typeof payoutHolds.$inferInsert;
+
+// ─── Platform Activity Events ─────────────────────────────────────────────
+export const activityEvents = mysqlTable("activity_events", {
+  id: int("id").autoincrement().primaryKey(),
+  eventType: varchar("eventType", { length: 64 }).notNull(),
+  title: varchar("title", { length: 255 }).notNull(),
+  description: text("description"),
+  actorId: int("actorId"),
+  actorName: varchar("actorName", { length: 255 }),
+  relatedId: int("relatedId"),
+  relatedType: varchar("relatedType", { length: 64 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type ActivityEvent = typeof activityEvents.$inferSelect;
+export type InsertActivityEvent = typeof activityEvents.$inferInsert;
+
+// ─── Platform Maintenance Mode ────────────────────────────────────────────
+// Single-row table for platform-wide maintenance mode toggle.
+export const maintenanceMode = mysqlTable("maintenance_mode", {
+  id: int("id").autoincrement().primaryKey(),
+  isEnabled: boolean("isEnabled").default(false).notNull(),
+  message: text("message"),
+  enabledBy: int("enabledBy"),
+  enabledAt: timestamp("enabledAt"),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type MaintenanceMode = typeof maintenanceMode.$inferSelect;
