@@ -1,14 +1,18 @@
+import { useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell,
 } from "recharts";
 import {
-  DollarSign, Building2, FileDown, TrendingUp, Wrench, Package, CreditCard,
+  DollarSign, Building2, FileDown, TrendingUp, Wrench, Package, CreditCard, Archive,
 } from "lucide-react";
+import { toast } from "sonner";
 
 function formatCurrency(val: string | number | null | undefined) {
   const n = parseFloat(String(val ?? "0"));
@@ -22,6 +26,14 @@ function formatMonth(ym: string) {
 }
 
 export default function CompanyExpenseReport() {
+  const today = new Date().toISOString().slice(0, 10);
+  const firstOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1)
+    .toISOString()
+    .slice(0, 10);
+  const [bulkFrom, setBulkFrom] = useState(firstOfMonth);
+  const [bulkTo, setBulkTo] = useState(today);
+  const [bulkLoading, setBulkLoading] = useState(false);
+
   const { data, isLoading } = trpc.transactions.expenseReport.useQuery(undefined, {
     refetchInterval: 60000,
   });
@@ -47,6 +59,40 @@ export default function CompanyExpenseReport() {
     a.download = `expense-report-${new Date().toISOString().slice(0, 10)}.csv`;
     a.click();
     URL.revokeObjectURL(url);
+  };
+
+  const handleBulkExport = async () => {
+    if (!bulkFrom || !bulkTo) {
+      toast.error("Please select both a start and end date.");
+      return;
+    }
+    if (bulkFrom > bulkTo) {
+      toast.error("Start date must be before end date.");
+      return;
+    }
+    setBulkLoading(true);
+    try {
+      const res = await fetch(`/api/invoices/bulk?from=${bulkFrom}&to=${bulkTo}`, {
+        credentials: "include",
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: "Unknown error" }));
+        toast.error(err.error ?? "Failed to export invoices");
+        return;
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `invoices-${bulkFrom}-${bulkTo}.zip`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success("Invoice ZIP downloaded successfully");
+    } catch {
+      toast.error("Failed to export invoices. Please try again.");
+    } finally {
+      setBulkLoading(false);
+    }
   };
 
   if (isLoading) {
@@ -91,6 +137,51 @@ export default function CompanyExpenseReport() {
           <FileDown className="h-4 w-4" /> Export CSV
         </Button>
       </div>
+
+      {/* Bulk Invoice Export */}
+      <Card className="bg-card border-border">
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-base">
+            <Archive className="h-4 w-4 text-amber-400" /> Bulk Invoice Export
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-muted-foreground mb-4">
+            Download a ZIP file containing individual PDF invoices for all paid jobs in a date range.
+            Useful for accounting, audits, and record-keeping.
+          </p>
+          <div className="flex flex-col sm:flex-row items-end gap-4">
+            <div className="flex-1 space-y-1.5">
+              <Label htmlFor="bulk-from" className="text-xs text-muted-foreground">From</Label>
+              <Input
+                id="bulk-from"
+                type="date"
+                value={bulkFrom}
+                onChange={(e) => setBulkFrom(e.target.value)}
+                className="bg-background border-border text-foreground"
+              />
+            </div>
+            <div className="flex-1 space-y-1.5">
+              <Label htmlFor="bulk-to" className="text-xs text-muted-foreground">To</Label>
+              <Input
+                id="bulk-to"
+                type="date"
+                value={bulkTo}
+                onChange={(e) => setBulkTo(e.target.value)}
+                className="bg-background border-border text-foreground"
+              />
+            </div>
+            <Button
+              onClick={handleBulkExport}
+              disabled={bulkLoading || !bulkFrom || !bulkTo}
+              className="gap-2 shrink-0"
+            >
+              <Archive className="h-4 w-4" />
+              {bulkLoading ? "Generating ZIP..." : "Download Invoices ZIP"}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Summary stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">

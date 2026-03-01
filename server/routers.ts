@@ -680,9 +680,57 @@ const contractorRouter = router({
         monthly,
       };
     }),
-});
 
-// ─── Maintenance Requests Router ────────────────────────────────────────────
+  getPayoutHistory: contractorProcedure
+    .input(z.object({
+      limit: z.number().min(1).max(100).optional().default(50),
+      startingAfter: z.string().optional(),
+    }).optional())
+    .query(async ({ ctx, input }) => {
+      const profile = await getEffectiveContractorProfile(ctx);
+      if (!profile) throw new TRPCError({ code: "NOT_FOUND" });
+      if (!profile.stripeAccountId || !profile.stripeOnboardingComplete) {
+        return { payouts: [], hasMore: false, connected: false };
+      }
+      // Fetch transfers sent to this contractor's Connect account
+      const params: Record<string, unknown> = {
+        destination: profile.stripeAccountId,
+        limit: input?.limit ?? 50,
+      };
+      if (input?.startingAfter) params.starting_after = input.startingAfter;
+      const transfers = await stripe.transfers.list(params as any);
+      // Enrich each transfer with job info from our DB via metadata
+      const payouts = await Promise.all(
+        transfers.data.map(async (t) => {
+          const jobId = t.metadata?.jobId ? parseInt(t.metadata.jobId) : null;
+          let jobTitle: string | null = null;
+          let propertyName: string | null = null;
+          if (jobId) {
+            const job = await db.getMaintenanceRequestById(jobId);
+            jobTitle = job?.title ?? null;
+            // propertyName requires a join — fetch separately if needed
+            if (job?.propertyId) {
+              const prop = await db.getPropertyByIdOnly(job.propertyId);
+              propertyName = prop?.name ?? null;
+            }
+          }
+          return {
+            id: t.id,
+            amount: t.amount / 100, // cents → dollars
+            currency: t.currency,
+            createdAt: t.created * 1000, // unix → ms
+            status: t.reversed ? "reversed" : "paid",
+            jobId,
+            jobTitle,
+            propertyName,
+            description: t.description ?? null,
+          };
+        })
+      );
+      return { payouts, hasMore: transfers.has_more, connected: true };
+    }),
+});
+// ─── Maintenance Requests Router ─────────────────────────────────────────────
 const jobsRouter = router({
   list: companyAdminProcedure
     .input(z.object({ status: z.union([z.string(), z.array(z.string())]).optional() }).optional())

@@ -675,3 +675,21 @@
 
 ## Bug Fixes (Current Session)
 - [x] Bug: Invite Contractor button not visible when logged in as a company user (non-admin) — stale viewAs localStorage from admin session; fixed by resetting viewAs in DashboardLayout for non-admin users
+
+## New Features (Current Session)
+
+### Contractor Payout History Page
+- [x] Backend: contractor.getPayoutHistory procedure — fetch Stripe Transfers for contractor's Connect account
+- [x] Frontend: /contractor/payouts page — itemized list of payouts (date, amount, job ref, status)
+- [x] Frontend: add "Payouts" nav item to contractor sidebar
+- [x] Frontend: link from ContractorBilling earnings section to /contractor/payouts
+
+### Job Assigned Email Notification
+- [x] Email: sendJobAssignedEmail — already wired in acceptJob procedure (pre-existing)
+- [x] Backend: fire sendJobAssignedEmail in jobBoard.accept mutation (contractor self-accepts) — already implemented
+- [x] Backend: fire sendJobAssignedEmail in jobs.assignContractor mutation — N/A (jobs are open and accepted, not directly assigned)
+
+### Company Invoice Bulk Export
+- [x] Backend: GET /api/invoices/bulk?from=&to= — streams ZIP of PDFs for paid jobs in date range
+- [x] Frontend: Expense Report page — Bulk Invoice Export card with date range picker
+- [x] Frontend: trigger download of ZIP file on success with toast notification

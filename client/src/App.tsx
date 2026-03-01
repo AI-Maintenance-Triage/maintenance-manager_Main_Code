@@ -26,6 +26,7 @@ import ContractorMyJobs from "./pages/contractor/ContractorMyJobs";
 import ContractorProfile from "./pages/contractor/ContractorProfile";
 import ContractorEarnings from "./pages/contractor/ContractorEarnings";
 import ContractorBilling from "./pages/contractor/ContractorBilling";
+import ContractorPayouts from "./pages/contractor/ContractorPayouts";
 import PlatformDashboard from "./pages/admin/PlatformDashboard";
 import AdminCompanies from "./pages/admin/AdminCompanies";
 import AdminSubscriptionPlans from "./pages/admin/AdminSubscriptionPlans";
@@ -87,6 +88,9 @@ function Router() {
       </Route>
       <Route path="/contractor/earnings">
         <DashboardLayout><ContractorEarnings /></DashboardLayout>
+      </Route>
+      <Route path="/contractor/payouts">
+        <DashboardLayout><ContractorPayouts /></DashboardLayout>
       </Route>
       <Route path="/contractor/billing">
         <DashboardLayout><ContractorBilling /></DashboardLayout>

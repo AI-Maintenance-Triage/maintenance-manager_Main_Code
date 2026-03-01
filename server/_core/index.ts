@@ -8,6 +8,7 @@ import { registerLocalAuthRoutes } from "../auth-local";
 import { registerUploadRoute } from "../upload";
 import { registerStripeWebhookRoute } from "../stripe-webhook";
 import { registerInvoiceRoute } from "../invoice";
+import { registerInvoiceBulkRoute } from "../invoice-bulk";
 import { registerReceiptRoute } from "../receipt";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
@@ -49,6 +50,8 @@ async function startServer() {
   registerUploadRoute(app);
   // Invoice PDF download endpoint
   registerInvoiceRoute(app);
+  // Bulk invoice ZIP export endpoint
+  registerInvoiceBulkRoute(app);
   // Contractor payment receipt PDF endpoint
   registerReceiptRoute(app);
   // tRPC API

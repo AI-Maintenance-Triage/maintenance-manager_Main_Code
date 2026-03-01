@@ -25,7 +25,7 @@ import { trpc } from "@/lib/trpc";
 import {
   LayoutDashboard, LogOut, PanelLeft, Building2, Wrench,
   ClipboardList, MapPin, Settings, Briefcase,
-  UserCircle, Shield, HardHat, ChevronDown, ArrowLeft, CheckSquare, Navigation2, DollarSign, BarChart2, CreditCard,
+  UserCircle, Shield, HardHat, ChevronDown, ArrowLeft, CheckSquare, Navigation2, DollarSign, BarChart2, CreditCard, Banknote,
 } from "lucide-react";
 import { CSSProperties, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "wouter";
@@ -75,6 +75,7 @@ const contractorSections: MenuSection[] = [
       { icon: Wrench, label: "My Jobs", path: "/contractor/my-jobs" },
       { icon: UserCircle, label: "Profile", path: "/contractor/profile" },
       { icon: DollarSign, label: "Earnings", path: "/contractor/earnings" },
+      { icon: Banknote, label: "Payouts", path: "/contractor/payouts" },
       { icon: CreditCard, label: "Billing", path: "/contractor/billing" },
     ],
   },
