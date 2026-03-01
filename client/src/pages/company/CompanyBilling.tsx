@@ -6,11 +6,23 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Progress } from "@/components/ui/progress";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 import {
   CreditCard, FileText, DollarSign, TrendingUp, Calendar, Download,
   Check, X, Building2, Users, ClipboardList, ArrowUpRight, Zap,
-  Star, Shield, Crown, CheckCircle2, AlertCircle, XCircle,
+  Star, Shield, Crown, CheckCircle2, AlertCircle, XCircle, ExternalLink,
+  Receipt,
 } from "lucide-react";
 
 const COMPANY_FEATURE_LABELS: Record<string, string> = {
@@ -33,6 +45,10 @@ function fmt(val: string | number | null | undefined) {
   return isNaN(n) ? "$0.00" : `$${n.toFixed(2)}`;
 }
 
+function fmtCents(cents: number, currency = "usd") {
+  return new Intl.NumberFormat("en-US", { style: "currency", currency: currency.toUpperCase() }).format(cents / 100);
+}
+
 function statusColor(status: string) {
   switch (status) {
     case "captured":
@@ -41,6 +57,16 @@ function statusColor(status: string) {
     case "escrow": return "bg-yellow-500/15 text-yellow-400 border-yellow-500/30";
     case "refunded": return "bg-blue-500/15 text-blue-400 border-blue-500/30";
     case "failed": return "bg-red-500/15 text-red-400 border-red-500/30";
+    default: return "bg-secondary text-muted-foreground";
+  }
+}
+
+function invoiceStatusColor(status: string | null) {
+  switch (status) {
+    case "paid": return "bg-green-500/15 text-green-400 border-green-500/30";
+    case "open": return "bg-yellow-500/15 text-yellow-400 border-yellow-500/30";
+    case "void": return "bg-secondary text-muted-foreground";
+    case "uncollectible": return "bg-red-500/15 text-red-400 border-red-500/30";
     default: return "bg-secondary text-muted-foreground";
   }
 }
@@ -64,6 +90,7 @@ export default function CompanyBilling() {
   const { data: txns, isLoading: txnsLoading } = trpc.transactions.listByCompany.useQuery();
   const { data: planData, isLoading: planLoading } = trpc.company.getMyPlan.useQuery();
   const { data: availablePlans, isLoading: plansLoading } = trpc.company.listAvailablePlans.useQuery();
+  const { data: invoicesData, isLoading: invoicesLoading } = trpc.stripePayments.getInvoices.useQuery();
 
   const createCheckout = trpc.stripePayments.createPlanCheckout.useMutation({
     onSuccess: (data) => {
@@ -82,9 +109,11 @@ export default function CompanyBilling() {
   const cancelSubscription = trpc.stripePayments.cancelPlanSubscription.useMutation({
     onSuccess: (data) => {
       toast.success("Subscription canceled", { description: data.message });
+      utils.company.getMyPlan.invalidate();
+      utils.stripePayments.getInvoices.invalidate();
     },
     onError: (err) => {
-      toast.error(err.message);
+      toast.error("Cancellation failed", { description: err.message });
     },
   });
 
@@ -99,6 +128,7 @@ export default function CompanyBilling() {
       setTimeout(() => {
         utils.company.getMyPlan.invalidate();
         utils.company.listAvailablePlans.invalidate();
+        utils.stripePayments.getInvoices.invalidate();
       }, 2500);
     } else if (sub === "canceled") {
       toast.info("Checkout canceled", { description: "No changes were made." });
@@ -120,6 +150,7 @@ export default function CompanyBilling() {
   const planPriceOverride = planData?.planPriceOverride;
   const planStatus = planData?.planStatus ?? null;
   const daysRemaining = planData?.daysRemaining ?? null;
+  const invoices = invoicesData?.invoices ?? [];
 
   const totalCharged = txns?.reduce((s, t) => s + parseFloat(String(t.totalCharged ?? "0")), 0) ?? 0;
   const totalFees = txns?.reduce((s, t) => s + parseFloat(String(t.platformFee ?? "0")), 0) ?? 0;
@@ -127,6 +158,7 @@ export default function CompanyBilling() {
   const totalParts = txns?.reduce((s, t) => s + parseFloat(String(t.partsCost ?? "0")), 0) ?? 0;
 
   const activePlans = (availablePlans ?? []).filter((p) => p.isActive).sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
+  const canCancel = planStatus === "active" || planStatus === "trialing";
 
   return (
     <div className="space-y-8">
@@ -143,8 +175,8 @@ export default function CompanyBilling() {
       ) : (
         <Card className="bg-card border-border">
           <CardContent className="p-6">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div className="space-y-1">
+            <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+              <div className="space-y-1 flex-1">
                 <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Current Plan</p>
                 <div className="flex items-center gap-2 flex-wrap">
                   <h2 className="text-xl font-bold text-foreground">{plan?.name ?? "No Plan"}</h2>
@@ -172,20 +204,60 @@ export default function CompanyBilling() {
                     <span>Your trial ends in {daysRemaining} day{daysRemaining !== 1 ? "s" : ""}. Subscribe now to avoid service interruption.</span>
                   </div>
                 )}
+                {planStatus === "canceled" && (
+                  <div className="mt-2 flex items-center gap-2 text-sm text-yellow-400 bg-yellow-500/10 border border-yellow-500/20 rounded-md px-3 py-2">
+                    <AlertCircle className="h-4 w-4 shrink-0" />
+                    <span>Your subscription is set to cancel at the end of the current billing period. You can resubscribe at any time.</span>
+                  </div>
+                )}
               </div>
-              {plan && (
-                <div className="text-right shrink-0">
-                  <p className="text-3xl font-bold text-foreground">
-                    {planPriceOverride
-                      ? `$${parseFloat(planPriceOverride).toFixed(0)}`
-                      : `$${parseFloat(plan.priceMonthly ?? "0").toFixed(0)}`}
-                    <span className="text-sm font-normal text-muted-foreground">/mo</span>
-                  </p>
-                  {planPriceOverride && (
-                    <p className="text-xs text-muted-foreground line-through">${parseFloat(plan.priceMonthly ?? "0").toFixed(0)}/mo standard</p>
-                  )}
-                </div>
-              )}
+              <div className="flex flex-col items-end gap-3 shrink-0">
+                {plan && (
+                  <div className="text-right">
+                    <p className="text-3xl font-bold text-foreground">
+                      {planPriceOverride
+                        ? `$${parseFloat(planPriceOverride).toFixed(0)}`
+                        : `$${parseFloat(plan.priceMonthly ?? "0").toFixed(0)}`}
+                      <span className="text-sm font-normal text-muted-foreground">/mo</span>
+                    </p>
+                    {planPriceOverride && (
+                      <p className="text-xs text-muted-foreground line-through">${parseFloat(plan.priceMonthly ?? "0").toFixed(0)}/mo standard</p>
+                    )}
+                  </div>
+                )}
+                {plan && canCancel && (
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="border-red-500/30 text-red-400 hover:bg-red-500/10 hover:text-red-300"
+                        disabled={cancelSubscription.isPending}
+                      >
+                        <XCircle className="h-3.5 w-3.5 mr-1.5" />
+                        {cancelSubscription.isPending ? "Canceling..." : "Cancel Subscription"}
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Cancel your subscription?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          Your <strong>{plan.name}</strong> subscription will remain active until the end of the current billing period. After that, your account will revert to no plan and access to paid features will be restricted. You can resubscribe at any time.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Keep Subscription</AlertDialogCancel>
+                        <AlertDialogAction
+                          className="bg-red-600 hover:bg-red-700 text-white"
+                          onClick={() => cancelSubscription.mutate()}
+                        >
+                          Yes, Cancel Subscription
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                )}
+              </div>
             </div>
 
             {/* Usage gauges */}
@@ -219,7 +291,7 @@ export default function CompanyBilling() {
         <div className="flex items-center justify-between mb-4">
           <div>
             <h2 className="text-lg font-semibold text-foreground">Available Plans</h2>
-            <p className="text-sm text-muted-foreground">Choose the plan that fits your business</p>
+            <p className="text-sm text-muted-foreground">Choose the plan that best fits your portfolio size</p>
           </div>
           {/* Billing interval toggle */}
           <div className="flex items-center gap-1 bg-secondary rounded-lg p-1">
@@ -367,9 +439,101 @@ export default function CompanyBilling() {
         )}
       </div>
 
-      {/* Summary cards */}
+      {/* Stripe Subscription Invoices */}
       <div>
-        <h2 className="text-lg font-semibold text-foreground mb-4">Payment History</h2>
+        <h2 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
+          <Receipt className="h-5 w-5 text-primary" /> Subscription Invoices
+        </h2>
+        <Card className="bg-card border-border">
+          <CardHeader>
+            <CardTitle className="text-card-foreground">Stripe Invoices</CardTitle>
+            <CardDescription>Your subscription billing history from Stripe</CardDescription>
+          </CardHeader>
+          <CardContent className="p-0">
+            {invoicesLoading ? (
+              <div className="p-6 space-y-3">
+                {[1, 2, 3].map(i => <Skeleton key={i} className="h-12 w-full" />)}
+              </div>
+            ) : invoices.length === 0 ? (
+              <div className="p-12 text-center">
+                <Receipt className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
+                <p className="text-muted-foreground">No subscription invoices yet. They will appear here after your first billing cycle.</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-border">
+                      <th className="text-left px-4 py-3 text-muted-foreground font-medium">Invoice #</th>
+                      <th className="text-left px-4 py-3 text-muted-foreground font-medium">Date</th>
+                      <th className="text-left px-4 py-3 text-muted-foreground font-medium">Description</th>
+                      <th className="text-right px-4 py-3 text-muted-foreground font-medium">Amount</th>
+                      <th className="text-center px-4 py-3 text-muted-foreground font-medium">Status</th>
+                      <th className="text-center px-4 py-3 text-muted-foreground font-medium">Download</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {invoices.map((inv) => (
+                      <tr key={inv.id} className="border-b border-border/50 hover:bg-secondary/30 transition-colors">
+                        <td className="px-4 py-3 text-muted-foreground font-mono text-xs">{inv.number ?? inv.id.slice(0, 12)}</td>
+                        <td className="px-4 py-3 text-muted-foreground whitespace-nowrap">
+                          <div className="flex items-center gap-1.5">
+                            <Calendar className="h-3.5 w-3.5" />
+                            {new Date(inv.created * 1000).toLocaleDateString()}
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 text-foreground max-w-[200px]">
+                          <div className="truncate">{inv.description ?? "Subscription"}</div>
+                          <div className="text-xs text-muted-foreground">
+                            {new Date(inv.periodStart * 1000).toLocaleDateString()} – {new Date(inv.periodEnd * 1000).toLocaleDateString()}
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 text-right font-semibold text-foreground">
+                          {fmtCents(inv.amountPaid, inv.currency)}
+                        </td>
+                        <td className="px-4 py-3 text-center">
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border ${invoiceStatusColor(inv.status)}`}>
+                            {inv.status ?? "unknown"}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-center">
+                          <div className="flex items-center justify-center gap-1">
+                            {inv.invoicePdf && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-7 px-2 text-xs text-primary hover:text-primary"
+                                onClick={() => window.open(inv.invoicePdf!, "_blank")}
+                              >
+                                <Download className="h-3.5 w-3.5 mr-1" />
+                                PDF
+                              </Button>
+                            )}
+                            {inv.hostedInvoiceUrl && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground"
+                                onClick={() => window.open(inv.hostedInvoiceUrl!, "_blank")}
+                              >
+                                <ExternalLink className="h-3.5 w-3.5" />
+                              </Button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Job Transaction History */}
+      <div>
+        <h2 className="text-lg font-semibold text-foreground mb-4">Job Payment History</h2>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
           {[
             { icon: DollarSign, color: "text-primary", label: "Total Billed", value: fmt(totalCharged), sub: `${txns?.length ?? 0} transactions` },
@@ -393,7 +557,7 @@ export default function CompanyBilling() {
         {/* Transaction table */}
         <Card className="bg-card border-border">
           <CardHeader>
-            <CardTitle className="text-card-foreground">Transactions</CardTitle>
+            <CardTitle className="text-card-foreground">Job Transactions</CardTitle>
             <CardDescription>Click "PDF" to download an invoice for any charge</CardDescription>
           </CardHeader>
           <CardContent className="p-0">
@@ -435,7 +599,7 @@ export default function CompanyBilling() {
                           {(t as any).propertyName && <div className="text-xs text-muted-foreground truncate">{(t as any).propertyName}</div>}
                         </td>
                         <td className="px-4 py-3 text-right text-foreground">{fmt(t.laborCost)}</td>
-                        <td className="px-4 py-3 text-right text-foreground">{fmt(t.partsCost)}</td>
+                        <td className="px-4 py-3 text-right text-muted-foreground">{fmt(t.partsCost)}</td>
                         <td className="px-4 py-3 text-right text-muted-foreground">{fmt(t.platformFee)}</td>
                         <td className="px-4 py-3 text-right font-semibold text-foreground">{fmt(t.totalCharged)}</td>
                         <td className="px-4 py-3 text-center">

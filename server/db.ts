@@ -2106,7 +2106,7 @@ export async function getContractorsInServiceArea(
   propertyLat: number,
   propertyLng: number,
   requiredTrade?: string | null,
-): Promise<Array<{ id: number; userId: number; name: string | null; email: string | null; trades: string[] | null }>> {
+): Promise<Array<{ id: number; userId: number; name: string | null; email: string | null; trades: string[] | null; earlyNotificationMinutes: number }>> {
   const db = await getDb();
   if (!db) return [];
 
@@ -2121,9 +2121,11 @@ export async function getContractorsInServiceArea(
       isAvailable: contractorProfiles.isAvailable,
       name: users.name,
       email: users.email,
+      planEarlyMinutes: subscriptionPlans.earlyNotificationMinutes,
     })
     .from(contractorProfiles)
     .innerJoin(users, eq(contractorProfiles.userId, users.id))
+    .leftJoin(subscriptionPlans, eq(contractorProfiles.planId, subscriptionPlans.id))
     .where(
       and(
         eq(contractorProfiles.isAvailable, true),
@@ -2132,7 +2134,7 @@ export async function getContractorsInServiceArea(
       )
     );
 
-  const results: Array<{ id: number; userId: number; name: string | null; email: string | null; trades: string[] | null }> = [];
+  const results: Array<{ id: number; userId: number; name: string | null; email: string | null; trades: string[] | null; earlyNotificationMinutes: number }> = [];
 
   for (const row of rows) {
     const cLat = row.latitude ? parseFloat(String(row.latitude)) : null;
@@ -2159,6 +2161,7 @@ export async function getContractorsInServiceArea(
       name: row.name,
       email: row.email,
       trades: row.trades as string[] | null,
+      earlyNotificationMinutes: row.planEarlyMinutes ?? 0,
     });
   }
 

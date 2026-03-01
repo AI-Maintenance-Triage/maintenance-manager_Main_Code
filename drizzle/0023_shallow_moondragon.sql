@@ -1,0 +1,1 @@
+ALTER TABLE `subscription_plans` ADD `earlyNotificationMinutes` int DEFAULT 0 NOT NULL;

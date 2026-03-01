@@ -1,0 +1,8 @@
+{
+  "query": "SELECT id, name, planType, priceMonthly, priceAnnual, earlyNotificationMinutes, isActive FROM subscriptionPlans ORDER BY planType, id",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user sHLCts4RR6iL2PA.1ead08cf1a54 --database bBuQZrfKLoBs6LmtvQ4y6E --execute SELECT id, name, planType, priceMonthly, priceAnnual, earlyNotificationMinutes, isActive FROM subscriptionPlans ORDER BY planType, id",
+  "returncode": 1,
+  "logs": [
+    "ERROR 1146 (42S02) at line 1: Table 'bbuqzrfklobs6lmtvq4y6e.subscriptionPlans' doesn't exist"
+  ]
+}

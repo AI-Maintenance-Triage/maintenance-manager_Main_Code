@@ -449,6 +449,8 @@ export const subscriptionPlans = mysqlTable("subscription_plans", {
     customBranding?: boolean;
     prioritySupport?: boolean;
   }>(),
+  // For contractor plans: how many minutes before free-tier contractors they get notified of new jobs
+  earlyNotificationMinutes: int("earlyNotificationMinutes").default(0).notNull(),
   isActive: boolean("isActive").default(true).notNull(),
   sortOrder: int("sortOrder").default(0).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),

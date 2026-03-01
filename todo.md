@@ -757,3 +757,37 @@
 - [x] Database confirmed: planId=1, planStatus=active, stripeCustomerId, stripeSubscriptionId all set
 - [x] Billing page shows Pro — Active — $99/mo with usage gauges after server restart
 - [x] Fix: billing page stale cache after checkout success (added 2.5s invalidation + 5s polling)
+
+## Plan Expansion + Stripe Next Steps (Session 20)
+
+### Company Plans (3 total)
+- [x] Stripe: create "Starter" product at $49/mo + $490/yr
+- [x] Stripe: update "Pro" product to add $990/yr annual price
+- [x] Stripe: create "Enterprise" product at $199/mo + $1990/yr
+- [x] Admin UI: update Pro plan with feature flags and property limit (25 properties)
+- [x] Admin UI: create Starter plan ($49/mo, 5 properties, limited features)
+- [x] Admin UI: create Enterprise plan ($199/mo, unlimited properties, all features)
+
+### Contractor Plans (2 total)
+- [x] Stripe: create "Pro Contractor" product at $29/mo + $290/yr
+- [x] Admin UI: create Free Contractor plan (no Stripe, standard job notification timing)
+- [x] Admin UI: create Pro Contractor plan ($29/mo, 20-min early job notification)
+
+### 20-Minute Early Notification Advantage
+- [x] Schema: add earlyNotificationMinutes to subscription_plans (default 0, Pro=20)
+- [x] Backend: jobBoard.post fan-out — check contractor plan, delay free-tier notifications by 20 min
+- [x] Backend: use a scheduled/delayed notification queue (or setTimeout) for free-tier contractors
+- [x] Frontend: contractor billing page — show "20-min early access" badge on Pro plan card
+
+### Subscription Cancellation Flow
+- [x] Backend: billing.cancelSubscription mutation — call stripe.subscriptions.cancel(), set planStatus=canceled
+- [x] Frontend: billing page — "Cancel Subscription" button with confirmation dialog
+- [x] Frontend: billing page — show cancellation date / end-of-period info after cancel
+
+### Annual Billing Toggle
+- [x] Backend: checkout session creation — use stripePriceIdAnnual when billing=annual
+- [x] Frontend: billing page — Monthly/Annual toggle wires to correct Stripe price on checkout
+
+### Stripe Invoice History
+- [x] Backend: billing.getInvoices procedure — fetch stripe.invoices.list({ customer }) 
+- [x] Frontend: billing page Payment History — show real Stripe invoices (date, amount, status, PDF link)

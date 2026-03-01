@@ -1519,8 +1519,8 @@ const jobBoardRouter = router({
           const contractors = await db.getContractorsInServiceArea(propLat, propLng, trade);
           console.log(`[JobBoard] Notifying ${contractors.length} contractors for job #${job.id}`);
 
-          for (const contractor of contractors) {
-            // In-app notification
+          // Helper: send in-app + email notification to a single contractor
+          const notifyContractor = async (contractor: typeof contractors[number]) => {
             await db.createNotification({
               userId: contractor.userId,
               type: "new_job",
@@ -1529,8 +1529,6 @@ const jobBoardRouter = router({
               linkRoute: "/contractor/job-board",
               metadata: { jobId: job.id, urgency, cityState },
             });
-
-            // Email notification
             if (contractor.email) {
               await email.sendNewJobPostedEmail({
                 to: contractor.email,
@@ -1542,6 +1540,33 @@ const jobBoardRouter = router({
                 companyName: company?.name ?? "A property management company",
                 jobBoardUrl,
               });
+            }
+          };
+
+          // Split contractors by plan tier
+          const proContractors = contractors.filter((c) => c.earlyNotificationMinutes > 0);
+          const freeContractors = contractors.filter((c) => c.earlyNotificationMinutes === 0);
+
+          // Notify Pro contractors immediately
+          for (const contractor of proContractors) {
+            await notifyContractor(contractor);
+          }
+
+          // Notify free-tier contractors after the maximum early-access delay
+          const delayMs = proContractors.length > 0
+            ? Math.max(...proContractors.map((c) => c.earlyNotificationMinutes)) * 60 * 1000
+            : 0;
+
+          if (delayMs > 0) {
+            console.log(`[JobBoard] Free-tier contractors will be notified in ${delayMs / 60000} min`);
+            setTimeout(async () => {
+              for (const contractor of freeContractors) {
+                try { await notifyContractor(contractor); } catch (e) { /* ignore */ }
+              }
+            }, delayMs);
+          } else {
+            for (const contractor of freeContractors) {
+              await notifyContractor(contractor);
             }
           }
         } catch (err) {
@@ -1869,6 +1894,65 @@ const stripeRouter = router({
       await detachPaymentMethod(input.paymentMethodId);
       return { success: true };
     }),
+
+  // Company: list Stripe subscription invoices
+  getInvoices: companyAdminProcedure.query(async ({ ctx }) => {
+    const companyId = getEffectiveCompanyId(ctx);
+    const company = await db.getCompanyById(companyId);
+    if (!company?.stripeCustomerId) return { invoices: [] };
+    const invoiceList = await stripe.invoices.list({
+      customer: company.stripeCustomerId,
+      limit: 24,
+      expand: ["data.subscription"],
+    });
+    return {
+      invoices: invoiceList.data.map((inv) => ({
+        id: inv.id,
+        number: inv.number,
+        status: inv.status,
+        amountPaid: inv.amount_paid,
+        currency: inv.currency,
+        periodStart: inv.period_start,
+        periodEnd: inv.period_end,
+        created: inv.created,
+        invoicePdf: inv.invoice_pdf,
+        hostedInvoiceUrl: inv.hosted_invoice_url,
+        description: inv.description ?? (inv.lines?.data?.[0]?.description ?? null),
+      })),
+    };
+  }),
+
+  // Contractor: list Stripe subscription invoices
+  getContractorInvoices: contractorProcedure.query(async ({ ctx }) => {
+    const profile = await db.getContractorProfile(ctx.user.id);
+    if (!profile?.stripeAccountId && !profile) return { invoices: [] };
+    // Find Stripe customer by contractor profile
+    const customers = await stripe.customers.search({
+      query: `metadata['contractor_profile_id']:'${profile.id}'`,
+      limit: 1,
+    });
+    const customerId = customers.data[0]?.id;
+    if (!customerId) return { invoices: [] };
+    const invoiceList = await stripe.invoices.list({
+      customer: customerId,
+      limit: 24,
+    });
+    return {
+      invoices: invoiceList.data.map((inv) => ({
+        id: inv.id,
+        number: inv.number,
+        status: inv.status,
+        amountPaid: inv.amount_paid,
+        currency: inv.currency,
+        periodStart: inv.period_start,
+        periodEnd: inv.period_end,
+        created: inv.created,
+        invoicePdf: inv.invoice_pdf,
+        hostedInvoiceUrl: inv.hosted_invoice_url,
+        description: inv.description ?? (inv.lines?.data?.[0]?.description ?? null),
+      })),
+    };
+  }),
 });
 // ─── Platform Admin Router ──────────────────────────────────────────────────
 const platformRouter = router({
