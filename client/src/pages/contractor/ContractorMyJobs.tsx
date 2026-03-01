@@ -10,10 +10,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import {
   Clock, CheckCircle, Play, Square, AlertCircle, Camera, CheckCheck,
-  XCircle, Loader2, Navigation2, MapPin, Wifi, WifiOff,
+  XCircle, Loader2, Navigation2, MapPin, Wifi, WifiOff, MessageSquare,
 } from "lucide-react";
 import { useState, useRef, useEffect, useCallback } from "react";
 import { toast } from "sonner";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { JobComments } from "@/components/JobComments";
 
 const STATUS_COLORS: Record<string, string> = {
   assigned: "bg-yellow-500/20 text-yellow-400 border-yellow-500/30",
@@ -148,8 +150,9 @@ export default function ContractorMyJobs() {
 
 function JobCard({ row, onUpdate, readOnly = false }: { row: any; onUpdate: () => void; readOnly?: boolean }) {
   const { job, property } = row;
+  const [showComments, setShowComments] = useState(false);
 
-  // ── Clock-in/out session state ───────────────────────────────────────────
+  // ── Clock-in/out session state ───────────────────────────────────────────────
   const [activeSessionId, setActiveSessionId] = useState<number | null>(null);
   const [gettingLocation, setGettingLocation] = useState(false);
   const [showCompleteDialog, setShowCompleteDialog] = useState(false);
@@ -470,7 +473,18 @@ function JobCard({ row, onUpdate, readOnly = false }: { row: any; onUpdate: () =
               )}
             </div>
 
-            {!readOnly && (
+              {/* Notes button — always visible */}
+              <div className="flex flex-col gap-2 shrink-0 mr-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="text-xs gap-1 h-7"
+                  onClick={() => setShowComments(true)}
+                >
+                  <MessageSquare className="h-3 w-3" /> Notes
+                </Button>
+              </div>
+              {!readOnly && (
               <div className="flex flex-col gap-2 shrink-0">
                 {job.status === "assigned" && !activeSessionId && (
                   <Button
@@ -575,6 +589,16 @@ function JobCard({ row, onUpdate, readOnly = false }: { row: any; onUpdate: () =
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      <Sheet open={showComments} onOpenChange={setShowComments}>
+        <SheetContent side="right" className="w-full sm:max-w-md p-0 flex flex-col">
+          <SheetHeader className="px-4 pt-4 pb-0 shrink-0">
+            <SheetTitle className="text-base truncate">{job.title}</SheetTitle>
+          </SheetHeader>
+          <div className="flex-1 min-h-0 overflow-hidden">
+            <JobComments maintenanceRequestId={job.id} />
+          </div>
+        </SheetContent>
+      </Sheet>
     </>
   );
 }

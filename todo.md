@@ -370,3 +370,24 @@
 - [x] Invoice PDF: includes job details, labor hours/rate, parts cost, platform fee, total charged, payment references
 - [x] Invoice PDF: "Invoice" download button on verified/paid job cards in CompanyJobs
 - [x] Invoice PDF: auth-protected endpoint (company owner or admin only)
+
+## Session 12: Verification Cost Breakdown Bug Fix
+- [ ] Bug: verification dialog shows $0 labor — fix getJobsPendingVerification to join time sessions and sum totalLaborMinutes
+- [ ] Bug: hourly rate not shown — ensure hourlyRate from job is passed to verification dialog
+- [ ] Fix: cost breakdown shows Labor Time (hours:minutes), Hourly Rate, Parts & Materials, Platform Fee (live %), Total
+- [ ] Fix: platform fee % is live-fetched from platformSettings (admin-adjustable, default 5%)
+- [ ] Fix: if no time session exists, show "No time recorded" with explanation instead of $0
+- [ ] Add: View Route button on verification card (before approving) opens RouteReplayDialog
+
+## Session 12: Expense Report, Ratings, Job Comments
+- [x] Company expense report: /company/reports page
+- [x] Expense report: monthly spend totals chart (last 12 months)
+- [x] Expense report: per-property cost breakdown table
+- [x] Expense report: CSV export button
+- [x] Contractor rating: 1-5 star rating + review text after job paid
+- [ ] Contractor rating: ratings visible on contractor profile and job board cards
+- [ ] Contractor rating: average rating shown in company's contractor list
+- [x] Job comments: back-and-forth message thread on each job card
+- [x] Job comments: visible to both company and contractor
+- [x] Job comments: real-time-style polling (15s refresh while open)
+- [x] Job comments: company sidebar nav item for Reports

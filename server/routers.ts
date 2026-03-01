@@ -399,7 +399,26 @@ const contractorRouter = router({
     .mutation(async ({ ctx, input }) => {
       const profile = await getEffectiveContractorProfile(ctx);
       if (!profile) throw new TRPCError({ code: "NOT_FOUND" });
-      await db.markJobComplete(input.jobId, profile.id, input.completionNotes, input.completionPhotoUrls);
+      // Calculate labor cost from completed time sessions before marking complete
+      const sessions = await db.getTimeSessionsByJob(input.jobId);
+      const completedSessions = sessions.filter((s: any) => s.status === "completed" && s.totalMinutes);
+      const totalLaborMinutes = completedSessions.reduce((sum: number, s: any) => sum + (s.totalMinutes ?? 0), 0);
+      // Get job to find hourlyRate
+      const jobs = await db.getContractorJobs(profile.id);
+      const job = jobs.find((j: any) => j.job.id === input.jobId);
+      const hourlyRate = parseFloat(job?.job?.hourlyRate ?? "0");
+      const totalLaborCost = hourlyRate > 0 && totalLaborMinutes > 0
+        ? ((totalLaborMinutes / 60) * hourlyRate).toFixed(2)
+        : null;
+      await db.markJobComplete(
+        input.jobId,
+        profile.id,
+        input.completionNotes,
+        input.completionPhotoUrls,
+        totalLaborMinutes > 0 ? totalLaborMinutes : null,
+        totalLaborCost,
+        hourlyRate > 0 ? hourlyRate.toFixed(2) : null
+      );
       return { success: true };
     }),
 
@@ -702,12 +721,18 @@ const timeTrackingRouter = router({
     }))
     .mutation(async ({ ctx, input }) => {
       const clockOutTime = Date.now();
+      // Calculate totalMinutes from clockInTime before updating
+      const existingSession = await db.getTimeSessionById(input.sessionId);
+      const totalMinutes = existingSession?.clockInTime
+        ? Math.max(1, Math.round((clockOutTime - existingSession.clockInTime) / 60000))
+        : null;
       await db.updateTimeSession(input.sessionId, {
         clockOutTime,
         clockOutLat: input.latitude,
         clockOutLng: input.longitude,
         clockOutMethod: input.method ?? "manual",
         status: "completed",
+        ...(totalMinutes !== null && { totalMinutes, billableMinutes: totalMinutes }),
       });
 
       // Notify company owner that contractor clocked out (if preference enabled)
@@ -876,6 +901,87 @@ const transactionsRouter = router({
     if (!profile) return [];
     return db.getTransactionsByContractor(profile.id);
   }),
+  expenseReport: companyAdminProcedure.query(async ({ ctx }) => {
+    const companyId = getEffectiveCompanyId(ctx);
+    if (!companyId) throw new TRPCError({ code: "NOT_FOUND" });
+    return db.getCompanyExpenseReport(companyId);
+  }),
+});
+
+// ─── Ratings Router ──────────────────────────────────────────────────────────
+const ratingsRouter = router({
+  // Company: submit a rating for a contractor after a paid job
+  submit: companyAdminProcedure
+    .input(z.object({
+      maintenanceRequestId: z.number(),
+      stars: z.number().int().min(1).max(5),
+      review: z.string().max(1000).optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const companyId = getEffectiveCompanyId(ctx);
+      // Verify the job belongs to this company and is paid
+      const job = await db.getMaintenanceRequestById(input.maintenanceRequestId);
+      if (!job || job.companyId !== companyId) throw new TRPCError({ code: "NOT_FOUND" });
+      if (!['verified', 'paid'].includes(job.status)) throw new TRPCError({ code: "BAD_REQUEST", message: "Job must be verified or paid to rate" });
+      if (!job.assignedContractorId) throw new TRPCError({ code: "BAD_REQUEST", message: "No contractor assigned" });
+      // Check if already rated
+      const existing = await db.getRatingForJob(input.maintenanceRequestId, companyId);
+      if (existing) throw new TRPCError({ code: "CONFLICT", message: "Already rated" });
+      await db.createRating({
+        maintenanceRequestId: input.maintenanceRequestId,
+        contractorProfileId: job.assignedContractorId,
+        companyId,
+        ratedByUserId: ctx.user.id,
+        stars: input.stars,
+        review: input.review ?? null,
+      });
+      // Recalculate contractor average rating
+      await db.recalcContractorRating(job.assignedContractorId);
+      return { success: true };
+    }),
+
+  // Get existing rating for a job (company view)
+  forJob: companyAdminProcedure
+    .input(z.object({ maintenanceRequestId: z.number() }))
+    .query(async ({ ctx, input }) => {
+      const companyId = getEffectiveCompanyId(ctx);
+      return db.getRatingForJob(input.maintenanceRequestId, companyId);
+    }),
+
+  // Contractor: view all ratings received
+  myRatings: contractorProcedure.query(async ({ ctx }) => {
+    const profile = await getEffectiveContractorProfile(ctx);
+    return db.getRatingsByContractor(profile.id);
+  }),
+});
+
+// ─── Comments Router ───────────────────────────────────────────────────────────
+const commentsRouter = router({
+  list: protectedProcedure
+    .input(z.object({ maintenanceRequestId: z.number() }))
+    .query(async ({ input }) => {
+      return db.getJobComments(input.maintenanceRequestId);
+    }),
+
+  add: protectedProcedure
+    .input(z.object({
+      maintenanceRequestId: z.number(),
+      message: z.string().min(1).max(2000),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const role = ctx.user.role as string;
+      const authorRole = (role === 'company_admin' || role === 'admin' || role === 'contractor')
+        ? role as 'company_admin' | 'contractor' | 'admin'
+        : 'company_admin' as const;
+      await db.addJobComment({
+        maintenanceRequestId: input.maintenanceRequestId,
+        authorUserId: ctx.user.id,
+        authorRole,
+        authorName: ctx.user.name ?? 'Unknown',
+        message: input.message,
+      });
+      return { success: true };
+    }),
 });
 
 // ─── Job Board Router ─────────────────────────────────────────────────────
@@ -1041,9 +1147,15 @@ const platformRouter = router({
   stats: adminProcedure.query(async () => {
     return db.getPlatformStats();
   }),
-
   companies: adminProcedure.query(async () => {
     return db.listCompanies();
+  }),
+  // Public: returns only the platform fee percentage (safe to expose to companies/contractors)
+  getFee: publicProcedure.query(async () => {
+    const settings = await getPlatformSettings();
+    return {
+      platformFeePercent: parseFloat(settings.platformFeePercent ?? "5"),
+    };
   }),
 });
 
@@ -1073,6 +1185,8 @@ export const appRouter = router({
   receipts: receiptsRouter,
   integrations: integrationsRouter,
   transactions: transactionsRouter,
+  ratings: ratingsRouter,
+  comments: commentsRouter,
   platform: platformRouter,
   stripePayments: stripeRouter,
   adminViewAs: adminViewAsRouter,

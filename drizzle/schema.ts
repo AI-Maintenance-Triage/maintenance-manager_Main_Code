@@ -339,3 +339,32 @@ export const integrationConnectors = mysqlTable("integration_connectors", {
 
 export type IntegrationConnector = typeof integrationConnectors.$inferSelect;
 export type InsertIntegrationConnector = typeof integrationConnectors.$inferInsert;
+
+// ─── Contractor Ratings ────────────────────────────────────────────────────
+export const contractorRatings = mysqlTable("contractor_ratings", {
+  id: int("id").autoincrement().primaryKey(),
+  maintenanceRequestId: int("maintenanceRequestId").notNull(),
+  contractorProfileId: int("contractorProfileId").notNull(),
+  companyId: int("companyId").notNull(),
+  ratedByUserId: int("ratedByUserId").notNull(),
+  stars: int("stars").notNull(), // 1-5
+  review: text("review"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type ContractorRating = typeof contractorRatings.$inferSelect;
+export type InsertContractorRating = typeof contractorRatings.$inferInsert;
+
+// ─── Job Comments (notes thread) ──────────────────────────────────────────
+export const jobComments = mysqlTable("job_comments", {
+  id: int("id").autoincrement().primaryKey(),
+  maintenanceRequestId: int("maintenanceRequestId").notNull(),
+  authorUserId: int("authorUserId").notNull(),
+  authorRole: mysqlEnum("authorRole", ["company_admin", "contractor", "admin"]).notNull(),
+  authorName: varchar("authorName", { length: 255 }),
+  message: text("message").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type JobComment = typeof jobComments.$inferSelect;
+export type InsertJobComment = typeof jobComments.$inferInsert;

@@ -2,7 +2,8 @@ import { trpc } from "@/lib/trpc";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { DollarSign, TrendingUp, Briefcase, Clock } from "lucide-react";
+import { DollarSign, TrendingUp, Briefcase, Clock, Star } from "lucide-react";
+import { StarRating } from "@/components/StarRating";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from "recharts";
@@ -35,6 +36,7 @@ function formatMonth(key: string) {
 
 export default function ContractorEarnings() {
   const { data, isLoading } = trpc.contractor.getEarnings.useQuery();
+  const { data: ratings = [] } = trpc.ratings.myRatings.useQuery();
 
   if (isLoading) {
     return (
@@ -178,6 +180,43 @@ export default function ContractorEarnings() {
                     <p className="text-sm font-bold text-foreground w-20 text-right">
                       ${parseFloat(txn.contractorPayout ?? "0").toFixed(2)}
                     </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+      {/* Ratings section */}
+      <Card className="bg-card border-border">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base flex items-center gap-2">
+            <Star className="h-4 w-4 text-amber-400" />
+            My Ratings
+            {ratings.length > 0 && (
+              <span className="text-sm font-normal text-muted-foreground ml-auto">
+                {(ratings.reduce((s, r) => s + r.stars, 0) / ratings.length).toFixed(1)} avg · {ratings.length} review{ratings.length !== 1 ? "s" : ""}
+              </span>
+            )}
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {ratings.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-4">No ratings yet. Complete jobs to receive reviews.</p>
+          ) : (
+            <div className="space-y-3">
+              {ratings.map((r) => (
+                <div key={r.id} className="flex items-start gap-3 p-3 rounded-lg bg-muted/20 border border-border">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
+                      <StarRating value={r.stars} readonly size="sm" />
+                      <span className="text-xs text-muted-foreground">{r.companyName ?? "Company"}</span>
+                      <span className="text-xs text-muted-foreground/60 ml-auto">
+                        {new Date(r.createdAt).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}
+                      </span>
+                    </div>
+                    {r.jobTitle && <p className="text-xs text-muted-foreground/70 mb-1">Job: {r.jobTitle}</p>}
+                    {r.review && <p className="text-sm text-foreground/80">{r.review}</p>}
                   </div>
                 </div>
               ))}

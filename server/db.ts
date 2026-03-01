@@ -15,6 +15,8 @@ import {
   transactions, InsertTransaction,
   integrationConnectors, InsertIntegrationConnector,
   platformSettings,
+  contractorRatings, InsertContractorRating,
+  jobComments, InsertJobComment,
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
@@ -539,6 +541,71 @@ export async function getTransactionsByContractor(contractorProfileId: number) {
   return db.select().from(transactions).where(eq(transactions.contractorProfileId, contractorProfileId)).orderBy(desc(transactions.createdAt));
 }
 
+export async function getCompanyExpenseReport(companyId: number) {
+  const db = await getDb();
+  if (!db) return { transactions: [], monthlyTotals: [], propertyTotals: [] };
+
+  // All transactions for this company
+  const txns = await db
+    .select({
+      id: transactions.id,
+      maintenanceRequestId: transactions.maintenanceRequestId,
+      laborCost: transactions.laborCost,
+      partsCost: transactions.partsCost,
+      platformFee: transactions.platformFee,
+      totalCharged: transactions.totalCharged,
+      contractorPayout: transactions.contractorPayout,
+      status: transactions.status,
+      paidAt: transactions.paidAt,
+      createdAt: transactions.createdAt,
+      jobTitle: maintenanceRequests.title,
+      propertyId: maintenanceRequests.propertyId,
+      propertyName: properties.name,
+      propertyAddress: properties.address,
+    })
+    .from(transactions)
+    .leftJoin(maintenanceRequests, eq(transactions.maintenanceRequestId, maintenanceRequests.id))
+    .leftJoin(properties, eq(maintenanceRequests.propertyId, properties.id))
+    .where(eq(transactions.companyId, companyId))
+    .orderBy(desc(transactions.createdAt));
+
+  // Monthly totals (last 12 months)
+  const monthlyTotals = await db
+    .select({
+      month: sql<string>`DATE_FORMAT(createdAt, '%Y-%m')`,
+      total: sql<string>`SUM(totalCharged)`,
+      laborTotal: sql<string>`SUM(laborCost)`,
+      partsTotal: sql<string>`SUM(partsCost)`,
+      feeTotal: sql<string>`SUM(platformFee)`,
+      jobCount: sql<number>`COUNT(*)`,
+    })
+    .from(transactions)
+    .where(and(
+      eq(transactions.companyId, companyId),
+      sql`createdAt >= DATE_SUB(NOW(), INTERVAL 12 MONTH)`
+    ))
+    .groupBy(sql`DATE_FORMAT(createdAt, '%Y-%m')`)
+    .orderBy(sql`DATE_FORMAT(createdAt, '%Y-%m')`);
+
+  // Per-property totals
+  const propertyTotals = await db
+    .select({
+      propertyId: maintenanceRequests.propertyId,
+      propertyName: properties.name,
+      propertyAddress: properties.address,
+      total: sql<string>`SUM(${transactions.totalCharged})`,
+      jobCount: sql<number>`COUNT(*)`,
+    })
+    .from(transactions)
+    .leftJoin(maintenanceRequests, eq(transactions.maintenanceRequestId, maintenanceRequests.id))
+    .leftJoin(properties, eq(maintenanceRequests.propertyId, properties.id))
+    .where(eq(transactions.companyId, companyId))
+    .groupBy(maintenanceRequests.propertyId, properties.name, properties.address)
+    .orderBy(desc(sql`SUM(${transactions.totalCharged})`));
+
+  return { transactions: txns, monthlyTotals, propertyTotals };
+}
+
 // ─── Integration Connectors ────────────────────────────────────────────────
 export async function getIntegrationConnectors(companyId: number) {
   const db = await getDb();
@@ -919,7 +986,10 @@ export async function markJobComplete(
   jobId: number,
   contractorProfileId: number,
   completionNotes: string,
-  completionPhotoUrls: string[]
+  completionPhotoUrls: string[],
+  totalLaborMinutes?: number | null,
+  totalLaborCost?: string | null,
+  hourlyRate?: string | null
 ) {
   const db = await getDb();
   if (!db) throw new Error("DB unavailable");
@@ -945,6 +1015,9 @@ export async function markJobComplete(
       completedAt: new Date(),
       completionNotes,
       completionPhotoUrls,
+      ...(totalLaborMinutes != null && { totalLaborMinutes }),
+      ...(totalLaborCost != null && { totalLaborCost }),
+      ...(hourlyRate != null && { hourlyRate }),
     })
     .where(eq(maintenanceRequests.id, jobId));
 }
@@ -1057,4 +1130,76 @@ export async function getContractorJobs(contractorProfileId: number) {
       )
     )
     .orderBy(desc(maintenanceRequests.assignedAt));
+}
+
+// ─── Contractor Ratings ────────────────────────────────────────────────────
+export async function createRating(data: InsertContractorRating) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  const result = await db.insert(contractorRatings).values(data);
+  return result[0].insertId;
+}
+
+export async function getRatingForJob(maintenanceRequestId: number, companyId: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db
+    .select()
+    .from(contractorRatings)
+    .where(and(eq(contractorRatings.maintenanceRequestId, maintenanceRequestId), eq(contractorRatings.companyId, companyId)))
+    .limit(1);
+  return result[0];
+}
+
+export async function getRatingsByContractor(contractorProfileId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db
+    .select({
+      id: contractorRatings.id,
+      stars: contractorRatings.stars,
+      review: contractorRatings.review,
+      createdAt: contractorRatings.createdAt,
+      maintenanceRequestId: contractorRatings.maintenanceRequestId,
+      companyName: companies.name,
+      jobTitle: maintenanceRequests.title,
+    })
+    .from(contractorRatings)
+    .leftJoin(companies, eq(contractorRatings.companyId, companies.id))
+    .leftJoin(maintenanceRequests, eq(contractorRatings.maintenanceRequestId, maintenanceRequests.id))
+    .where(eq(contractorRatings.contractorProfileId, contractorProfileId))
+    .orderBy(desc(contractorRatings.createdAt));
+}
+
+export async function recalcContractorRating(contractorProfileId: number) {
+  const db = await getDb();
+  if (!db) return;
+  const [result] = await db
+    .select({ avg: sql<string>`AVG(stars)`, count: sql<number>`COUNT(*)` })
+    .from(contractorRatings)
+    .where(eq(contractorRatings.contractorProfileId, contractorProfileId));
+  if (result) {
+    const avg = parseFloat(result.avg ?? "0");
+    await db.update(contractorProfiles)
+      .set({ rating: avg.toFixed(2) })
+      .where(eq(contractorProfiles.id, contractorProfileId));
+  }
+}
+
+// ─── Job Comments ──────────────────────────────────────────────────────────────
+export async function getJobComments(maintenanceRequestId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db
+    .select()
+    .from(jobComments)
+    .where(eq(jobComments.maintenanceRequestId, maintenanceRequestId))
+    .orderBy(jobComments.createdAt);
+}
+
+export async function addJobComment(data: InsertJobComment) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  const result = await db.insert(jobComments).values(data);
+  return result[0].insertId;
 }

@@ -9,11 +9,14 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { useViewAs } from "@/contexts/ViewAsContext";
-import { Plus, Zap, Clock, CheckCircle, AlertTriangle, Globe, X, Route, DollarSign, FileDown } from "lucide-react";
+import { Plus, Zap, Clock, CheckCircle, AlertTriangle, Globe, X, Route, DollarSign, FileDown, Star, MessageSquare } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { RouteReplayDialog } from "@/components/RouteReplayDialog";
+import { RateContractorDialog } from "@/components/RateContractorDialog";
+import { JobComments } from "@/components/JobComments";
 
 const priorityColors: Record<string, string> = {
   emergency: "bg-red-500/20 text-red-400 border-red-500/30",
@@ -52,6 +55,8 @@ export default function CompanyJobs() {
   const [open, setOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("all");
   const [replayJob, setReplayJob] = useState<{ id: number; title: string } | null>(null);
+  const [rateJob, setRateJob] = useState<{ id: number; contractorName?: string } | null>(null);
+  const [commentsJob, setCommentsJob] = useState<{ id: number; title: string } | null>(null);
   const utils = trpc.useUtils();
 
   const currentTab = FILTER_TABS.find(t => t.value === activeTab) ?? FILTER_TABS[0];
@@ -272,6 +277,26 @@ export default function CompanyJobs() {
                           <FileDown className="h-3 w-3" /> Invoice
                         </Button>
                       )}
+                      {/* Rate contractor button for paid/verified jobs */}
+                      {(job.status === "verified" || job.status === "paid") && job.assignedContractorId && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="text-xs gap-1 h-7 border-amber-500/40 text-amber-400 hover:bg-amber-500/10"
+                          onClick={() => setRateJob({ id: job.id })}
+                        >
+                          <Star className="h-3 w-3" /> Rate
+                        </Button>
+                      )}
+                      {/* Notes/Comments button — always visible */}
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="text-xs gap-1 h-7"
+                        onClick={() => setCommentsJob({ id: job.id, title: job.title })}
+                      >
+                        <MessageSquare className="h-3 w-3" /> Notes
+                      </Button>
                       {/* Post/Remove from board for open jobs */}
                       {job.status === "open" && (
                         job.postedToBoard ? (
@@ -312,6 +337,30 @@ export default function CompanyJobs() {
           jobId={replayJob.id}
           jobTitle={replayJob.title}
         />
+      )}
+      {rateJob && (
+        <RateContractorDialog
+          open={!!rateJob}
+          onOpenChange={(open) => { if (!open) setRateJob(null); }}
+          maintenanceRequestId={rateJob.id}
+          contractorName={rateJob.contractorName}
+          onRated={() => {
+            utils.jobs.list.invalidate();
+            utils.adminViewAs.companyJobs.invalidate();
+          }}
+        />
+      )}
+      {commentsJob && (
+        <Sheet open={!!commentsJob} onOpenChange={(open) => { if (!open) setCommentsJob(null); }}>
+          <SheetContent side="right" className="w-full sm:max-w-md p-0 flex flex-col">
+            <SheetHeader className="px-4 pt-4 pb-0 shrink-0">
+              <SheetTitle className="text-base truncate">{commentsJob.title}</SheetTitle>
+            </SheetHeader>
+            <div className="flex-1 min-h-0 overflow-hidden">
+              <JobComments maintenanceRequestId={commentsJob.id} />
+            </div>
+          </SheetContent>
+        </Sheet>
       )}
     </div>
   );

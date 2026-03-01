@@ -9,10 +9,11 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import {
   CheckCircle, XCircle, Clock, Image, Loader2, AlertTriangle,
-  ClipboardCheck, DollarSign, Timer, Wrench, Package, CreditCard,
+  ClipboardCheck, DollarSign, Timer, Package, CreditCard, Map,
 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
+import { RouteReplayDialog } from "@/components/RouteReplayDialog";
 
 export default function CompanyVerification() {
   const utils = trpc.useUtils();
@@ -35,7 +36,7 @@ export default function CompanyVerification() {
           });
         } else {
           toast.success("Job approved & payment processed!", {
-            description: `$${data.totalCharged?.toFixed(2)} charged. Contractor payout: $${data.contractorPayout?.toFixed(2)}.`,
+            description: `$${data.totalCharged?.toFixed(2)} charged to company. Contractor payout: $${data.contractorPayout?.toFixed(2)}.`,
           });
         }
       } else {
@@ -50,11 +51,15 @@ export default function CompanyVerification() {
     onError: (err: any) => toast.error(err.message),
   });
 
+  const { data: platformFeeData } = trpc.platform.getFee.useQuery();
+  const platformFeePercent = platformFeeData?.platformFeePercent ?? 5;
+
   const [selected, setSelected] = useState<any | null>(null);
   const [action, setAction] = useState<"approve" | "dispute" | null>(null);
   const [notes, setNotes] = useState("");
   const [step, setStep] = useState<"notes" | "confirm">("notes");
   const [viewingPhotos, setViewingPhotos] = useState<string[] | null>(null);
+  const [replayJobId, setReplayJobId] = useState<number | null>(null);
 
   const openDialog = (job: any, act: "approve" | "dispute") => {
     setSelected(job);
@@ -80,7 +85,9 @@ export default function CompanyVerification() {
   const job = selected?.job;
   const laborCost = parseFloat(job?.totalLaborCost ?? "0");
   const partsCost = parseFloat(job?.totalPartsCost ?? "0");
-  const totalCost = laborCost + partsCost;
+  const subtotal = laborCost + partsCost;
+  const platformFeeAmount = subtotal > 0 ? subtotal * (platformFeePercent / 100) : 0;
+  const totalCost = subtotal + platformFeeAmount;
   const laborMinutes = job?.totalLaborMinutes ?? 0;
   const hourlyRate = parseFloat(job?.hourlyRate ?? "0");
 
@@ -120,6 +127,7 @@ export default function CompanyVerification() {
               onApprove={() => openDialog(row, "approve")}
               onDispute={() => openDialog(row, "dispute")}
               onViewPhotos={(urls) => setViewingPhotos(urls)}
+              onViewRoute={(jobId) => setReplayJobId(jobId)}
             />
           ))}
         </div>
@@ -220,6 +228,17 @@ export default function CompanyVerification() {
                     </span>
                   </div>
 
+                  {/* Platform Fee */}
+                  <div className="flex items-center justify-between text-sm">
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                      <CreditCard className="h-4 w-4 text-purple-400" />
+                      <span>Platform Service Fee ({platformFeePercent}%)</span>
+                    </div>
+                    <span className="font-medium text-foreground">
+                      {platformFeeAmount > 0 ? `$${platformFeeAmount.toFixed(2)}` : <span className="text-muted-foreground text-xs">$0.00</span>}
+                    </span>
+                  </div>
+
                   <Separator />
 
                   {/* Total */}
@@ -235,12 +254,14 @@ export default function CompanyVerification() {
                 </div>
               </div>
 
-              {/* Payment method notice */}
+              {/* Payment authorization notice */}
               <div className="flex items-start gap-2 p-3 rounded-lg bg-green-500/10 border border-green-500/20">
                 <CreditCard className="h-4 w-4 text-green-400 mt-0.5 shrink-0" />
                 <div className="text-xs text-green-300 space-y-0.5">
                   <p className="font-medium">By clicking "Approve & Pay" you authorize this charge.</p>
-                  <p className="text-green-300/70">The contractor will receive their payout minus the platform fee. This action cannot be undone.</p>
+                  <p className="text-green-300/70">
+                    The contractor receives the full job cost (labor + parts). The {platformFeePercent}% platform service fee is added on top and charged to you. This action cannot be undone.
+                  </p>
                 </div>
               </div>
 
@@ -291,6 +312,14 @@ export default function CompanyVerification() {
         </DialogContent>
       </Dialog>
 
+      {/* Route Replay Dialog */}
+      <RouteReplayDialog
+        jobId={replayJobId ?? 0}
+        jobTitle="Job Route Replay"
+        open={!!replayJobId}
+        onOpenChange={(open) => { if (!open) setReplayJobId(null); }}
+      />
+
       {/* Photo Lightbox */}
       <Dialog open={!!viewingPhotos} onOpenChange={(open) => { if (!open) setViewingPhotos(null); }}>
         <DialogContent className="sm:max-w-2xl">
@@ -308,11 +337,12 @@ export default function CompanyVerification() {
   );
 }
 
-function VerificationCard({ row, onApprove, onDispute, onViewPhotos }: {
+function VerificationCard({ row, onApprove, onDispute, onViewPhotos, onViewRoute }: {
   row: any;
   onApprove: () => void;
   onDispute: () => void;
   onViewPhotos: (urls: string[]) => void;
+  onViewRoute: (jobId: number) => void;
 }) {
   const { job, property } = row;
   const photoUrls: string[] = job.completionPhotoUrls ?? [];
@@ -338,62 +368,43 @@ function VerificationCard({ row, onApprove, onDispute, onViewPhotos }: {
               </p>
             )}
           </div>
-          <div className="text-right shrink-0 space-y-1">
+          <div className="text-right shrink-0">
             {job.completedAt && (
-              <div>
-                <p className="text-xs text-muted-foreground flex items-center gap-1 justify-end">
-                  <Clock className="h-3 w-3" /> Submitted
-                </p>
-                <p className="text-xs text-foreground">{new Date(job.completedAt).toLocaleDateString()}</p>
-              </div>
-            )}
-            {/* Show cost summary on card */}
-            {totalCost > 0 && (
-              <div className="flex items-center gap-1 justify-end text-green-400 font-semibold text-sm">
-                <DollarSign className="h-3.5 w-3.5" />
-                <span>${totalCost.toFixed(2)}</span>
+              <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                <Clock className="h-3 w-3" />
+                <span>Submitted {new Date(job.completedAt).toLocaleDateString()}</span>
               </div>
             )}
           </div>
         </div>
       </CardHeader>
+
       <CardContent className="space-y-4">
-        {/* Cost breakdown summary */}
-        {(laborCost > 0 || partsCost > 0) && (
-          <div className="grid grid-cols-3 gap-3 p-3 rounded-lg bg-muted/30 border border-border">
-            <div className="text-center">
-              <div className="flex items-center justify-center gap-1 text-xs text-muted-foreground mb-1">
-                <Timer className="h-3 w-3 text-blue-400" /> Labor
-              </div>
-              <p className="text-sm font-semibold text-foreground">${laborCost.toFixed(2)}</p>
-              {job.totalLaborMinutes > 0 && (
-                <p className="text-[10px] text-muted-foreground">
-                  {Math.floor(job.totalLaborMinutes / 60)}h {job.totalLaborMinutes % 60}m
-                </p>
-              )}
-            </div>
-            <div className="text-center border-x border-border">
-              <div className="flex items-center justify-center gap-1 text-xs text-muted-foreground mb-1">
-                <Package className="h-3 w-3 text-amber-400" /> Parts
-              </div>
-              <p className="text-sm font-semibold text-foreground">${partsCost.toFixed(2)}</p>
-            </div>
-            <div className="text-center">
-              <div className="flex items-center justify-center gap-1 text-xs text-muted-foreground mb-1">
-                <Wrench className="h-3 w-3 text-green-400" /> Total
-              </div>
-              <p className="text-sm font-bold text-green-400">${totalCost.toFixed(2)}</p>
-            </div>
-          </div>
-        )}
-
+        {/* Contractor work summary */}
         {job.completionNotes && (
-          <div className="p-3 rounded-lg bg-muted/50">
+          <div>
             <p className="text-xs font-medium text-muted-foreground mb-1">Contractor's Work Summary</p>
-            <p className="text-sm text-foreground">{job.completionNotes}</p>
+            <p className="text-sm text-foreground bg-muted/30 rounded-lg p-3">{job.completionNotes}</p>
           </div>
         )}
 
+        {/* Cost summary */}
+        {totalCost > 0 && (
+          <div className="flex items-center gap-4 text-sm">
+            <div className="flex items-center gap-1.5 text-muted-foreground">
+              <DollarSign className="h-3.5 w-3.5 text-green-400" />
+              <span>Est. Job Cost: <span className="text-foreground font-medium">${totalCost.toFixed(2)}</span></span>
+            </div>
+            {job.totalLaborMinutes > 0 && (
+              <div className="flex items-center gap-1.5 text-muted-foreground">
+                <Timer className="h-3.5 w-3.5 text-blue-400" />
+                <span>{Math.floor(job.totalLaborMinutes / 60)}h {job.totalLaborMinutes % 60}m on site</span>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Completion photos */}
         {photoUrls.length > 0 && (
           <div>
             <p className="text-xs font-medium text-muted-foreground mb-2 flex items-center gap-1">
@@ -401,40 +412,72 @@ function VerificationCard({ row, onApprove, onDispute, onViewPhotos }: {
             </p>
             <div className="flex gap-2 flex-wrap">
               {photoUrls.slice(0, 3).map((url, i) => (
-                <img
+                <button
                   key={i}
-                  src={url}
-                  alt={`Photo ${i + 1}`}
-                  className="h-16 w-16 object-cover rounded-lg border border-border cursor-pointer hover:opacity-80 transition-opacity"
                   onClick={() => onViewPhotos(photoUrls)}
-                />
+                  className="w-16 h-16 rounded-lg overflow-hidden border border-border hover:border-primary/50 transition-colors"
+                >
+                  <img src={url} alt={`Photo ${i + 1}`} className="w-full h-full object-cover" />
+                </button>
               ))}
               {photoUrls.length > 3 && (
                 <button
                   onClick={() => onViewPhotos(photoUrls)}
-                  className="h-16 w-16 rounded-lg border border-border bg-muted flex items-center justify-center text-xs text-muted-foreground hover:bg-muted/80 transition-colors"
+                  className="w-16 h-16 rounded-lg border border-border bg-muted/30 flex items-center justify-center text-xs text-muted-foreground hover:border-primary/50 transition-colors"
                 >
-                  +{photoUrls.length - 3} more
+                  +{photoUrls.length - 3}
                 </button>
               )}
             </div>
           </div>
         )}
 
+        {/* Disputed notes */}
         {isDisputed && job.disputeNotes && (
           <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/20">
-            <p className="text-xs font-medium text-red-400 mb-1">Previous Dispute Reason</p>
+            <p className="text-xs font-medium text-red-400 mb-1">Dispute Reason</p>
             <p className="text-sm text-red-300">{job.disputeNotes}</p>
           </div>
         )}
 
-        <div className="flex gap-3 pt-1">
-          <Button onClick={onApprove} className="flex-1 gap-2 bg-green-600 hover:bg-green-700 text-white">
-            <CheckCircle className="h-4 w-4" /> Approve
+        {/* Actions */}
+        <div className="flex items-center gap-2 pt-1">
+          <Button
+            size="sm"
+            variant="outline"
+            className="gap-1.5 text-xs"
+            onClick={() => onViewRoute(job.id)}
+          >
+            <Map className="h-3.5 w-3.5" /> View Route
           </Button>
-          <Button onClick={onDispute} variant="outline" className="flex-1 gap-2 border-red-500/50 text-red-400 hover:bg-red-500/10">
-            <XCircle className="h-4 w-4" /> Dispute
-          </Button>
+          {!isDisputed && (
+            <>
+              <Button
+                size="sm"
+                onClick={onApprove}
+                className="gap-1.5 bg-green-600 hover:bg-green-700 text-white flex-1"
+              >
+                <CheckCircle className="h-4 w-4" /> Approve
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={onDispute}
+                className="gap-1.5 text-red-400 border-red-500/30 hover:bg-red-500/10"
+              >
+                <XCircle className="h-4 w-4" /> Dispute
+              </Button>
+            </>
+          )}
+          {isDisputed && (
+            <Button
+              size="sm"
+              onClick={onApprove}
+              className="gap-1.5 bg-green-600 hover:bg-green-700 text-white"
+            >
+              <CheckCircle className="h-4 w-4" /> Approve Anyway
+            </Button>
+          )}
         </div>
       </CardContent>
     </Card>
