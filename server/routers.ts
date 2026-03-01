@@ -2539,20 +2539,24 @@ const adminControlRouter = router({
   // 11. Per-job fee override (logged in audit trail)
   overrideJobFee: adminProcedure
     .input(z.object({
-      jobId: z.number(),
-      newFeePercent: z.number().min(0).max(100),
+      jobId: z.number().int().positive(),
+      newPlatformFeeCents: z.number().int().min(0),
       reason: z.string().min(1),
     }))
     .mutation(async ({ ctx, input }) => {
+      const txn = await db.getTransactionByJobId(input.jobId);
+      if (!txn) throw new TRPCError({ code: "NOT_FOUND", message: "No transaction found for this job ID" });
+      const oldFee = txn.platformFee ?? 0;
+      await db.updateTransactionFee(txn.id, input.newPlatformFeeCents);
       await db.writeAuditLog({
         actorId: ctx.user.id,
-        actorName: "admin",
+        actorName: ctx.user.name ?? "admin",
         action: "override_job_fee",
-        details: `Overrode fee for job #${input.jobId} to ${input.newFeePercent}%: ${input.reason}`,
+        details: `Job #${input.jobId}: platform fee changed from $${oldFee} to ${(input.newPlatformFeeCents / 100).toFixed(2)}. Reason: ${input.reason}`,
         targetType: "job",
         targetId: input.jobId,
       });
-      return { success: true };
+      return { success: true, jobId: input.jobId, oldFee: String(oldFee), newFeeCents: input.newPlatformFeeCents };
     }),
 
   // 12. Bulk email blast
@@ -2560,17 +2564,25 @@ const adminControlRouter = router({
     .input(z.object({
       subject: z.string().min(1),
       body: z.string().min(1),
-      targetAudience: z.enum(["all", "companies", "contractors"]),
+      // audience: standard broadcast target; omit when using customEmails
+      audience: z.enum(["all", "companies", "contractors"]).optional(),
+      // customEmails: explicit list of recipients (used for re-engagement)
+      customEmails: z.array(z.string().email()).optional(),
     }))
     .mutation(async ({ ctx, input }) => {
-      const allCompanies = await db.listCompanies();
-      const allContractors = await db.listAllContractors();
       const recipients: string[] = [];
-      if (input.targetAudience === "all" || input.targetAudience === "companies") {
-        allCompanies.forEach(c => { if (c.email) recipients.push(c.email); });
-      }
-      if (input.targetAudience === "all" || input.targetAudience === "contractors") {
-        allContractors.forEach(c => { if (c.user?.email) recipients.push(c.user.email); });
+      if (input.customEmails && input.customEmails.length > 0) {
+        recipients.push(...input.customEmails);
+      } else {
+        const allCompanies = await db.listCompanies();
+        const allContractors = await db.listAllContractors();
+        const aud = input.audience ?? "all";
+        if (aud === "all" || aud === "companies") {
+          allCompanies.forEach(c => { if (c.email) recipients.push(c.email); });
+        }
+        if (aud === "all" || aud === "contractors") {
+          allContractors.forEach(c => { if (c.user?.email) recipients.push(c.user.email); });
+        }
       }
       let sent = 0;
       const uniqueRecipients = Array.from(new Set(recipients));
@@ -2586,11 +2598,24 @@ const adminControlRouter = router({
           // Continue on individual failures
         }
       }
-      await db.writeAuditLog({ actorId: ctx.user.id, actorName: "admin", action: "email_blast", details: `Sent email blast to ${sent}/${uniqueRecipients.length} recipients. Subject: ${input.subject}` });
+       await db.writeAuditLog({ actorId: ctx.user.id, actorName: "admin", action: "email_blast", details: `Sent email blast to ${sent}/${uniqueRecipients.length} recipients. Subject: ${input.subject}` });
       return { sent, total: uniqueRecipients.length };
     }),
 });
-
+// ─── User-facing Announcements Router ─────────────────────────────────────────
+const announcementsRouter = router({
+  active: protectedProcedure
+    .input(z.object({ userType: z.enum(["company", "contractor"]) }))
+    .query(async ({ ctx, input }) => {
+      return db.getActiveAnnouncementsForUser(ctx.user.id, input.userType);
+    }),
+  dismiss: protectedProcedure
+    .input(z.object({ announcementId: z.number().int().positive() }))
+    .mutation(async ({ ctx, input }) => {
+      await db.dismissAnnouncement(ctx.user.id, input.announcementId);
+      return { success: true };
+    }),
+});
 // ─── Company Reports Router ────────────────────────────────────────────────────
 const companyReportsRouter = router({
   revenueByProperty: companyAdminProcedure
@@ -2653,6 +2678,7 @@ export const appRouter = router({
   adminViewAs: adminViewAsRouter,
   promoCodes: promoCodesRouter,
   adminControl: adminControlRouter,
+  announcements: announcementsRouter,
   companyReports: companyReportsRouter,
   admin: router({
     // Re-geocode all properties and contractor profiles that are missing coordinates.

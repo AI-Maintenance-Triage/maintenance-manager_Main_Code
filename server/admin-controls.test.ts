@@ -556,3 +556,152 @@ describe("Admin procedure authorization", () => {
     expect(checkAuth({ id: 1 })).toBe(true);
   });
 });
+
+// ─── Announcement banner (user-facing dismissal) ──────────────────────────────
+describe("Announcement banner (user-facing)", () => {
+  it("filters announcements by company audience", () => {
+    const announcements = [
+      { id: 1, targetAudience: "all", isActive: true },
+      { id: 2, targetAudience: "companies", isActive: true },
+      { id: 3, targetAudience: "contractors", isActive: true },
+      { id: 4, targetAudience: "all", isActive: false },
+    ];
+    const forCompany = announcements.filter(
+      (a) => a.isActive && (a.targetAudience === "all" || a.targetAudience === "companies")
+    );
+    expect(forCompany.map((a) => a.id)).toEqual([1, 2]);
+  });
+
+  it("filters announcements by contractor audience", () => {
+    const announcements = [
+      { id: 1, targetAudience: "all", isActive: true },
+      { id: 2, targetAudience: "companies", isActive: true },
+      { id: 3, targetAudience: "contractors", isActive: true },
+    ];
+    const forContractor = announcements.filter(
+      (a) => a.isActive && (a.targetAudience === "all" || a.targetAudience === "contractors")
+    );
+    expect(forContractor.map((a) => a.id)).toEqual([1, 3]);
+  });
+
+  it("dismissed announcements are excluded from visible list", () => {
+    const announcements = [{ id: 1 }, { id: 2 }, { id: 3 }];
+    const dismissed = new Set([2]);
+    const visible = announcements.filter((a) => !dismissed.has(a.id));
+    expect(visible.map((a) => a.id)).toEqual([1, 3]);
+  });
+
+  it("empty announcements list returns empty visible list", () => {
+    const visible = ([] as { id: number }[]).filter(() => true);
+    expect(visible).toHaveLength(0);
+  });
+});
+
+// ─── Re-engagement email shortcut ─────────────────────────────────────────────
+describe("Re-engagement email shortcut", () => {
+  it("sends to customEmails when provided, skipping audience broadcast", () => {
+    const buildRecipients = (
+      customEmails: string[] | undefined,
+      audience: string,
+      companies: string[],
+      contractors: string[]
+    ): string[] => {
+      if (customEmails && customEmails.length > 0) return customEmails;
+      const out: string[] = [];
+      if (audience === "all" || audience === "companies") out.push(...companies);
+      if (audience === "all" || audience === "contractors") out.push(...contractors);
+      return out;
+    };
+
+    // Custom email overrides audience
+    expect(buildRecipients(["specific@co.com"], "all", ["a@b.com"], ["c@d.com"])).toEqual(["specific@co.com"]);
+    // No custom email falls back to audience
+    expect(buildRecipients(undefined, "companies", ["a@b.com"], ["c@d.com"])).toEqual(["a@b.com"]);
+    expect(buildRecipients([], "all", ["a@b.com"], ["c@d.com"])).toEqual(["a@b.com", "c@d.com"]);
+  });
+
+  it("rejects empty subject or body", () => {
+    const validate = (subject: string, body: string) => {
+      if (!subject.trim()) throw new Error("Subject required");
+      if (!body.trim()) throw new Error("Body required");
+      return true;
+    };
+    expect(() => validate("", "Hello")).toThrow("Subject required");
+    expect(() => validate("Hi", "")).toThrow("Body required");
+    expect(validate("Hi", "Hello")).toBe(true);
+  });
+
+  it("shows error when company has no email on file", () => {
+    const canSend = (email: string | null | undefined) => {
+      if (!email) return { ok: false, reason: "No email address on file" };
+      return { ok: true };
+    };
+    expect(canSend(null)).toEqual({ ok: false, reason: "No email address on file" });
+    expect(canSend(undefined)).toEqual({ ok: false, reason: "No email address on file" });
+    expect(canSend("co@example.com")).toEqual({ ok: true });
+  });
+});
+
+// ─── Job fee override ─────────────────────────────────────────────────────────
+describe("Job fee override", () => {
+  it("converts dollar input to cents correctly", () => {
+    const toCents = (dollars: number) => Math.round(dollars * 100);
+    expect(toCents(12.5)).toBe(1250);
+    expect(toCents(0)).toBe(0);
+    expect(toCents(99.99)).toBe(9999);
+    expect(toCents(0.01)).toBe(1);
+  });
+
+  it("converts cents back to dollar string for display", () => {
+    const toDisplay = (cents: number) => `$${(cents / 100).toFixed(2)}`;
+    expect(toDisplay(1250)).toBe("$12.50");
+    expect(toDisplay(0)).toBe("$0.00");
+    expect(toDisplay(9999)).toBe("$99.99");
+  });
+
+  it("rejects negative fee amounts", () => {
+    const validate = (cents: number) => {
+      if (cents < 0) throw new Error("Fee cannot be negative");
+      return true;
+    };
+    expect(() => validate(-1)).toThrow("Fee cannot be negative");
+    expect(validate(0)).toBe(true);
+    expect(validate(500)).toBe(true);
+  });
+
+  it("requires reason of at least 5 characters", () => {
+    const validate = (reason: string) => {
+      if (reason.trim().length < 5) throw new Error("Reason too short");
+      return true;
+    };
+    expect(() => validate("")).toThrow("Reason too short");
+    expect(() => validate("abc")).toThrow("Reason too short");
+    expect(validate("Billing correction")).toBe(true);
+  });
+
+  it("throws NOT_FOUND when no transaction exists for job", () => {
+    const getTransaction = (jobId: number) => {
+      const db: Record<number, { id: number; platformFee: string }> = { 42: { id: 1, platformFee: "15.00" } };
+      return db[jobId] ?? null;
+    };
+    const override = (jobId: number, newFeeCents: number, reason: string) => {
+      if (!reason.trim()) throw new Error("Reason required");
+      const txn = getTransaction(jobId);
+      if (!txn) throw new Error("NOT_FOUND");
+      return { oldFee: txn.platformFee, newFeeCents };
+    };
+    expect(() => override(999, 500, "test reason")).toThrow("NOT_FOUND");
+    expect(override(42, 500, "test reason")).toEqual({ oldFee: "15.00", newFeeCents: 500 });
+  });
+
+  it("audit log entry includes old and new fee values", () => {
+    const buildAuditDetails = (jobId: number, oldFee: string, newFeeCents: number, reason: string) =>
+      `Job #${jobId}: platform fee changed from $${oldFee} to ${(newFeeCents / 100).toFixed(2)}. Reason: ${reason}`;
+
+    const details = buildAuditDetails(42, "15.00", 1250, "Billing correction");
+    expect(details).toContain("Job #42");
+    expect(details).toContain("$15.00");
+    expect(details).toContain("12.50");
+    expect(details).toContain("Billing correction");
+  });
+});

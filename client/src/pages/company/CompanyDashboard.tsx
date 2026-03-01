@@ -12,6 +12,7 @@ import { useLocation } from "wouter";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useState } from "react";
 import { toast } from "sonner";
+import { AnnouncementBanner } from "@/components/AnnouncementBanner";
 
 export default function CompanyDashboard() {
   const { user } = useAuth();
@@ -280,6 +281,7 @@ function CompanyDashboardContent() {
 
   return (
     <div className="space-y-6">
+      <AnnouncementBanner userType="company" />
       <div>
         <h1 className="text-2xl font-bold text-foreground">Dashboard</h1>
         <p className="text-muted-foreground mt-1">Overview of your maintenance operations</p>

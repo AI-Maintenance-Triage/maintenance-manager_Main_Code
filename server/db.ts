@@ -2837,3 +2837,21 @@ export async function getRevenueByProperty(companyId: number, fromMs?: number, t
   }
   return Array.from(map.values()).sort((a, b) => b.totalCharged - a.totalCharged);
 }
+
+// ─── Job Fee Override Helpers ─────────────────────────────────────────────────────
+export async function getTransactionByJobId(jobId: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const rows = await db.select().from(transactions).where(eq(transactions.maintenanceRequestId, jobId)).limit(1);
+  return rows[0] ?? null;
+}
+
+export async function updateTransactionFee(transactionId: number, newPlatformFeeCents: number) {
+  const db = await getDb();
+  if (!db) return;
+  // newPlatformFeeCents is in cents; platformFee column is decimal (dollars)
+  const newPlatformFeeDollars = (newPlatformFeeCents / 100).toFixed(2);
+  await db.update(transactions)
+    .set({ platformFee: newPlatformFeeDollars, updatedAt: new Date() })
+    .where(eq(transactions.id, transactionId));
+}

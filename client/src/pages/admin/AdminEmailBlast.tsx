@@ -25,7 +25,7 @@ export default function AdminEmailBlast() {
   });
 
   const handleSend = () => {
-    sendMutation.mutate({ subject, body, targetAudience });
+    sendMutation.mutate({ subject, body, audience: targetAudience });
   };
 
   const audienceLabel = targetAudience === "all" ? "all users" : targetAudience;

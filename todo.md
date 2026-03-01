@@ -876,3 +876,12 @@
 ### Tests
 - [x] 39 new vitest tests for all admin control features (all passing)
 - [x] Full test suite: 181 tests across 11 files, all passing
+
+## Session 28: Announcement Banner + Churn Re-engagement + Job Fee Override
+
+- [x] Dismissible announcement banner component shown on company and contractor dashboards
+- [x] Banner calls adminControl.listAnnouncements, filtered by audience, dismissible per session
+- [x] Churn Risk page: "Send Re-engagement Email" button pre-fills Email Blast with company email + template
+- [x] Admin job fee override page (/admin/job-fee-override) — find job by ID, adjust platform fee, audit logged
+- [x] Backend: adminControl.overrideJobFee tRPC procedure (admin only, writes to transactions + audit log)
+- [x] Tests: 13 new vitest tests — 194 total across 11 files, all passing

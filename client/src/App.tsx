@@ -44,6 +44,7 @@ import AdminActivityFeed from "./pages/admin/AdminActivityFeed";
 import AdminLeaderboard from "./pages/admin/AdminLeaderboard";
 import AdminChurnRisk from "./pages/admin/AdminChurnRisk";
 import AdminEmailBlast from "./pages/admin/AdminEmailBlast";
+import AdminJobFeeOverride from "./pages/admin/AdminJobFeeOverride";
 import CompanyPropertyReports from "./pages/company/CompanyPropertyReports";
 import ResetPassword from "./pages/ResetPassword";
 import InviteAccept from "./pages/InviteAccept";
@@ -161,6 +162,9 @@ function Router() {
       </Route>
       <Route path="/admin/email-blast">
         <DashboardLayout><AdminEmailBlast /></DashboardLayout>
+      </Route>
+      <Route path="/admin/job-fee-override">
+        <DashboardLayout><AdminJobFeeOverride /></DashboardLayout>
       </Route>
       <Route path="/admin">
         <DashboardLayout><PlatformDashboard /></DashboardLayout>
