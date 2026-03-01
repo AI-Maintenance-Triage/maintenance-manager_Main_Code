@@ -249,3 +249,39 @@ export async function sendDisputeResubmittedEmail(opts: {
   `);
   return sendEmail({ to: opts.to, subject: `Dispute Response: ${opts.jobTitle}`, html });
 }
+// ─── Trial expiry warning (3 days before) ─────────────────────────────────
+export async function sendTrialExpiryWarningEmail(opts: {
+  to: string;
+  name: string;
+  planName: string;
+  daysRemaining: number;
+  billingUrl: string;
+}) {
+  const html = layout("Your trial is ending soon", `
+    <h1>Your trial ends in ${opts.daysRemaining} day${opts.daysRemaining !== 1 ? "s" : ""}</h1>
+    <p>Hi ${opts.name}, your <strong>${opts.planName}</strong> trial on Maintenance Manager will expire in <strong>${opts.daysRemaining} day${opts.daysRemaining !== 1 ? "s" : ""}</strong>.</p>
+    <p>To keep uninterrupted access to all your plan features — including GPS time tracking, AI job classification, expense reports, and more — subscribe before your trial ends.</p>
+    <a href="${opts.billingUrl}" class="btn">Subscribe Now</a>
+    <hr class="divider" />
+    <p style="font-size:13px;color:#737373;">After your trial expires, feature access will be restricted until a subscription is active. Your data is always safe and will remain intact.</p>
+  `);
+  return sendEmail({ to: opts.to, subject: `Your ${opts.planName} trial ends in ${opts.daysRemaining} day${opts.daysRemaining !== 1 ? "s" : ""}`, html });
+}
+
+// ─── Trial expired ────────────────────────────────────────────────────────
+export async function sendTrialExpiredEmail(opts: {
+  to: string;
+  name: string;
+  planName: string;
+  billingUrl: string;
+}) {
+  const html = layout("Your trial has expired", `
+    <h1>Your trial has ended</h1>
+    <p>Hi ${opts.name}, your <strong>${opts.planName}</strong> trial on Maintenance Manager has expired. Some features are now restricted.</p>
+    <p>Subscribe to restore full access to GPS time tracking, AI classification, expense reports, ratings, and all other plan features.</p>
+    <a href="${opts.billingUrl}" class="btn">Reactivate Now</a>
+    <hr class="divider" />
+    <p style="font-size:13px;color:#737373;">Your account data is safe. Subscribing will immediately restore all features.</p>
+  `);
+  return sendEmail({ to: opts.to, subject: `Your ${opts.planName} trial has expired — reactivate now`, html });
+}

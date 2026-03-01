@@ -596,3 +596,20 @@
 - [x] Frontend: Plan Usage widget — progress bars for each limit
 - [x] Frontend: Plan Usage widget — trial countdown badge or plan name
 - [x] Frontend: Plan Usage widget — "Upgrade" link to /company/billing when near or at a limit
+
+## Contractor Plan Widget + Trial Emails + Admin Plan Analytics (COMPLETED)
+- [x] Contractor dashboard: Plan Usage widget (active jobs used/max, trial countdown, expired badge, upgrade link)
+- [x] Backend: scheduled/manual trial expiry check — find companies/contractors expiring in 3 days and on expiry day
+- [x] Backend: send trial expiry warning email (3 days before) to company admin and contractor
+- [x] Backend: send trial expired email (on expiry day) to company admin and contractor
+- [x] Backend: tRPC mutation to manually trigger expiry check (admin-callable for testing)
+- [x] Admin overview: Plan Distribution card showing per-plan counts for companies and contractors
+- [x] Admin overview: Trialing count, Expired count, Active count summary
+
+## Integrations: DoorLoop + Landing Page Integrations Section (COMPLETED)
+- [x] Add DoorLoop to the integrations list in the backend/connectors
+- [x] Research and collect official logos for all integration partners (Buildium, AppFolio, Yardi, Rent Manager, DoorLoop)
+- [x] Upload logos to CDN
+- [x] Build landing page Integrations section with real logos and brand fonts
+- [x] Add Plan Distribution analytics card to admin Platform Dashboard
+- [x] Add "Run Trial Expiry Check" button to admin dashboard

@@ -1803,3 +1803,193 @@ export async function contractorHasPlanFeature(
   if (featureValue === undefined || featureValue === null) return true;
   return featureValue === true;
 }
+
+// ─── Trial expiry helpers ─────────────────────────────────────────────────
+
+/**
+ * Find companies whose trial expires within the next N days (for warning emails).
+ * Returns company + user email for notification.
+ */
+export async function getCompaniesExpiringInDays(days: number) {
+  const db = await getDb();
+  if (!db) return [];
+  const now = Date.now();
+  const windowEnd = now + days * 24 * 60 * 60 * 1000;
+  const windowStart = now + (days - 1) * 24 * 60 * 60 * 1000;
+  const rows = await db
+    .select({
+      companyId: companies.id,
+      companyName: companies.name,
+      planId: companies.planId,
+      planStatus: companies.planStatus,
+      planExpiresAt: companies.planExpiresAt,
+      userEmail: users.email,
+      userName: users.name,
+    })
+    .from(companies)
+    .innerJoin(users, and(eq(users.companyId, companies.id), eq(users.role, "company_admin")))
+    .where(
+      and(
+        eq(companies.planStatus, "trialing"),
+        gte(companies.planExpiresAt, windowStart),
+        sql`${companies.planExpiresAt} <= ${windowEnd}`
+      )
+    );
+  return rows;
+}
+
+/**
+ * Find companies whose trial expires today (planExpiresAt < now and still trialing).
+ */
+export async function getExpiredTrialCompanies() {
+  const db = await getDb();
+  if (!db) return [];
+  const now = Date.now();
+  const rows = await db
+    .select({
+      companyId: companies.id,
+      companyName: companies.name,
+      planId: companies.planId,
+      planStatus: companies.planStatus,
+      planExpiresAt: companies.planExpiresAt,
+      userEmail: users.email,
+      userName: users.name,
+    })
+    .from(companies)
+    .innerJoin(users, and(eq(users.companyId, companies.id), eq(users.role, "company_admin")))
+    .where(
+      and(
+        eq(companies.planStatus, "trialing"),
+        sql`${companies.planExpiresAt} < ${now}`
+      )
+    );
+  return rows;
+}
+
+/**
+ * Find contractors whose trial expires within the next N days.
+ */
+export async function getContractorsExpiringInDays(days: number) {
+  const db = await getDb();
+  if (!db) return [];
+  const now = Date.now();
+  const windowEnd = now + days * 24 * 60 * 60 * 1000;
+  const windowStart = now + (days - 1) * 24 * 60 * 60 * 1000;
+  const rows = await db
+    .select({
+      contractorProfileId: contractorProfiles.id,
+      contractorName: contractorProfiles.businessName,
+      planId: contractorProfiles.planId,
+      planStatus: contractorProfiles.planStatus,
+      planExpiresAt: contractorProfiles.planExpiresAt,
+      userEmail: users.email,
+      userName: users.name,
+    })
+    .from(contractorProfiles)
+    .innerJoin(users, eq(users.id, contractorProfiles.userId))
+    .where(
+      and(
+        eq(contractorProfiles.planStatus, "trialing"),
+        gte(contractorProfiles.planExpiresAt, windowStart),
+        sql`${contractorProfiles.planExpiresAt} <= ${windowEnd}`
+      )
+    );
+  return rows;
+}
+
+/**
+ * Find contractors whose trial has expired (planExpiresAt < now and still trialing).
+ */
+export async function getExpiredTrialContractors() {
+  const db = await getDb();
+  if (!db) return [];
+  const now = Date.now();
+  const rows = await db
+    .select({
+      contractorProfileId: contractorProfiles.id,
+      contractorName: contractorProfiles.businessName,
+      planId: contractorProfiles.planId,
+      planStatus: contractorProfiles.planStatus,
+      planExpiresAt: contractorProfiles.planExpiresAt,
+      userEmail: users.email,
+      userName: users.name,
+    })
+    .from(contractorProfiles)
+    .innerJoin(users, eq(users.id, contractorProfiles.userId))
+    .where(
+      and(
+        eq(contractorProfiles.planStatus, "trialing"),
+        sql`${contractorProfiles.planExpiresAt} < ${now}`
+      )
+    );
+  return rows;
+}
+
+/**
+ * Mark a company's plan as expired.
+ */
+export async function markCompanyPlanExpired(companyId: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db
+    .update(companies)
+    .set({ planStatus: "expired" })
+    .where(eq(companies.id, companyId));
+}
+
+/**
+ * Mark a contractor's plan as expired.
+ */
+export async function markContractorPlanExpired(contractorProfileId: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db
+    .update(contractorProfiles)
+    .set({ planStatus: "expired" })
+    .where(eq(contractorProfiles.id, contractorProfileId));
+}
+
+/**
+ * Get plan distribution stats for admin analytics.
+ */
+export async function getPlanDistributionStats() {
+  const db = await getDb();
+  if (!db) return { companyStats: [], contractorStats: [], summary: { totalCompanies: 0, totalContractors: 0, companiesTrialing: 0, companiesActive: 0, companiesExpired: 0, contractorsTrialing: 0, contractorsActive: 0, contractorsExpired: 0 } };
+
+  // Company plan distribution
+  const companyPlanRows = await db
+    .select({
+      planId: companies.planId,
+      planName: subscriptionPlans.name,
+      planStatus: companies.planStatus,
+      count: count(),
+    })
+    .from(companies)
+    .leftJoin(subscriptionPlans, eq(subscriptionPlans.id, companies.planId))
+    .groupBy(companies.planId, subscriptionPlans.name, companies.planStatus);
+
+  // Contractor plan distribution
+  const contractorPlanRows = await db
+    .select({
+      planId: contractorProfiles.planId,
+      planName: subscriptionPlans.name,
+      planStatus: contractorProfiles.planStatus,
+      count: count(),
+    })
+    .from(contractorProfiles)
+    .leftJoin(subscriptionPlans, eq(subscriptionPlans.id, contractorProfiles.planId))
+    .groupBy(contractorProfiles.planId, subscriptionPlans.name, contractorProfiles.planStatus);
+
+  const summary = {
+    totalCompanies: companyPlanRows.reduce((s, r) => s + Number(r.count), 0),
+    totalContractors: contractorPlanRows.reduce((s, r) => s + Number(r.count), 0),
+    companiesTrialing: companyPlanRows.filter(r => r.planStatus === "trialing").reduce((s, r) => s + Number(r.count), 0),
+    companiesActive: companyPlanRows.filter(r => r.planStatus === "active").reduce((s, r) => s + Number(r.count), 0),
+    companiesExpired: companyPlanRows.filter(r => r.planStatus === "expired" || r.planStatus === "canceled").reduce((s, r) => s + Number(r.count), 0),
+    contractorsTrialing: contractorPlanRows.filter(r => r.planStatus === "trialing").reduce((s, r) => s + Number(r.count), 0),
+    contractorsActive: contractorPlanRows.filter(r => r.planStatus === "active").reduce((s, r) => s + Number(r.count), 0),
+    contractorsExpired: contractorPlanRows.filter(r => r.planStatus === "expired" || r.planStatus === "canceled").reduce((s, r) => s + Number(r.count), 0),
+  };
+
+  return { companyStats: companyPlanRows, contractorStats: contractorPlanRows, summary };
+}

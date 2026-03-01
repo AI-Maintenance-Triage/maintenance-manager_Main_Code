@@ -1,0 +1,2 @@
+ALTER TABLE `integration_connectors` MODIFY COLUMN `provider` enum('buildium','appfolio','rentmanager','yardi','doorloop') NOT NULL;--> statement-breakpoint
+ALTER TABLE `maintenance_requests` MODIFY COLUMN `source` enum('manual','buildium','appfolio','rentmanager','yardi','doorloop') NOT NULL DEFAULT 'manual';

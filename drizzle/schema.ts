@@ -191,7 +191,7 @@ export const maintenanceRequests = mysqlTable("maintenance_requests", {
   propertyId: int("propertyId").notNull(),
   // Source info
   externalId: varchar("externalId", { length: 128 }),
-  source: mysqlEnum("source", ["manual", "buildium", "appfolio", "rentmanager", "yardi"]).default("manual").notNull(),
+  source: mysqlEnum("source", ["manual", "buildium", "appfolio", "rentmanager", "yardi", "doorloop"]).default("manual").notNull(),
   // Tenant info
   tenantName: varchar("tenantName", { length: 255 }),
   tenantPhone: varchar("tenantPhone", { length: 32 }),
@@ -353,7 +353,7 @@ export type InsertPlatformSettings = typeof platformSettings.$inferInsert;
 export const integrationConnectors = mysqlTable("integration_connectors", {
   id: int("id").autoincrement().primaryKey(),
   companyId: int("companyId").notNull(),
-  provider: mysqlEnum("provider", ["buildium", "appfolio", "rentmanager", "yardi"]).notNull(),
+  provider: mysqlEnum("provider", ["buildium", "appfolio", "rentmanager", "yardi", "doorloop"]).notNull(),
   apiKey: text("apiKey"),
   apiSecret: text("apiSecret"),
   baseUrl: text("baseUrl"),

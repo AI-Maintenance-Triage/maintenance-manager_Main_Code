@@ -477,6 +477,7 @@ function IntegrationSettings({ readOnly, companyId }: { readOnly: boolean; compa
     { value: "appfolio", label: "AppFolio", description: "Connect AppFolio for property management sync" },
     { value: "rentmanager", label: "Rent Manager", description: "Connect Rent Manager for maintenance request import" },
     { value: "yardi", label: "Yardi", description: "Connect Yardi Voyager for enterprise property management" },
+    { value: "doorloop", label: "DoorLoop", description: "Connect DoorLoop for modern property management and maintenance sync" },
   ];
 
   return (

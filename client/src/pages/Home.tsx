@@ -454,6 +454,81 @@ export default function Home() {
         </div>
       </section>
 
+      {/* Integrations Section */}
+      <section className="py-20 border-t border-border/50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl font-bold text-foreground mb-4">Works With Your Existing Software</h2>
+            <p className="text-muted-foreground max-w-2xl mx-auto">
+              Connect your property management platform in minutes. Maintenance requests sync automatically — no manual data entry.
+            </p>
+          </div>
+          <div className="flex flex-wrap justify-center items-center gap-6 md:gap-10">
+            {[
+              {
+                name: "Buildium",
+                logo: "https://d2xsxph8kpxj0f.cloudfront.net/310519663387010889/bBuQZrfKLoBs6LmtvQ4y6E/buildium_6bc7dc8f.jpg",
+                bg: "bg-white",
+                color: "#0052CC",
+                font: "font-bold tracking-tight",
+              },
+              {
+                name: "AppFolio",
+                logo: "https://d2xsxph8kpxj0f.cloudfront.net/310519663387010889/bBuQZrfKLoBs6LmtvQ4y6E/appfolio_fc72cc59.png",
+                bg: "bg-white",
+                color: "#1E3A5F",
+                font: "font-semibold",
+              },
+              {
+                name: "DoorLoop",
+                logo: "https://d2xsxph8kpxj0f.cloudfront.net/310519663387010889/bBuQZrfKLoBs6LmtvQ4y6E/doorloop_69ba234b.png",
+                bg: "bg-white",
+                color: "#7C3AED",
+                font: "font-bold",
+              },
+              {
+                name: "Yardi",
+                logo: "https://d2xsxph8kpxj0f.cloudfront.net/310519663387010889/bBuQZrfKLoBs6LmtvQ4y6E/yardi_d99ef5d4.png",
+                bg: "bg-white",
+                color: "#C8102E",
+                font: "font-bold",
+              },
+              {
+                name: "Rent Manager",
+                logo: "https://d2xsxph8kpxj0f.cloudfront.net/310519663387010889/bBuQZrfKLoBs6LmtvQ4y6E/rentmanager_3177aba3.png",
+                bg: "bg-white",
+                color: "#2563EB",
+                font: "font-semibold",
+              },
+            ].map((integration) => (
+              <div
+                key={integration.name}
+                className="flex flex-col items-center gap-3 group"
+              >
+                <div className="h-20 w-44 rounded-xl border border-border bg-white flex items-center justify-center p-3 shadow-sm group-hover:shadow-md group-hover:border-primary/30 transition-all duration-200">
+                  <img
+                    src={integration.logo}
+                    alt={`${integration.name} logo`}
+                    className="max-h-12 max-w-full object-contain"
+                  />
+                </div>
+                <span className={`text-xs text-muted-foreground group-hover:text-foreground transition-colors ${integration.font}`}>
+                  {integration.name}
+                </span>
+              </div>
+            ))}
+          </div>
+          <div className="mt-10 text-center">
+            <p className="text-sm text-muted-foreground">
+              More integrations coming soon.{" "}
+              <button onClick={() => setLocation("/contact")} className="text-primary underline hover:text-primary/80">
+                Request an integration
+              </button>
+            </p>
+          </div>
+        </div>
+      </section>
+
       {/* CTA */}
       <section className="py-20">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 text-center">

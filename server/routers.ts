@@ -1160,7 +1160,7 @@ const integrationsRouter = router({
 
   upsert: companyAdminProcedure
     .input(z.object({
-      provider: z.enum(["buildium", "appfolio", "rentmanager", "yardi"]),
+      provider: z.enum(["buildium", "appfolio", "rentmanager", "yardi", "doorloop"]),
       apiKey: z.string().optional(),
       apiSecret: z.string().optional(),
       baseUrl: z.string().optional(),

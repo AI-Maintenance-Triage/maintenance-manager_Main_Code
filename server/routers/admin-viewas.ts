@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { adminProcedure, router } from "../_core/trpc";
 import * as db from "../db";
+import * as email from "../email";
 
 /**
  * Admin "View As" router — allows platform admin to:
@@ -473,5 +474,91 @@ export const adminViewAsRouter = router({
       if (!profile) return null;
       const plan = await db.getEffectivePlanForContractor(input.contractorProfileId);
       return { profile, plan };
+    }),
+
+  // ─── Trial Expiry Check ───────────────────────────────────────────────────
+  /** Run trial expiry check: send 3-day warnings and expire overdue trials */
+  runTrialExpiryCheck: adminProcedure
+    .mutation(async ({ ctx }) => {
+      const origin = (ctx.req.headers.origin as string) || "";
+      const results = { warned: 0, expired: 0, errors: [] as string[] };
+
+      // 3-day warning for companies
+      const companiesWarning = await db.getCompaniesExpiringInDays(3);
+      for (const c of companiesWarning) {
+        try {
+          const planRow = c.planId ? await db.getSubscriptionPlanById(c.planId) : null;
+          const planName = planRow?.name ?? "your plan";
+          const daysLeft = c.planExpiresAt ? Math.max(1, Math.ceil((c.planExpiresAt - Date.now()) / (24 * 60 * 60 * 1000))) : 3;
+          await email.sendTrialExpiryWarningEmail({
+            to: c.userEmail,
+            name: c.userName ?? c.companyName ?? "there",
+            planName,
+            daysRemaining: daysLeft,
+            billingUrl: `${origin}/company/billing`,
+          } as any);
+          results.warned++;
+        } catch (e: any) { results.errors.push(`company ${c.companyId}: ${e.message}`); }
+      }
+
+      // 3-day warning for contractors
+      const contractorsWarning = await db.getContractorsExpiringInDays(3);
+      for (const c of contractorsWarning) {
+        try {
+          const planRow = c.planId ? await db.getSubscriptionPlanById(c.planId) : null;
+          const planName = planRow?.name ?? "your plan";
+          const daysLeft = c.planExpiresAt ? Math.max(1, Math.ceil((c.planExpiresAt - Date.now()) / (24 * 60 * 60 * 1000))) : 3;
+          await email.sendTrialExpiryWarningEmail({
+            to: c.userEmail,
+            name: c.userName ?? c.contractorName ?? "there",
+            planName,
+            daysRemaining: daysLeft,
+            billingUrl: `${origin}/contractor/billing`,
+          } as any);
+          results.warned++;
+        } catch (e: any) { results.errors.push(`contractor ${c.contractorProfileId}: ${e.message}`); }
+      }
+
+      // Expire overdue company trials
+      const expiredCompanies = await db.getExpiredTrialCompanies();
+      for (const c of expiredCompanies) {
+        try {
+          const planRow = c.planId ? await db.getSubscriptionPlanById(c.planId) : null;
+          const planName = planRow?.name ?? "your plan";
+          await db.markCompanyPlanExpired(c.companyId);
+          await email.sendTrialExpiredEmail({
+            to: c.userEmail,
+            name: c.userName ?? c.companyName ?? "there",
+            planName,
+            billingUrl: `${origin}/company/billing`,
+          } as any);
+          results.expired++;
+        } catch (e: any) { results.errors.push(`company expired ${c.companyId}: ${e.message}`); }
+      }
+
+      // Expire overdue contractor trials
+      const expiredContractors = await db.getExpiredTrialContractors();
+      for (const c of expiredContractors) {
+        try {
+          const planRow = c.planId ? await db.getSubscriptionPlanById(c.planId) : null;
+          const planName = planRow?.name ?? "your plan";
+          await db.markContractorPlanExpired(c.contractorProfileId);
+          await email.sendTrialExpiredEmail({
+            to: c.userEmail,
+            name: c.userName ?? c.contractorName ?? "there",
+            planName,
+            billingUrl: `${origin}/contractor/billing`,
+          } as any);
+          results.expired++;
+        } catch (e: any) { results.errors.push(`contractor expired ${c.contractorProfileId}: ${e.message}`); }
+      }
+
+      return results;
+    }),
+
+  // ─── Plan Distribution Analytics ─────────────────────────────────────────
+  getPlanDistribution: adminProcedure
+    .query(async () => {
+      return db.getPlanDistributionStats();
     }),
 });

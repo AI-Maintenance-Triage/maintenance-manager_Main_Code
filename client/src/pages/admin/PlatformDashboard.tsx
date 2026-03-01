@@ -41,6 +41,7 @@ export default function PlatformDashboard() {
   const { data: companies, isLoading: companiesLoading } = trpc.platform.companies.useQuery();
   const { data: contractors, isLoading: contractorsLoading } = trpc.adminViewAs.allContractors.useQuery();
   const { data: plans } = trpc.adminViewAs.listPlans.useQuery();
+  const { data: planDistribution } = trpc.adminViewAs.getPlanDistribution.useQuery();
 
   // ─── Create Company Form ────────────────────────────────────────────
   const [companyOpen, setCompanyOpen] = useState(false);
@@ -462,6 +463,118 @@ export default function PlatformDashboard() {
             </CardContent>
           </Card>
         )}
+        {/* Plan Distribution Card */}
+        {planDistribution && (() => {
+          const s = planDistribution.summary;
+          // Aggregate company stats by plan name (active plans only)
+          const companyByPlan = planDistribution.companyStats
+            .filter((r: any) => r.planName)
+            .reduce((acc: Record<string, number>, r: any) => {
+              acc[r.planName] = (acc[r.planName] ?? 0) + Number(r.count);
+              return acc;
+            }, {});
+          const contractorByPlan = planDistribution.contractorStats
+            .filter((r: any) => r.planName)
+            .reduce((acc: Record<string, number>, r: any) => {
+              acc[r.planName] = (acc[r.planName] ?? 0) + Number(r.count);
+              return acc;
+            }, {});
+          const companyNoPlan = planDistribution.companyStats
+            .filter((r: any) => !r.planName)
+            .reduce((sum: number, r: any) => sum + Number(r.count), 0);
+          const contractorNoPlan = planDistribution.contractorStats
+            .filter((r: any) => !r.planName)
+            .reduce((sum: number, r: any) => sum + Number(r.count), 0);
+          return (
+            <Card className="bg-card border-border">
+              <CardHeader>
+                <CardTitle className="text-sm font-medium text-card-foreground">Plan Distribution</CardTitle>
+                <CardDescription className="text-xs text-muted-foreground">Active subscriptions across all companies and contractors</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 gap-6">
+                  {/* Company Plans */}
+                  <div>
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Companies</p>
+                    <div className="space-y-2">
+                      {Object.keys(companyByPlan).length === 0 ? (
+                        <p className="text-xs text-muted-foreground">No plans assigned yet</p>
+                      ) : (
+                        Object.entries(companyByPlan).map(([planName, cnt]) => (
+                          <div key={planName} className="flex items-center gap-2">
+                            <div className="flex-1">
+                              <div className="flex justify-between text-xs mb-1">
+                                <span className="text-foreground font-medium">{planName}</span>
+                                <span className="text-muted-foreground">{cnt as number}</span>
+                              </div>
+                              <div className="h-1.5 rounded-full bg-secondary overflow-hidden">
+                                <div
+                                  className="h-full rounded-full bg-primary/70"
+                                  style={{ width: `${Math.max(((cnt as number) / Math.max(s.totalCompanies, 1)) * 100, 4)}%` }}
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        ))
+                      )}
+                      <div className="pt-2 border-t border-border/50 flex justify-between text-xs">
+                        <span className="text-muted-foreground">Trialing</span>
+                        <span className="text-yellow-400 font-medium">{s.companiesTrialing}</span>
+                      </div>
+                      <div className="flex justify-between text-xs">
+                        <span className="text-muted-foreground">Expired / Canceled</span>
+                        <span className="text-red-400 font-medium">{s.companiesExpired}</span>
+                      </div>
+                      <div className="flex justify-between text-xs">
+                        <span className="text-muted-foreground">No Plan</span>
+                        <span className="text-muted-foreground font-medium">{companyNoPlan}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Contractor Plans */}
+                  <div>
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Contractors</p>
+                    <div className="space-y-2">
+                      {Object.keys(contractorByPlan).length === 0 ? (
+                        <p className="text-xs text-muted-foreground">No plans assigned yet</p>
+                      ) : (
+                        Object.entries(contractorByPlan).map(([planName, cnt]) => (
+                          <div key={planName} className="flex items-center gap-2">
+                            <div className="flex-1">
+                              <div className="flex justify-between text-xs mb-1">
+                                <span className="text-foreground font-medium">{planName}</span>
+                                <span className="text-muted-foreground">{cnt as number}</span>
+                              </div>
+                              <div className="h-1.5 rounded-full bg-secondary overflow-hidden">
+                                <div
+                                  className="h-full rounded-full bg-primary/70"
+                                  style={{ width: `${Math.max(((cnt as number) / Math.max(s.totalContractors, 1)) * 100, 4)}%` }}
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        ))
+                      )}
+                      <div className="pt-2 border-t border-border/50 flex justify-between text-xs">
+                        <span className="text-muted-foreground">Trialing</span>
+                        <span className="text-yellow-400 font-medium">{s.contractorsTrialing}</span>
+                      </div>
+                      <div className="flex justify-between text-xs">
+                        <span className="text-muted-foreground">Expired / Canceled</span>
+                        <span className="text-red-400 font-medium">{s.contractorsExpired}</span>
+                      </div>
+                      <div className="flex justify-between text-xs">
+                        <span className="text-muted-foreground">No Plan</span>
+                        <span className="text-muted-foreground font-medium">{contractorNoPlan}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          );
+        })()}
         </>
       )}
 

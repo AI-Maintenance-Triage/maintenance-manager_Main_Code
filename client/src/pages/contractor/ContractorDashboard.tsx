@@ -3,7 +3,10 @@ import { useViewAs } from "@/contexts/ViewAsContext";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Briefcase, Clock, DollarSign, CheckCircle, AlertCircle } from "lucide-react";
+import { Briefcase, Clock, DollarSign, CheckCircle, AlertCircle, Zap, ArrowUpRight, XCircle } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
+import { useLocation } from "wouter";
 
 export default function ContractorDashboard() {
   const { user } = useAuth();
@@ -103,22 +106,121 @@ export default function ContractorDashboard() {
         </Card>
       </div>
 
-      {activeJobs.length > 0 && (
-        <Card className="bg-card border-border">
-          <CardHeader><CardTitle className="text-card-foreground">Active Jobs</CardTitle></CardHeader>
-          <CardContent className="space-y-3">
-            {activeJobs.map((job: any) => (
-              <div key={job.id} className="flex items-center justify-between p-3 rounded-lg bg-secondary/50">
-                <div>
-                  <p className="font-medium text-foreground">{job.title}</p>
-                  <p className="text-xs text-muted-foreground capitalize">{job.status.replace("_", " ")} • {job.aiSkillTier || "Unclassified"}</p>
-                </div>
-                {job.hourlyRate && <span className="text-sm text-primary font-semibold">${job.hourlyRate}/hr</span>}
-              </div>
-            ))}
-          </CardContent>
-        </Card>
-      )}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2">
+          {activeJobs.length > 0 && (
+            <Card className="bg-card border-border">
+              <CardHeader><CardTitle className="text-card-foreground">Active Jobs</CardTitle></CardHeader>
+              <CardContent className="space-y-3">
+                {activeJobs.map((job: any) => (
+                  <div key={job.id} className="flex items-center justify-between p-3 rounded-lg bg-secondary/50">
+                    <div>
+                      <p className="font-medium text-foreground">{job.title}</p>
+                      <p className="text-xs text-muted-foreground capitalize">{job.status.replace("_", " ")} • {job.aiSkillTier || "Unclassified"}</p>
+                    </div>
+                    {job.hourlyRate && <span className="text-sm text-primary font-semibold">${job.hourlyRate}/hr</span>}
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          )}
+        </div>
+        <div>
+          {!isViewingAsContractor && <ContractorPlanWidget />}
+        </div>
+      </div>
     </div>
+  );
+}
+
+function ContractorPlanWidget() {
+  const [, setLocation] = useLocation();
+  const { data: planData, isLoading } = trpc.contractor.getMyPlan.useQuery();
+
+  if (isLoading) return <Skeleton className="h-48 w-full" />;
+
+  const plan = planData?.plan;
+  const planStatus = planData?.planStatus ?? null;
+  const daysRemaining = planData?.daysRemaining ?? null;
+  const features = (plan?.features ?? {}) as Record<string, unknown>;
+  const maxActiveJobs = features.maxActiveJobs as number | null | undefined;
+  const activeJobCount = planData?.usage?.activeJobs ?? 0;
+  const isNearLimit = maxActiveJobs != null && maxActiveJobs > 0 && activeJobCount / maxActiveJobs >= 0.8;
+
+  return (
+    <Card className={`bg-card border-border ${isNearLimit ? "border-amber-500/40" : ""}`}>
+      <CardHeader className="flex flex-row items-center justify-between pb-3">
+        <CardTitle className="text-sm font-medium text-card-foreground flex items-center gap-2">
+          <Zap className="h-4 w-4 text-primary" />
+          Plan Usage
+        </CardTitle>
+        <div className="flex items-center gap-1.5">
+          {!plan && <Badge variant="secondary" className="text-xs">No Plan</Badge>}
+          {planStatus === "active" && (
+            <Badge className="bg-green-500/15 text-green-400 border-green-500/30 text-xs">Active</Badge>
+          )}
+          {planStatus === "trialing" && (
+            <Badge className="bg-blue-500/15 text-blue-400 border-blue-500/30 text-xs">
+              Trial{daysRemaining !== null ? ` · ${daysRemaining}d` : ""}
+            </Badge>
+          )}
+          {planStatus === "expired" && (
+            <Badge className="bg-red-500/15 text-red-400 border-red-500/30 text-xs gap-1">
+              <XCircle className="h-3 w-3" /> Expired
+            </Badge>
+          )}
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {plan ? (
+          <>
+            <p className="text-xs text-muted-foreground font-medium">{plan.name}</p>
+            <div className="space-y-1">
+              <div className="flex items-center justify-between text-xs">
+                <span className="flex items-center gap-1 text-muted-foreground">
+                  <Briefcase className="h-3 w-3" /> Active Jobs
+                </span>
+                <span className={`font-medium ${
+                  maxActiveJobs != null && maxActiveJobs > 0 && activeJobCount / maxActiveJobs >= 0.8
+                    ? "text-amber-400" : "text-foreground"
+                }`}>
+                  {activeJobCount}{maxActiveJobs != null ? ` / ${maxActiveJobs === 0 ? "∞" : maxActiveJobs}` : " / ∞"}
+                </span>
+              </div>
+              {maxActiveJobs != null && maxActiveJobs > 0 ? (
+                <Progress
+                  value={Math.min(100, (activeJobCount / maxActiveJobs) * 100)}
+                  className={`h-1.5 ${
+                    activeJobCount / maxActiveJobs >= 0.9 ? "[&>div]:bg-red-400" :
+                    activeJobCount / maxActiveJobs >= 0.8 ? "[&>div]:bg-amber-400" : ""
+                  }`}
+                />
+              ) : (
+                <div className="h-1.5 rounded-full bg-secondary" />
+              )}
+            </div>
+            {(isNearLimit || planStatus === "expired") && (
+              <button
+                onClick={() => setLocation("/contractor/billing")}
+                className="w-full mt-1 flex items-center justify-center gap-1.5 text-xs text-primary hover:underline"
+              >
+                <ArrowUpRight className="h-3 w-3" />
+                {planStatus === "expired" ? "Renew subscription" : "Upgrade plan"}
+              </button>
+            )}
+          </>
+        ) : (
+          <div className="text-center py-2">
+            <p className="text-xs text-muted-foreground mb-2">No subscription plan assigned.</p>
+            <button
+              onClick={() => setLocation("/contractor/billing")}
+              className="text-xs text-primary hover:underline flex items-center gap-1 mx-auto"
+            >
+              <ArrowUpRight className="h-3 w-3" /> View available plans
+            </button>
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }
