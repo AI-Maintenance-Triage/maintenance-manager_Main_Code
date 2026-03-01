@@ -541,13 +541,53 @@ export async function createTransaction(data: InsertTransaction) {
 export async function getTransactionsByCompany(companyId: number) {
   const db = await getDb();
   if (!db) return [];
-  return db.select().from(transactions).where(eq(transactions.companyId, companyId)).orderBy(desc(transactions.createdAt));
+  return db
+    .select({
+      id: transactions.id,
+      maintenanceRequestId: transactions.maintenanceRequestId,
+      laborCost: transactions.laborCost,
+      partsCost: transactions.partsCost,
+      platformFee: transactions.platformFee,
+      totalCharged: transactions.totalCharged,
+      contractorPayout: transactions.contractorPayout,
+      status: transactions.status,
+      paidAt: transactions.paidAt,
+      createdAt: transactions.createdAt,
+      stripePaymentIntentId: transactions.stripePaymentIntentId,
+      jobTitle: maintenanceRequests.title,
+      propertyName: properties.name,
+    })
+    .from(transactions)
+    .leftJoin(maintenanceRequests, eq(transactions.maintenanceRequestId, maintenanceRequests.id))
+    .leftJoin(properties, eq(maintenanceRequests.propertyId, properties.id))
+    .where(eq(transactions.companyId, companyId))
+    .orderBy(desc(transactions.createdAt));
 }
 
 export async function getTransactionsByContractor(contractorProfileId: number) {
   const db = await getDb();
   if (!db) return [];
-  return db.select().from(transactions).where(eq(transactions.contractorProfileId, contractorProfileId)).orderBy(desc(transactions.createdAt));
+  return db
+    .select({
+      id: transactions.id,
+      maintenanceRequestId: transactions.maintenanceRequestId,
+      laborCost: transactions.laborCost,
+      partsCost: transactions.partsCost,
+      platformFee: transactions.platformFee,
+      totalCharged: transactions.totalCharged,
+      contractorPayout: transactions.contractorPayout,
+      status: transactions.status,
+      paidAt: transactions.paidAt,
+      createdAt: transactions.createdAt,
+      stripePaymentIntentId: transactions.stripePaymentIntentId,
+      jobTitle: maintenanceRequests.title,
+      propertyName: properties.name,
+    })
+    .from(transactions)
+    .leftJoin(maintenanceRequests, eq(transactions.maintenanceRequestId, maintenanceRequests.id))
+    .leftJoin(properties, eq(maintenanceRequests.propertyId, properties.id))
+    .where(eq(transactions.contractorProfileId, contractorProfileId))
+    .orderBy(desc(transactions.createdAt));
 }
 
 export async function getCompanyExpenseReport(companyId: number) {
@@ -1355,20 +1395,20 @@ export async function getUserIdByContractorProfileId(contractorProfileId: number
 }
 
 // ─── Email helpers: get user contact info for transactional emails ─────────
-export async function getCompanyAdminEmails(companyId: number): Promise<Array<{ name: string | null; email: string | null }>> {
+export async function getCompanyAdminEmails(companyId: number): Promise<Array<{ id: number; name: string | null; email: string | null }>> {
   const db = await getDb();
   if (!db) return [];
   return db
-    .select({ name: users.name, email: users.email })
+    .select({ id: users.id, name: users.name, email: users.email })
     .from(users)
     .where(and(eq(users.companyId, companyId), eq(users.role, "company_admin")));
 }
 
-export async function getUserEmailByContractorProfileId(contractorProfileId: number): Promise<{ name: string | null; email: string | null } | null> {
+export async function getUserEmailByContractorProfileId(contractorProfileId: number): Promise<{ id: number; name: string | null; email: string | null } | null> {
   const db = await getDb();
   if (!db) return null;
   const [row] = await db
-    .select({ name: users.name, email: users.email })
+    .select({ id: users.id, name: users.name, email: users.email })
     .from(users)
     .where(eq(users.contractorProfileId, contractorProfileId))
     .limit(1);

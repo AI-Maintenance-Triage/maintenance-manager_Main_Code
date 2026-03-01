@@ -429,7 +429,7 @@
 - [x] Email: send email when company verifies/pays a job
 - [x] Email: send email when new comment is posted on a job
 - [x] Email: send email when a job is disputed
-- [ ] Email: unsubscribe / notification preferences respected
+- [x] Email: unsubscribe / notification preferences respected
 - [x] Dispute: contractor "Resubmit after dispute" button on disputed job cards
 - [x] Dispute: resubmit requires a response note explaining the resolution
 - [x] Dispute: company sees the contractor's response note in verification queue
@@ -445,7 +445,7 @@
 - [x] Email prefs: add emailPreferences JSON column to users table
 - [x] Email prefs: tRPC procedures (getPrefs, updatePrefs)
 - [x] Email prefs: settings page section for company and contractor (toggle per email type)
-- [ ] Email prefs: respect preferences in email.ts before sending each email type
+- [x] Email prefs: respect preferences in email.ts before sending each email type
 - [x] Contractor availability: isAvailable boolean already in contractorProfiles schema
 - [x] Contractor availability: toggle switch on contractor profile page
 - [x] Contractor availability: filter out unavailable contractors from job board results
@@ -454,3 +454,12 @@
 - [x] Billing history: show date, job #, labor, parts, platform fee, total charged
 - [x] Billing history: PDF invoice download link per transaction
 - [x] Billing history: add Billing nav item to company sidebar
+
+## Session 17: Email Opt-outs, Billing Job Title, Contractor Billing Page
+- [x] Email prefs: check user emailPreferences before sending each email type in server/email.ts
+- [x] Billing table: join maintenanceRequests to show job title instead of Job #ID
+- [x] Billing table: also show property name per row
+- [x] Contractor billing: /contractor/billing page with payout, fee deducted, net received per job
+- [x] Contractor billing: summary cards (total earned, gross billed, platform fees, avg per job)
+- [x] Contractor billing: PDF receipt download per job row
+- [x] Contractor billing: add Billing nav item to contractor sidebar

@@ -25,6 +25,7 @@ import ContractorJobBoard from "./pages/contractor/ContractorJobBoard";
 import ContractorMyJobs from "./pages/contractor/ContractorMyJobs";
 import ContractorProfile from "./pages/contractor/ContractorProfile";
 import ContractorEarnings from "./pages/contractor/ContractorEarnings";
+import ContractorBilling from "./pages/contractor/ContractorBilling";
 import PlatformDashboard from "./pages/admin/PlatformDashboard";
 import AdminCompanies from "./pages/admin/AdminCompanies";
 import { PWAInstallBanner } from "./components/PWAInstallBanner";
@@ -81,6 +82,9 @@ function Router() {
       </Route>
       <Route path="/contractor/earnings">
         <DashboardLayout><ContractorEarnings /></DashboardLayout>
+      </Route>
+      <Route path="/contractor/billing">
+        <DashboardLayout><ContractorBilling /></DashboardLayout>
       </Route>
       {/* Platform Admin Routes */}
       <Route path="/admin/companies">

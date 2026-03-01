@@ -74,6 +74,7 @@ const contractorSections: MenuSection[] = [
       { icon: Wrench, label: "My Jobs", path: "/contractor/my-jobs" },
       { icon: UserCircle, label: "Profile", path: "/contractor/profile" },
       { icon: DollarSign, label: "Earnings", path: "/contractor/earnings" },
+      { icon: CreditCard, label: "Billing", path: "/contractor/billing" },
     ],
   },
 ];

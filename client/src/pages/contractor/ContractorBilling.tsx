@@ -1,9 +1,8 @@
 import { trpc } from "@/lib/trpc";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { CreditCard, FileText, DollarSign, TrendingUp, Calendar, Download } from "lucide-react";
+import { Receipt, DollarSign, TrendingUp, Briefcase, Calendar, Download, Minus } from "lucide-react";
 
 function fmt(val: string | number | null | undefined) {
   const n = parseFloat(String(val ?? "0"));
@@ -22,13 +21,14 @@ function statusColor(status: string) {
   }
 }
 
-export default function CompanyBilling() {
-  const { data: txns, isLoading } = trpc.transactions.listByCompany.useQuery();
+export default function ContractorBilling() {
+  const { data: earnings, isLoading } = trpc.contractor.getEarnings.useQuery();
 
-  const totalCharged = txns?.reduce((s, t) => s + parseFloat(String(t.totalCharged ?? "0")), 0) ?? 0;
-  const totalFees = txns?.reduce((s, t) => s + parseFloat(String(t.platformFee ?? "0")), 0) ?? 0;
-  const totalLabor = txns?.reduce((s, t) => s + parseFloat(String(t.laborCost ?? "0")), 0) ?? 0;
-  const totalParts = txns?.reduce((s, t) => s + parseFloat(String(t.partsCost ?? "0")), 0) ?? 0;
+  const rawTxns = earnings?.transactions ?? [];
+  const totalEarned = earnings?.totalEarned ?? 0;
+  const totalFees = rawTxns.reduce((s: number, t: any) => s + parseFloat(String(t.platformFee ?? "0")), 0);
+  const totalGross = rawTxns.reduce((s: number, t: any) => s + parseFloat(String(t.totalCharged ?? "0")), 0);
+  const avgPerJob = rawTxns.length > 0 ? totalEarned / rawTxns.length : 0;
 
   if (isLoading) return (
     <div className="space-y-6">
@@ -44,9 +44,9 @@ export default function CompanyBilling() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
-          <CreditCard className="h-6 w-6 text-primary" /> Billing History
+          <Receipt className="h-6 w-6 text-primary" /> Payment History
         </h1>
-        <p className="text-muted-foreground mt-1">All charges and payments processed through the platform</p>
+        <p className="text-muted-foreground mt-1">Your earnings breakdown — payout received per completed job</p>
       </div>
 
       {/* Summary cards */}
@@ -55,37 +55,39 @@ export default function CompanyBilling() {
           <CardContent className="p-5">
             <div className="flex items-center gap-2 mb-1">
               <DollarSign className="h-4 w-4 text-primary" />
-              <span className="text-xs text-muted-foreground">Total Billed</span>
+              <span className="text-xs text-muted-foreground">Total Earned</span>
             </div>
-            <p className="text-2xl font-bold text-foreground">{fmt(totalCharged)}</p>
-            <p className="text-xs text-muted-foreground mt-1">{txns?.length ?? 0} transactions</p>
+            <p className="text-2xl font-bold text-green-400">{fmt(totalEarned)}</p>
+            <p className="text-xs text-muted-foreground mt-1">{rawTxns.length} paid jobs</p>
           </CardContent>
         </Card>
         <Card className="bg-card border-border">
           <CardContent className="p-5">
             <div className="flex items-center gap-2 mb-1">
               <TrendingUp className="h-4 w-4 text-blue-400" />
-              <span className="text-xs text-muted-foreground">Labor Costs</span>
+              <span className="text-xs text-muted-foreground">Gross Billed</span>
             </div>
-            <p className="text-2xl font-bold text-foreground">{fmt(totalLabor)}</p>
+            <p className="text-2xl font-bold text-foreground">{fmt(totalGross)}</p>
+            <p className="text-xs text-muted-foreground mt-1">Before platform fee</p>
           </CardContent>
         </Card>
         <Card className="bg-card border-border">
           <CardContent className="p-5">
             <div className="flex items-center gap-2 mb-1">
-              <FileText className="h-4 w-4 text-yellow-400" />
-              <span className="text-xs text-muted-foreground">Parts & Materials</span>
-            </div>
-            <p className="text-2xl font-bold text-foreground">{fmt(totalParts)}</p>
-          </CardContent>
-        </Card>
-        <Card className="bg-card border-border">
-          <CardContent className="p-5">
-            <div className="flex items-center gap-2 mb-1">
-              <CreditCard className="h-4 w-4 text-purple-400" />
+              <Minus className="h-4 w-4 text-orange-400" />
               <span className="text-xs text-muted-foreground">Platform Fees</span>
             </div>
-            <p className="text-2xl font-bold text-foreground">{fmt(totalFees)}</p>
+            <p className="text-2xl font-bold text-orange-400">{fmt(totalFees)}</p>
+            <p className="text-xs text-muted-foreground mt-1">Added to job cost</p>
+          </CardContent>
+        </Card>
+        <Card className="bg-card border-border">
+          <CardContent className="p-5">
+            <div className="flex items-center gap-2 mb-1">
+              <Briefcase className="h-4 w-4 text-purple-400" />
+              <span className="text-xs text-muted-foreground">Avg per Job</span>
+            </div>
+            <p className="text-2xl font-bold text-foreground">{fmt(avgPerJob)}</p>
           </CardContent>
         </Card>
       </div>
@@ -93,14 +95,14 @@ export default function CompanyBilling() {
       {/* Transaction table */}
       <Card className="bg-card border-border">
         <CardHeader>
-          <CardTitle className="text-card-foreground">Transactions</CardTitle>
-          <CardDescription>Click "Invoice" to download a PDF invoice for any charge</CardDescription>
+          <CardTitle className="text-card-foreground">Payment Records</CardTitle>
+          <CardDescription>Download a receipt PDF for any completed job</CardDescription>
         </CardHeader>
         <CardContent className="p-0">
-          {!txns || txns.length === 0 ? (
+          {rawTxns.length === 0 ? (
             <div className="p-12 text-center">
-              <CreditCard className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
-              <p className="text-muted-foreground">No transactions yet. Charges will appear here once jobs are paid.</p>
+              <Receipt className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
+              <p className="text-muted-foreground">No payments yet. Completed and verified jobs will appear here.</p>
             </div>
           ) : (
             <div className="overflow-x-auto">
@@ -111,14 +113,14 @@ export default function CompanyBilling() {
                     <th className="text-left px-4 py-3 text-muted-foreground font-medium">Job</th>
                     <th className="text-right px-4 py-3 text-muted-foreground font-medium">Labor</th>
                     <th className="text-right px-4 py-3 text-muted-foreground font-medium">Parts</th>
-                    <th className="text-right px-4 py-3 text-muted-foreground font-medium">Fee</th>
-                    <th className="text-right px-4 py-3 text-muted-foreground font-medium">Total</th>
+                    <th className="text-right px-4 py-3 text-muted-foreground font-medium">Gross</th>
+                    <th className="text-right px-4 py-3 text-muted-foreground font-medium">Your Payout</th>
                     <th className="text-center px-4 py-3 text-muted-foreground font-medium">Status</th>
-                    <th className="text-center px-4 py-3 text-muted-foreground font-medium">Invoice</th>
+                    <th className="text-center px-4 py-3 text-muted-foreground font-medium">Receipt</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {txns.map((t) => (
+                  {rawTxns.map((t: any) => (
                     <tr key={t.id} className="border-b border-border/50 hover:bg-secondary/30 transition-colors">
                       <td className="px-4 py-3 text-muted-foreground whitespace-nowrap">
                         <div className="flex items-center gap-1.5">
@@ -132,8 +134,8 @@ export default function CompanyBilling() {
                       </td>
                       <td className="px-4 py-3 text-right text-foreground">{fmt(t.laborCost)}</td>
                       <td className="px-4 py-3 text-right text-foreground">{fmt(t.partsCost)}</td>
-                      <td className="px-4 py-3 text-right text-muted-foreground">{fmt(t.platformFee)}</td>
-                      <td className="px-4 py-3 text-right font-semibold text-foreground">{fmt(t.totalCharged)}</td>
+                      <td className="px-4 py-3 text-right text-muted-foreground">{fmt(t.totalCharged)}</td>
+                      <td className="px-4 py-3 text-right font-bold text-green-400">{fmt(t.contractorPayout)}</td>
                       <td className="px-4 py-3 text-center">
                         <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border ${statusColor(t.status)}`}>
                           {t.status.replace("_", " ")}
@@ -144,7 +146,7 @@ export default function CompanyBilling() {
                           variant="ghost"
                           size="sm"
                           className="h-7 px-2 text-xs text-primary hover:text-primary"
-                          onClick={() => window.open(`/api/invoice/${t.maintenanceRequestId}`, "_blank")}
+                          onClick={() => window.open(`/api/receipt/${t.maintenanceRequestId}`, "_blank")}
                         >
                           <Download className="h-3.5 w-3.5 mr-1" />
                           PDF
@@ -156,10 +158,14 @@ export default function CompanyBilling() {
                 <tfoot>
                   <tr className="bg-secondary/30">
                     <td colSpan={2} className="px-4 py-3 font-semibold text-foreground">Totals</td>
-                    <td className="px-4 py-3 text-right font-semibold text-foreground">{fmt(totalLabor)}</td>
-                    <td className="px-4 py-3 text-right font-semibold text-foreground">{fmt(totalParts)}</td>
-                    <td className="px-4 py-3 text-right font-semibold text-muted-foreground">{fmt(totalFees)}</td>
-                    <td className="px-4 py-3 text-right font-bold text-primary">{fmt(totalCharged)}</td>
+                    <td className="px-4 py-3 text-right font-semibold text-foreground">
+                      {fmt(rawTxns.reduce((s: number, t: any) => s + parseFloat(String(t.laborCost ?? "0")), 0))}
+                    </td>
+                    <td className="px-4 py-3 text-right font-semibold text-foreground">
+                      {fmt(rawTxns.reduce((s: number, t: any) => s + parseFloat(String(t.partsCost ?? "0")), 0))}
+                    </td>
+                    <td className="px-4 py-3 text-right font-semibold text-muted-foreground">{fmt(totalGross)}</td>
+                    <td className="px-4 py-3 text-right font-bold text-green-400">{fmt(totalEarned)}</td>
                     <td colSpan={2} />
                   </tr>
                 </tfoot>
@@ -168,6 +174,11 @@ export default function CompanyBilling() {
           )}
         </CardContent>
       </Card>
+
+      {/* Note about platform fee */}
+      <p className="text-xs text-muted-foreground text-center">
+        The platform fee is charged to the company on top of the job cost — your payout is the full agreed job amount.
+      </p>
     </div>
   );
 }

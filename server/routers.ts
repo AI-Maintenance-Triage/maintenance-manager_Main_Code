@@ -388,16 +388,19 @@ const contractorRouter = router({
         const contractorUser = await db.getUserEmailByContractorProfileId(profile.id);
         const property = job?.propertyId ? await db.getPropertyByIdOnly(job.propertyId) : null;
         const company = job?.companyId ? await db.getCompanyById(job.companyId) : null;
-        if (contractorUser?.email && job) {
-          email.sendJobAssignedEmail({
-            to: contractorUser.email,
-            contractorName: contractorUser.name ?? "Contractor",
-            jobTitle: job.title,
-            jobId: job.id,
-            propertyName: property?.name ?? "Property",
-            companyName: company?.name ?? "Company",
-            appUrl: ENV.appUrl,
-          }).catch(() => {});
+        if (contractorUser?.email && job && contractorUser.id) {
+          const emailEnabled = await db.isEmailEnabled(contractorUser.id, 'jobAssigned');
+          if (emailEnabled) {
+            email.sendJobAssignedEmail({
+              to: contractorUser.email,
+              contractorName: contractorUser.name ?? "Contractor",
+              jobTitle: job.title,
+              jobId: job.id,
+              propertyName: property?.name ?? "Property",
+              companyName: company?.name ?? "Company",
+              appUrl: ENV.appUrl,
+            }).catch(() => {});
+          }
         }
       } catch { /* non-critical */ }
 
@@ -450,15 +453,18 @@ const contractorRouter = router({
           const property = jobData.propertyId ? await db.getPropertyByIdOnly(jobData.propertyId) : null;
           const contractorUser = await db.getUserEmailByContractorProfileId(profile.id);
           for (const admin of admins) {
-            if (admin.email) {
-              email.sendJobSubmittedEmail({
-                to: admin.email,
-                companyAdminName: admin.name ?? "Admin",
-                jobTitle: jobData.title,
-                contractorName: contractorUser?.name ?? "Contractor",
-                propertyName: property?.name ?? "Property",
-                appUrl: ENV.appUrl,
-              }).catch(() => {});
+            if (admin.email && admin.id) {
+              const emailEnabled = await db.isEmailEnabled(admin.id, 'jobSubmitted');
+              if (emailEnabled) {
+                email.sendJobSubmittedEmail({
+                  to: admin.email,
+                  companyAdminName: admin.name ?? "Admin",
+                  jobTitle: jobData.title,
+                  contractorName: contractorUser?.name ?? "Contractor",
+                  propertyName: property?.name ?? "Property",
+                  appUrl: ENV.appUrl,
+                }).catch(() => {});
+              }
             }
           }
         }
@@ -485,15 +491,18 @@ const contractorRouter = router({
           const admins = await db.getCompanyAdminEmails(job.companyId);
           const contractorUser = await db.getUserEmailByContractorProfileId(profile.id);
           for (const admin of admins) {
-            if (admin.email) {
-              email.sendDisputeResubmittedEmail({
-                to: admin.email,
-                companyAdminName: admin.name ?? "Admin",
-                contractorName: contractorUser?.name ?? "Contractor",
-                jobTitle: job.title,
-                responseNote: input.responseNote,
-                appUrl: ENV.appUrl,
-              }).catch(() => {});
+            if (admin.email && admin.id) {
+              const emailEnabled = await db.isEmailEnabled(admin.id, 'jobDisputed');
+              if (emailEnabled) {
+                email.sendDisputeResubmittedEmail({
+                  to: admin.email,
+                  companyAdminName: admin.name ?? "Admin",
+                  contractorName: contractorUser?.name ?? "Contractor",
+                  jobTitle: job.title,
+                  responseNote: input.responseNote,
+                  appUrl: ENV.appUrl,
+                }).catch(() => {});
+              }
             }
           }
         }
@@ -740,14 +749,17 @@ const jobsRouter = router({
             const contractorUser = contractorProfile?.id
               ? await db.getUserEmailByContractorProfileId(contractorProfile.id)
               : null;
-            if (contractorUser?.email) {
-              email.sendJobPaidEmail({
-                to: contractorUser.email,
-                contractorName: contractorUser.name ?? "Contractor",
-                jobTitle: job.title,
-                payoutAmount: `$${(result.jobCostCents / 100).toFixed(2)}`,
-                appUrl: ENV.appUrl,
-              }).catch(() => {});
+            if (contractorUser?.email && contractorUser.id) {
+              const emailEnabled = await db.isEmailEnabled(contractorUser.id, 'jobPaid');
+              if (emailEnabled) {
+                email.sendJobPaidEmail({
+                  to: contractorUser.email,
+                  contractorName: contractorUser.name ?? "Contractor",
+                  jobTitle: job.title,
+                  payoutAmount: `$${(result.jobCostCents / 100).toFixed(2)}`,
+                  appUrl: ENV.appUrl,
+                }).catch(() => {});
+              }
             }
           } catch { /* non-critical */ }
 
@@ -771,14 +783,17 @@ const jobsRouter = router({
           const job = await db.getMaintenanceRequestById(input.jobId);
           if (job?.assignedContractorId) {
             const contractorUser = await db.getUserEmailByContractorProfileId(job.assignedContractorId);
-            if (contractorUser?.email) {
-              email.sendJobDisputedEmail({
-                to: contractorUser.email,
-                contractorName: contractorUser.name ?? "Contractor",
-                jobTitle: job.title,
-                disputeReason: input.notes,
-                appUrl: ENV.appUrl,
-              }).catch(() => {});
+            if (contractorUser?.email && contractorUser.id) {
+              const emailEnabled = await db.isEmailEnabled(contractorUser.id, 'jobDisputed');
+              if (emailEnabled) {
+                email.sendJobDisputedEmail({
+                  to: contractorUser.email,
+                  contractorName: contractorUser.name ?? "Contractor",
+                  jobTitle: job.title,
+                  disputeReason: input.notes,
+                  appUrl: ENV.appUrl,
+                }).catch(() => {});
+              }
             }
           }
         } catch { /* non-critical */ }
