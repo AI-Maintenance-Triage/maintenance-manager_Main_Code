@@ -14,6 +14,7 @@ import {
 import { useState } from "react";
 import { toast } from "sonner";
 import { RouteReplayDialog } from "@/components/RouteReplayDialog";
+import PaymentMethodManager from "@/components/PaymentMethodManager";
 
 export default function CompanyVerification() {
   const utils = trpc.useUtils();
@@ -62,12 +63,14 @@ export default function CompanyVerification() {
   const [step, setStep] = useState<"notes" | "confirm">("notes");
   const [viewingPhotos, setViewingPhotos] = useState<string[] | null>(null);
   const [replayJobId, setReplayJobId] = useState<number | null>(null);
+  const [selectedPaymentMethodId, setSelectedPaymentMethodId] = useState<string | null>(null);
 
   const openDialog = (job: any, act: "approve" | "dispute") => {
     setSelected(job);
     setAction(act);
     setNotes("");
     setStep("notes");
+    setSelectedPaymentMethodId(null);
   };
 
   const handleNext = () => {
@@ -81,7 +84,12 @@ export default function CompanyVerification() {
 
   const handleSubmit = () => {
     if (!selected || !action) return;
-    verifyJob.mutate({ jobId: selected.job.id, action, notes });
+    verifyJob.mutate({
+      jobId: selected.job.id,
+      action,
+      notes,
+      paymentMethodId: selectedPaymentMethodId ?? undefined,
+    });
   };
 
   const job = selected?.job;
@@ -275,6 +283,21 @@ export default function CompanyVerification() {
                       {totalCost > 0 ? `$${totalCost.toFixed(2)}` : <span className="text-sm text-muted-foreground">$0.00</span>}
                     </span>
                   </div>
+                </div>
+              </div>
+
+              {/* Payment method selector */}
+              <div className="rounded-lg border border-border overflow-hidden">
+                <div className="bg-muted/30 px-4 py-2.5 text-xs font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-2">
+                  <CreditCard className="h-3.5 w-3.5" />
+                  Pay From Account
+                </div>
+                <div className="p-3">
+                  <PaymentMethodManager
+                    selectorMode
+                    selectedId={selectedPaymentMethodId}
+                    onSelect={setSelectedPaymentMethodId}
+                  />
                 </div>
               </div>
 

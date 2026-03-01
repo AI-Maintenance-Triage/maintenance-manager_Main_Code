@@ -21,6 +21,8 @@ import {
   subscriptionPlans, InsertSubscriptionPlan,
   pmsWebhookEvents,
   contractorInvites, InsertContractorInvite,
+  promoCodes, InsertPromoCode,
+  companyPromoRedemptions,
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
@@ -2233,4 +2235,244 @@ export async function getContractorsByPlanId(planId: number) {
     .select()
     .from(contractorProfiles)
     .where(eq(contractorProfiles.planId, planId));
+}
+
+// ─── Promo Codes ────────────────────────────────────────────────────────────
+export async function listPromoCodes() {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(promoCodes).orderBy(desc(promoCodes.createdAt));
+}
+
+export async function getPromoCodeById(id: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const rows = await db.select().from(promoCodes).where(eq(promoCodes.id, id)).limit(1);
+  return rows[0];
+}
+
+export async function getPromoCodeByCode(code: string) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const rows = await db.select().from(promoCodes).where(eq(promoCodes.code, code.toUpperCase())).limit(1);
+  return rows[0];
+}
+
+export async function createPromoCode(data: InsertPromoCode) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  const result = await db.insert(promoCodes).values({ ...data, code: data.code.toUpperCase() });
+  return result[0].insertId;
+}
+
+export async function updatePromoCode(id: number, data: Partial<InsertPromoCode>) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(promoCodes).set(data).where(eq(promoCodes.id, id));
+}
+
+export async function deletePromoCode(id: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.delete(promoCodes).where(eq(promoCodes.id, id));
+}
+
+/** Generate a random uppercase promo code like "MAINT-X7K2P" */
+export function generatePromoCodeString(): string {
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  const segment = () => Array.from({ length: 5 }, () => chars[Math.floor(Math.random() * chars.length)]).join("");
+  return `MAINT-${segment()}`;
+}
+
+// ─── Company Promo Redemptions ─────────────────────────────────────────────
+export async function getCompanyPromoRedemptions(companyId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db
+    .select({
+      id: companyPromoRedemptions.id,
+      promoCodeId: companyPromoRedemptions.promoCodeId,
+      redeemedAt: companyPromoRedemptions.redeemedAt,
+      cyclesRemaining: companyPromoRedemptions.cyclesRemaining,
+      isActive: companyPromoRedemptions.isActive,
+      code: promoCodes.code,
+      description: promoCodes.description,
+      discountPercent: promoCodes.discountPercent,
+      affectsSubscription: promoCodes.affectsSubscription,
+      affectsServiceCharge: promoCodes.affectsServiceCharge,
+      affectsListingFee: promoCodes.affectsListingFee,
+      billingCycles: promoCodes.billingCycles,
+    })
+    .from(companyPromoRedemptions)
+    .innerJoin(promoCodes, eq(companyPromoRedemptions.promoCodeId, promoCodes.id))
+    .where(eq(companyPromoRedemptions.companyId, companyId))
+    .orderBy(desc(companyPromoRedemptions.redeemedAt));
+}
+
+export async function redeemPromoCode(companyId: number, code: string): Promise<{
+  success: boolean;
+  error?: string;
+  promo?: typeof promoCodes.$inferSelect;
+}> {
+  const db = await getDb();
+  if (!db) return { success: false, error: "DB not available" };
+
+  const promo = await getPromoCodeByCode(code);
+  if (!promo) return { success: false, error: "Invalid promo code" };
+  if (!promo.isActive) return { success: false, error: "This promo code is no longer active" };
+  if (promo.expiresAt && promo.expiresAt < Date.now()) return { success: false, error: "This promo code has expired" };
+  if (promo.maxRedemptions != null && promo.redemptionCount >= promo.maxRedemptions) {
+    return { success: false, error: "This promo code has reached its maximum number of redemptions" };
+  }
+
+  // Check if company already redeemed this code
+  const existing = await db
+    .select()
+    .from(companyPromoRedemptions)
+    .where(and(eq(companyPromoRedemptions.companyId, companyId), eq(companyPromoRedemptions.promoCodeId, promo.id)))
+    .limit(1);
+  if (existing.length > 0) return { success: false, error: "You have already redeemed this promo code" };
+
+  // Create redemption record
+  await db.insert(companyPromoRedemptions).values({
+    companyId,
+    promoCodeId: promo.id,
+    cyclesRemaining: promo.billingCycles ?? null,
+    isActive: true,
+  });
+
+  // Increment redemption count
+  await db.update(promoCodes)
+    .set({ redemptionCount: sql`${promoCodes.redemptionCount} + 1` })
+    .where(eq(promoCodes.id, promo.id));
+
+  return { success: true, promo };
+}
+
+// ─── Promo Discount Aggregation ───────────────────────────────────────────────
+/**
+ * Returns the combined active promo discounts for a company.
+ * Multiple active promos stack additively (capped at 100%).
+ * A redemption is "active" if: isActive=true AND (cyclesRemaining is null OR cyclesRemaining > 0)
+ */
+export async function getActivePromoDiscountsForCompany(companyId: number): Promise<{
+  subscriptionDiscountPercent: number;
+  serviceChargeDiscountPercent: number;
+  listingFeeDiscountPercent: number;
+}> {
+  const redemptions = await getCompanyPromoRedemptions(companyId);
+  const active = redemptions.filter(
+    (r) => r.isActive && (r.cyclesRemaining == null || r.cyclesRemaining > 0)
+  );
+  let sub = 0, svc = 0, lst = 0;
+  for (const r of active) {
+    const pct = parseFloat(String(r.discountPercent ?? "0"));
+    if (r.affectsSubscription) sub += pct;
+    if (r.affectsServiceCharge) svc += pct;
+    if (r.affectsListingFee) lst += pct;
+  }
+  return {
+    subscriptionDiscountPercent: Math.min(sub, 100),
+    serviceChargeDiscountPercent: Math.min(svc, 100),
+    listingFeeDiscountPercent: Math.min(lst, 100),
+  };
+}
+
+/**
+ * Decrement cyclesRemaining for all active service-charge or listing-fee promos
+ * for a company after a job is billed. Call this after a successful job charge.
+ */
+export async function decrementPromoJobCycles(companyId: number): Promise<void> {
+  const db = await getDb();
+  if (!db) return;
+  const redemptions = await getCompanyPromoRedemptions(companyId);
+  const active = redemptions.filter(
+    (r) =>
+      r.isActive &&
+      r.cyclesRemaining != null &&
+      r.cyclesRemaining > 0 &&
+      (r.affectsServiceCharge || r.affectsListingFee)
+  );
+  for (const r of active) {
+    const newCycles = (r.cyclesRemaining ?? 1) - 1;
+    await db
+      .update(companyPromoRedemptions)
+      .set({
+        cyclesRemaining: newCycles,
+        isActive: newCycles > 0,
+      })
+      .where(eq(companyPromoRedemptions.id, r.id));
+  }
+}
+
+// ─── Admin: Revenue Breakdown by Company ──────────────────────────────────────
+export async function getRevenueByCompany(startDate?: number, endDate?: number) {
+  const db = await getDb();
+  if (!db) return [];
+  const conditions = [sql`${transactions.status} IN ('captured', 'paid_out')`];
+  if (startDate) conditions.push(sql`${transactions.createdAt} >= ${startDate}`);
+  if (endDate) conditions.push(sql`${transactions.createdAt} <= ${endDate}`);
+  const rows = await db
+    .select({
+      companyId: transactions.companyId,
+      companyName: companies.name,
+      totalSpend: sql<string>`COALESCE(SUM(${transactions.totalCharged}), 0)`,
+      platformFees: sql<string>`COALESCE(SUM(${transactions.platformFee}), 0)`,
+      laborCost: sql<string>`COALESCE(SUM(${transactions.laborCost}), 0)`,
+      partsCost: sql<string>`COALESCE(SUM(${transactions.partsCost}), 0)`,
+      jobCount: sql<number>`COUNT(*)`,
+    })
+    .from(transactions)
+    .innerJoin(companies, eq(transactions.companyId, companies.id))
+    .where(and(...conditions))
+    .groupBy(transactions.companyId, companies.name)
+    .orderBy(sql`SUM(${transactions.platformFee}) DESC`)
+    .limit(20);
+  return rows;
+}
+
+// ─── Job Escalation Helpers ────────────────────────────────────────────────────
+export async function getOverdueUnacceptedJobs() {
+  const db = await getDb();
+  if (!db) return [];
+  // Use a default 60-minute escalation timeout (per-company setting is in companySettings)
+  // We use the minimum timeout across companies: 60 minutes default
+  const timeoutMinutes = 60;
+  const cutoff = Date.now() - timeoutMinutes * 60 * 1000;
+  // Find jobs that are still "open" (not yet assigned), posted to the board,
+  // created before the cutoff, and not yet notified
+  const rows = await db
+    .select({
+      id: maintenanceRequests.id,
+      title: maintenanceRequests.title,
+      companyId: maintenanceRequests.companyId,
+      companyName: companies.name,
+      companyEmail: companies.email,
+      propertyName: properties.name,
+      createdAt: maintenanceRequests.createdAt,
+    })
+    .from(maintenanceRequests)
+    .innerJoin(companies, eq(maintenanceRequests.companyId, companies.id))
+    .leftJoin(properties, eq(maintenanceRequests.propertyId, properties.id))
+    .where(
+      and(
+        eq(maintenanceRequests.status, "open"),
+        eq(maintenanceRequests.postedToBoard, true),
+        sql`${maintenanceRequests.escalationNotifiedAt} IS NULL`,
+        sql`UNIX_TIMESTAMP(${maintenanceRequests.createdAt}) * 1000 < ${cutoff}`
+      )
+    );
+  return rows.map((r) => ({
+    ...r,
+    minutesOpen: Math.floor((Date.now() - new Date(r.createdAt).getTime()) / 60000),
+  }));
+}
+
+export async function markJobEscalationNotified(jobId: number, notifiedAt: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db
+    .update(maintenanceRequests)
+    .set({ escalationNotifiedAt: notifiedAt })
+    .where(eq(maintenanceRequests.id, jobId));
 }

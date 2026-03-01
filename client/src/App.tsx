@@ -31,6 +31,7 @@ import PlatformDashboard from "./pages/admin/PlatformDashboard";
 import AdminCompanies from "./pages/admin/AdminCompanies";
 import AdminSubscriptionPlans from "./pages/admin/AdminSubscriptionPlans";
 import AdminRevenue from "./pages/admin/AdminRevenue";
+import AdminPromoCodes from "./pages/admin/AdminPromoCodes";
 import AdminWebhookEvents from "./pages/AdminWebhookEvents";
 import ResetPassword from "./pages/ResetPassword";
 import InviteAccept from "./pages/InviteAccept";
@@ -106,6 +107,9 @@ function Router() {
       </Route>
       <Route path="/admin/revenue">
         <DashboardLayout><AdminRevenue /></DashboardLayout>
+      </Route>
+      <Route path="/admin/promo-codes">
+        <DashboardLayout><AdminPromoCodes /></DashboardLayout>
       </Route>
       <Route path="/admin/webhooks">
         <DashboardLayout><AdminWebhookEvents /></DashboardLayout>

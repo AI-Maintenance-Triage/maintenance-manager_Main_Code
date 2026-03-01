@@ -231,6 +231,7 @@ export const maintenanceRequests = mysqlTable("maintenance_requests", {
   resubmittedAt: timestamp("resubmittedAt"),
   stripePaymentIntentId: varchar("stripePaymentIntentId", { length: 128 }),
   paidAt: timestamp("paidAt"),
+  escalationNotifiedAt: bigint("escalationNotifiedAt", { mode: "number" }),
   // Financials
   skillTierId: int("skillTierId"),
   hourlyRate: decimal("hourlyRate", { precision: 8, scale: 2 }),
@@ -497,3 +498,61 @@ export const pmsWebhookEvents = mysqlTable("pms_webhook_events", {
 });
 export type PmsWebhookEvent = typeof pmsWebhookEvents.$inferSelect;
 export type InsertPmsWebhookEvent = typeof pmsWebhookEvents.$inferInsert;
+
+// ─── Company Payment Methods (multi-bank account support) ─────────────────
+// Stores Stripe PaymentMethod IDs for each company's linked bank accounts / cards.
+// The actual card/bank details live in Stripe — we only store the reference ID.
+export const companyPaymentMethods = mysqlTable("company_payment_methods", {
+  id: int("id").autoincrement().primaryKey(),
+  companyId: int("companyId").notNull(),
+  stripePaymentMethodId: varchar("stripePaymentMethodId", { length: 128 }).notNull(),
+  // Cached display metadata (refreshed from Stripe, never used for auth)
+  type: varchar("type", { length: 32 }).notNull().default("card"), // "card" | "us_bank_account"
+  brand: varchar("brand", { length: 32 }),       // "visa", "mastercard", "ach" etc.
+  last4: varchar("last4", { length: 4 }),
+  bankName: varchar("bankName", { length: 128 }), // for ACH accounts
+  label: varchar("label", { length: 128 }),        // optional user-defined nickname
+  isDefault: boolean("isDefault").default(false).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type CompanyPaymentMethod = typeof companyPaymentMethods.$inferSelect;
+export type InsertCompanyPaymentMethod = typeof companyPaymentMethods.$inferInsert;
+
+// ─── Promo Codes ───────────────────────────────────────────────────────────
+// Admin-created promo codes that can discount subscription price, service charge %, and/or per-listing fee.
+export const promoCodes = mysqlTable("promo_codes", {
+  id: int("id").autoincrement().primaryKey(),
+  code: varchar("code", { length: 64 }).notNull().unique(),
+  description: text("description"),
+  // What the promo affects (can affect multiple things simultaneously)
+  affectsSubscription: boolean("affectsSubscription").default(false).notNull(),
+  affectsServiceCharge: boolean("affectsServiceCharge").default(false).notNull(),
+  affectsListingFee: boolean("affectsListingFee").default(false).notNull(),
+  // Discount amount (percentage off, 0–100)
+  discountPercent: decimal("discountPercent", { precision: 5, scale: 2 }).notNull().default("0.00"),
+  // How many billing cycles the discount applies (null = forever)
+  billingCycles: int("billingCycles"),
+  // Validity
+  isActive: boolean("isActive").default(true).notNull(),
+  maxRedemptions: int("maxRedemptions"), // null = unlimited
+  redemptionCount: int("redemptionCount").default(0).notNull(),
+  expiresAt: bigint("expiresAt", { mode: "number" }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type PromoCode = typeof promoCodes.$inferSelect;
+export type InsertPromoCode = typeof promoCodes.$inferInsert;
+
+// ─── Company Promo Redemptions ─────────────────────────────────────────────
+// Tracks which companies have redeemed which promo codes and for how many cycles.
+export const companyPromoRedemptions = mysqlTable("company_promo_redemptions", {
+  id: int("id").autoincrement().primaryKey(),
+  companyId: int("companyId").notNull(),
+  promoCodeId: int("promoCodeId").notNull(),
+  redeemedAt: timestamp("redeemedAt").defaultNow().notNull(),
+  // How many billing cycles remain (decremented on each invoice; null = forever)
+  cyclesRemaining: int("cyclesRemaining"),
+  isActive: boolean("isActive").default(true).notNull(),
+});
+export type CompanyPromoRedemption = typeof companyPromoRedemptions.$inferSelect;
+export type InsertCompanyPromoRedemption = typeof companyPromoRedemptions.$inferInsert;

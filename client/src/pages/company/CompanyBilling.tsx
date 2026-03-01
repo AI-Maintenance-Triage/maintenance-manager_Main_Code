@@ -22,7 +22,7 @@ import {
   CreditCard, FileText, DollarSign, TrendingUp, Calendar, Download,
   Check, X, Building2, Users, ClipboardList, ArrowUpRight, Zap,
   Star, Shield, Crown, CheckCircle2, AlertCircle, XCircle, ExternalLink,
-  Receipt, Plus, Trash2, Star as StarIcon, Wallet,
+  Receipt, Plus, Trash2, Star as StarIcon, Wallet, Tag, Gift, Percent, Infinity,
 } from "lucide-react";
 
 const COMPANY_FEATURE_LABELS: Record<string, string> = {
@@ -222,6 +222,117 @@ function PaymentMethodsSection() {
   );
 }
 
+// ─── Promo Code Section ──────────────────────────────────────────────────────
+function PromoCodeSection() {
+  const utils = trpc.useUtils();
+  const [code, setCode] = useState("");
+  const { data: activePromos, isLoading: promosLoading } = trpc.promoCodes.myRedemptions.useQuery();
+
+  const redeemMutation = trpc.promoCodes.redeem.useMutation({
+    onSuccess: (data) => {
+      toast.success(`Promo code applied!`, {
+        description: `${data.discountPercent}% off ${[
+          data.affectsSubscription && "subscription",
+          data.affectsServiceCharge && "service charge",
+          data.affectsListingFee && "listing fee",
+        ].filter(Boolean).join(", ")}${
+          data.billingCycles ? ` for ${data.billingCycles} billing cycle${data.billingCycles !== 1 ? "s" : ""}` : " (forever)"
+        }`,
+      });
+      setCode("");
+      utils.promoCodes.myRedemptions.invalidate();
+    },
+    onError: (e) => toast.error("Invalid promo code", { description: e.message }),
+  });
+
+  const promos = activePromos ?? [];
+
+  return (
+    <div>
+      <h2 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
+        <Tag className="h-5 w-5 text-amber-400" /> Promo Codes
+      </h2>
+      <Card className="bg-card border-border">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-card-foreground flex items-center gap-2">
+            <Gift className="h-4 w-4 text-amber-400" /> Apply a Promo Code
+          </CardTitle>
+          <CardDescription>Enter a promo code to get discounts on your subscription, service charges, or listing fees.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {/* Input */}
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={code}
+              onChange={(e) => setCode(e.target.value.toUpperCase())}
+              placeholder="Enter promo code (e.g. SUMMER25)"
+              className="flex-1 h-9 rounded-md border border-border bg-secondary/50 px-3 text-sm font-mono text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
+              onKeyDown={(e) => { if (e.key === "Enter" && code.trim()) redeemMutation.mutate({ code: code.trim() }); }}
+            />
+            <Button
+              size="sm"
+              onClick={() => { if (code.trim()) redeemMutation.mutate({ code: code.trim() }); }}
+              disabled={redeemMutation.isPending || !code.trim()}
+              className="gap-1.5"
+            >
+              <Tag className="h-3.5 w-3.5" />
+              {redeemMutation.isPending ? "Applying..." : "Apply"}
+            </Button>
+          </div>
+
+          {/* Active Promo Discounts */}
+          {promosLoading ? (
+            <div className="space-y-2">{[1, 2].map(i => <Skeleton key={i} className="h-12 w-full" />)}</div>
+          ) : promos.length === 0 ? (
+            <div className="text-center py-4">
+              <Gift className="h-7 w-7 text-muted-foreground mx-auto mb-2" />
+              <p className="text-sm text-muted-foreground">No active promo codes. Enter a code above to apply a discount.</p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Active Discounts</p>
+              {promos.map((p: any) => (
+                <div key={p.id} className="flex items-start justify-between p-3 rounded-lg border border-amber-500/20 bg-amber-500/5">
+                  <div className="flex items-start gap-3">
+                    <div className="mt-0.5 h-7 w-7 rounded-full bg-amber-500/15 flex items-center justify-center shrink-0">
+                      <Percent className="h-3.5 w-3.5 text-amber-400" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono font-semibold text-amber-400 text-sm">{p.code}</span>
+                        <Badge className="bg-green-500/15 text-green-400 border-green-500/30 text-[10px] px-1.5 py-0">Active</Badge>
+                      </div>
+                      <p className="text-xs text-foreground mt-0.5">
+                        <span className="font-semibold text-green-400">{Number(p.discountPercent).toFixed(0)}% off</span>{" "}
+                        {[
+                          p.affectsSubscription && "subscription",
+                          p.affectsServiceCharge && "service charge",
+                          p.affectsListingFee && "listing fee",
+                        ].filter(Boolean).join(" + ")}
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        {p.billingCycles == null ? (
+                          <span className="flex items-center gap-1"><Infinity className="h-3 w-3" /> Applies forever</span>
+                        ) : (
+                          `${p.cyclesRemaining ?? p.billingCycles} billing cycle${(p.cyclesRemaining ?? p.billingCycles) !== 1 ? "s" : ""} remaining`
+                        )}
+                      </p>
+                    </div>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Applied {new Date(p.redeemedAt).toLocaleDateString()}
+                  </p>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
 export default function CompanyBilling() {
   const [, setLocation] = useLocation();
   const [billingInterval, setBillingInterval] = useState<"monthly" | "annual">("monthly");
@@ -308,6 +419,10 @@ export default function CompanyBilling() {
   const plan = planData?.plan;
   const usage = planData?.usage;
   const planPriceOverride = planData?.planPriceOverride;
+  const feeOverridePercent = planData?.feeOverridePercent;
+  const feeOverridePerListingEnabled = planData?.feeOverridePerListingEnabled;
+  const feeOverridePerListingAmount = planData?.feeOverridePerListingAmount;
+  const hasCustomFees = feeOverridePercent != null || feeOverridePerListingEnabled != null;
   const planStatus = planData?.planStatus ?? null;
   const daysRemaining = planData?.daysRemaining ?? null;
   const invoices = invoicesData?.invoices ?? [];
@@ -361,6 +476,11 @@ export default function CompanyBilling() {
                   {planPriceOverride && (
                     <Badge variant="secondary" className="text-xs">Custom Pricing</Badge>
                   )}
+                  {hasCustomFees && (
+                    <Badge className="text-xs bg-violet-500/15 text-violet-400 border-violet-500/30 gap-1">
+                      <Percent className="h-2.5 w-2.5" /> Custom Fee Rate
+                    </Badge>
+                  )}
                 </div>
                 {plan?.description && <p className="text-sm text-muted-foreground">{plan.description}</p>}
                 {!plan && <p className="text-sm text-muted-foreground">You are not currently on a subscription plan. Choose a plan below to get started.</p>}
@@ -382,6 +502,25 @@ export default function CompanyBilling() {
                         No per-listing fee
                       </span>
                     )}
+                  </div>
+                )}
+                {hasCustomFees && (
+                  <div className="mt-2 flex items-start gap-2 text-sm text-violet-400 bg-violet-500/10 border border-violet-500/20 rounded-md px-3 py-2">
+                    <Percent className="h-4 w-4 shrink-0 mt-0.5" />
+                    <div>
+                      <span className="font-medium">Custom fee rates apply to your account.</span>
+                      <div className="flex flex-wrap gap-2 mt-1">
+                        {feeOverridePercent != null && (
+                          <span className="text-xs text-violet-300">{parseFloat(String(feeOverridePercent)).toFixed(1)}% service charge per job</span>
+                        )}
+                        {feeOverridePerListingEnabled && feeOverridePerListingAmount != null && (
+                          <span className="text-xs text-violet-300">${parseFloat(String(feeOverridePerListingAmount)).toFixed(2)} per job listing</span>
+                        )}
+                        {feeOverridePerListingEnabled === false && (
+                          <span className="text-xs text-violet-300">No per-listing fee</span>
+                        )}
+                      </div>
+                    </div>
                   </div>
                 )}
                 {planStatus === "expired" && (
@@ -642,6 +781,8 @@ export default function CompanyBilling() {
         )}
       </div>
 
+      {/* Promo Code Redemption */}
+      <PromoCodeSection />
       {/* Stripe Subscription Invoices */}
       <div>
         <h2 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">

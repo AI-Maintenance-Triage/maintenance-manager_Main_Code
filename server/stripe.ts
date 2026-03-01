@@ -177,6 +177,8 @@ export interface JobPaymentParams {
   companyId: number;
   contractorProfileId: number;
   description: string;
+  /** Optional: specific payment method ID to charge. Falls back to customer default if omitted. */
+  paymentMethodId?: string;
 }
 
 export async function chargeJobAndPayContractor(params: JobPaymentParams) {
@@ -194,18 +196,20 @@ export async function chargeJobAndPayContractor(params: JobPaymentParams) {
 
   const totalChargeCents = jobCostCents + platformFeeCents + perListingFeeCents;
 
-  // Get default payment method — prefer the customer's default, then fall back to first card or bank account
-  const customerRaw = await stripe.customers.retrieve(stripeCustomerId);
-  const customer = customerRaw as Stripe.Customer;
-  let paymentMethodId = customer.invoice_settings?.default_payment_method as string | undefined;
-
+  // Resolve payment method: use the explicitly provided one, or fall back to customer default
+  let paymentMethodId: string | undefined = params.paymentMethodId;
   if (!paymentMethodId) {
-    // Fall back: try cards first, then bank accounts
-    const [cards, bankAccounts] = await Promise.all([
-      stripe.paymentMethods.list({ customer: stripeCustomerId, type: "card" }),
-      stripe.paymentMethods.list({ customer: stripeCustomerId, type: "us_bank_account" }),
-    ]);
-    paymentMethodId = cards.data[0]?.id ?? bankAccounts.data[0]?.id;
+    const customerRaw = await stripe.customers.retrieve(stripeCustomerId);
+    const customer = customerRaw as Stripe.Customer;
+    paymentMethodId = customer.invoice_settings?.default_payment_method as string | undefined;
+    if (!paymentMethodId) {
+      // Fall back: try cards first, then bank accounts
+      const [cards, bankAccounts] = await Promise.all([
+        stripe.paymentMethods.list({ customer: stripeCustomerId, type: "card" }),
+        stripe.paymentMethods.list({ customer: stripeCustomerId, type: "us_bank_account" }),
+      ]);
+      paymentMethodId = cards.data[0]?.id ?? bankAccounts.data[0]?.id;
+    }
   }
 
   if (!paymentMethodId) {

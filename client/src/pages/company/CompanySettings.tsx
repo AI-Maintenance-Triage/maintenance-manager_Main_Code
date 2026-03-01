@@ -10,7 +10,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useViewAs } from "@/contexts/ViewAsContext";
-import { Plus, Trash2, Settings, DollarSign, MapPin, Clock, Link2, Pencil, Bell } from "lucide-react";
+import { Plus, Trash2, Settings, DollarSign, MapPin, Clock, Link2, Pencil, Bell, Wallet } from "lucide-react";
+import PaymentMethodManager from "@/components/PaymentMethodManager";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
@@ -35,12 +36,29 @@ export default function CompanySettings() {
           <TabsTrigger value="tracking"><MapPin className="h-4 w-4 mr-1.5" />GPS & Time</TabsTrigger>
           <TabsTrigger value="notifications"><Bell className="h-4 w-4 mr-1.5" />Notifications</TabsTrigger>
           <TabsTrigger value="integrations"><Link2 className="h-4 w-4 mr-1.5" />Integrations</TabsTrigger>
+          <TabsTrigger value="payment-methods"><Wallet className="h-4 w-4 mr-1.5" />Payment Methods</TabsTrigger>
         </TabsList>
         <TabsContent value="general"><GeneralSettings readOnly={false} companyId={isViewingAsCompany ? viewAs.companyId! : undefined} /></TabsContent>
         <TabsContent value="rates"><SkillTiersSettings readOnly={false} isAdmin={isAdmin} companyId={isViewingAsCompany ? viewAs.companyId! : undefined} /></TabsContent>
         <TabsContent value="tracking"><TrackingSettings readOnly={false} companyId={isViewingAsCompany ? viewAs.companyId! : undefined} /></TabsContent>
         <TabsContent value="notifications"><NotificationSettings readOnly={false} companyId={isViewingAsCompany ? viewAs.companyId! : undefined} /></TabsContent>
         <TabsContent value="integrations"><IntegrationSettings readOnly={false} companyId={isViewingAsCompany ? viewAs.companyId! : undefined} /></TabsContent>
+        <TabsContent value="payment-methods">
+          <Card className="bg-card border-border">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-card-foreground">
+                <Wallet className="h-5 w-5 text-primary" />
+                Payment Methods
+              </CardTitle>
+              <CardDescription>
+                Manage the bank accounts and cards used to pay contractors after job completion. You can select which account to charge right before submitting each payment.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <PaymentMethodManager />
+            </CardContent>
+          </Card>
+        </TabsContent>
       </Tabs>
     </div>
   );

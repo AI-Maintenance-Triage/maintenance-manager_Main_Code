@@ -123,6 +123,9 @@ const companyRouter = router({
       daysRemaining,
       planPriceOverride: company?.planPriceOverride ?? null,
       planNotes: company?.planNotes ?? null,
+      feeOverridePercent: company?.feeOverridePercent ?? null,
+      feeOverridePerListingEnabled: company?.feeOverridePerListingEnabled ?? null,
+      feeOverridePerListingAmount: company?.feeOverridePerListingAmount ?? null,
       usage: { properties: propCount, contractors: contractorCount, jobsThisMonth },
     };
   }),
@@ -864,6 +867,8 @@ const jobsRouter = router({
       jobId: z.number(),
       action: z.enum(["approve", "dispute"]),
       notes: z.string().min(1, "Please provide notes"),
+      /** Optional: specific payment method ID to charge. Falls back to company default if omitted. */
+      paymentMethodId: z.string().optional(),
     }))
     .mutation(async ({ ctx, input }) => {
       const companyId = getEffectiveCompanyId(ctx);
@@ -896,16 +901,24 @@ const jobsRouter = router({
           // Get platform fee settings — plan takes priority over global settings
           const companyPlan = await db.getEffectivePlanForCompany(companyId);
           const globalSettings = await getPlatformSettings();
-          const feePercent = companyPlan?.platformFeePercent != null
+          let feePercent = companyPlan?.platformFeePercent != null
             ? parseFloat(String(companyPlan.platformFeePercent))
             : parseFloat(globalSettings.platformFeePercent ?? "5");
           const perListingEnabled = companyPlan != null
             ? companyPlan.perListingFeeEnabled
             : globalSettings.perListingFeeEnabled;
-          const perListingAmount = companyPlan != null
+          let perListingAmount = companyPlan != null
             ? parseFloat(String(companyPlan.perListingFeeAmount ?? "0"))
             : parseFloat(globalSettings.perListingFeeAmount ?? "0");
 
+          // Apply active promo discounts (service charge + listing fee)
+          const promoDiscounts = await db.getActivePromoDiscountsForCompany(companyId);
+          if (promoDiscounts.serviceChargeDiscountPercent > 0) {
+            feePercent = feePercent * (1 - promoDiscounts.serviceChargeDiscountPercent / 100);
+          }
+          if (promoDiscounts.listingFeeDiscountPercent > 0) {
+            perListingAmount = perListingAmount * (1 - promoDiscounts.listingFeeDiscountPercent / 100);
+          }
           // Calculate costs in cents
           const laborCost = parseFloat(job.totalLaborCost ?? "0");
           const partsCost = parseFloat(job.totalPartsCost ?? "0");
@@ -929,8 +942,11 @@ const jobsRouter = router({
             companyId,
             contractorProfileId: contractorProfile.id,
             description: `Maintenance job #${input.jobId}: ${job.title}`,
+            paymentMethodId: input.paymentMethodId,
           });
 
+          // Decrement promo code billing cycles after successful charge
+          await db.decrementPromoJobCycles(companyId);
           // Detect whether the payment was made with ACH (bank account) — ACH takes 1-3 business days to settle
           let isAchPayment = false;
           try {
@@ -1994,6 +2010,14 @@ const platformRouter = router({
   stats: adminProcedure.query(async () => {
     return db.getPlatformStats();
   }),
+  revenueByCompany: adminProcedure
+    .input(z.object({
+      startDate: z.number().optional(), // UTC ms timestamp
+      endDate: z.number().optional(),
+    }))
+    .query(async ({ input }) => {
+      return db.getRevenueByCompany(input.startDate, input.endDate);
+    }),
   companies: adminProcedure.query(async () => {
     return db.listCompanies();
   }),
@@ -2111,15 +2135,14 @@ const invitesRouter = router({
       });
 
       const inviteUrl = `${input.origin}/invite/${token}`;
-      await email.sendContractorInviteEmail({
+      const emailSent = await email.sendContractorInviteEmail({
         to: input.email,
         name: input.name ?? "",
         companyName: company.name,
         inviteUrl,
         expiresInDays: EXPIRES_IN_DAYS,
       });
-
-      return { success: true };
+      return { success: true, inviteUrl, emailSent };
     }),
 
   // Company: list all invites they have sent
@@ -2192,16 +2215,15 @@ const invitesRouter = router({
 
       await db.refreshContractorInviteToken(invite.id, newToken, newExpiresAt);
 
-      const inviteUrl = `${input.origin}/invite/${newToken}`;
-      await email.sendContractorInviteEmail({
+       const inviteUrl = `${input.origin}/invite/${newToken}`;
+      const emailSent = await email.sendContractorInviteEmail({
         to: invite.email,
         name: invite.name ?? "",
         companyName: company.name,
         inviteUrl,
         expiresInDays: EXPIRES_IN_DAYS,
       });
-
-      return { success: true };
+      return { success: true, inviteUrl, emailSent };
     }),
 });
 const publicRouter = router({
@@ -2215,6 +2237,106 @@ const publicRouter = router({
     const plans = await db.listSubscriptionPlansByType("contractor");
     return (plans ?? []).filter((p) => p.isActive).sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
   }),
+});
+
+
+// ─── Promo Codes Router ────────────────────────────────────────────────────
+const promoCodesRouter = router({
+  // Admin: list all promo codes
+  list: adminProcedure.query(async () => {
+    return db.listPromoCodes();
+  }),
+
+  // Admin: generate a random code string
+  generateCode: adminProcedure.query(async () => {
+    return { code: db.generatePromoCodeString() };
+  }),
+
+  // Admin: create a new promo code
+  create: adminProcedure
+    .input(z.object({
+      code: z.string().min(3).max(64).optional(), // if omitted, auto-generate
+      description: z.string().optional(),
+      affectsSubscription: z.boolean().default(false),
+      affectsServiceCharge: z.boolean().default(false),
+      affectsListingFee: z.boolean().default(false),
+      discountPercent: z.number().min(0).max(100),
+      billingCycles: z.number().min(1).optional(), // null = forever
+      maxRedemptions: z.number().min(1).optional(), // null = unlimited
+      expiresAt: z.number().optional(), // unix ms
+    }))
+    .mutation(async ({ input }) => {
+      const code = input.code || db.generatePromoCodeString();
+      const id = await db.createPromoCode({
+        code,
+        description: input.description ?? null,
+        affectsSubscription: input.affectsSubscription,
+        affectsServiceCharge: input.affectsServiceCharge,
+        affectsListingFee: input.affectsListingFee,
+        discountPercent: input.discountPercent.toFixed(2),
+        billingCycles: input.billingCycles ?? null,
+        maxRedemptions: input.maxRedemptions ?? null,
+        expiresAt: input.expiresAt ?? null,
+        isActive: true,
+      });
+      return { id, code };
+    }),
+
+  // Admin: update a promo code (toggle active, change description, etc.)
+  update: adminProcedure
+    .input(z.object({
+      id: z.number(),
+      description: z.string().optional(),
+      isActive: z.boolean().optional(),
+      discountPercent: z.number().min(0).max(100).optional(),
+      billingCycles: z.number().min(1).nullable().optional(),
+      maxRedemptions: z.number().min(1).nullable().optional(),
+      expiresAt: z.number().nullable().optional(),
+      affectsSubscription: z.boolean().optional(),
+      affectsServiceCharge: z.boolean().optional(),
+      affectsListingFee: z.boolean().optional(),
+    }))
+    .mutation(async ({ input }) => {
+      const { id, discountPercent, ...rest } = input;
+      const updateData: Record<string, unknown> = { ...rest };
+      if (discountPercent !== undefined) updateData.discountPercent = discountPercent.toFixed(2);
+      await db.updatePromoCode(id, updateData as any);
+      return { success: true };
+    }),
+
+  // Admin: delete a promo code
+  delete: adminProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ input }) => {
+      await db.deletePromoCode(input.id);
+      return { success: true };
+    }),
+
+  // Company: get my active redemptions
+  myRedemptions: companyAdminProcedure.query(async ({ ctx }) => {
+    const companyId = getEffectiveCompanyId(ctx);
+    return db.getCompanyPromoRedemptions(companyId);
+  }),
+
+  // Company: redeem a promo code
+  redeem: companyAdminProcedure
+    .input(z.object({ code: z.string().min(1) }))
+    .mutation(async ({ ctx, input }) => {
+      const companyId = getEffectiveCompanyId(ctx);
+      const result = await db.redeemPromoCode(companyId, input.code);
+      if (!result.success) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: result.error ?? "Failed to redeem promo code" });
+      }
+      return {
+        success: true,
+        code: result.promo?.code,
+        discountPercent: result.promo?.discountPercent,
+        affectsSubscription: result.promo?.affectsSubscription,
+        affectsServiceCharge: result.promo?.affectsServiceCharge,
+        affectsListingFee: result.promo?.affectsListingFee,
+        billingCycles: result.promo?.billingCycles,
+      };
+    }),
 });
 
 export const appRouter = router({
@@ -2251,6 +2373,7 @@ export const appRouter = router({
   stripePayments: stripeRouter,
   invites: invitesRouter,
   adminViewAs: adminViewAsRouter,
+  promoCodes: promoCodesRouter,
   admin: router({
     // Re-geocode all properties and contractor profiles that are missing coordinates.
     // Safe to run multiple times — only updates records with null lat/lng.

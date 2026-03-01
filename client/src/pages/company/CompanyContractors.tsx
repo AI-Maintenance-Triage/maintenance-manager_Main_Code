@@ -8,7 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useViewAs } from "@/contexts/ViewAsContext";
-import { HardHat, CheckCircle, XCircle, Star, UserPlus, Mail, Clock, Ban, RefreshCw } from "lucide-react";
+import { HardHat, CheckCircle, XCircle, Star, UserPlus, Mail, Clock, Ban, RefreshCw, Copy, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { useState } from "react";
 
@@ -33,18 +33,32 @@ export default function CompanyContractors() {
   const { data: invitesData, isLoading: invitesLoading } = trpc.invites.list.useQuery();
   const pendingInvites = (invitesData?.invites ?? []).filter((i) => i.status === "pending");
 
+  // Dialog state
+  const [inviteOpen, setInviteOpen] = useState(false);
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteName, setInviteName] = useState("");
+  // Fallback invite link shown when email delivery fails
+  const [fallbackLink, setFallbackLink] = useState<string | null>(null);
+
   // Mutations
   const updateRelationship = trpc.contractor.updateRelationship.useMutation({
     onSuccess: () => { toast.success("Updated!"); utils.contractor.listByCompany.invalidate(); },
   });
 
   const createInvite = trpc.invites.create.useMutation({
-    onSuccess: () => {
-      toast.success("Invite sent! The contractor will receive an email with a sign-up link.");
+    onSuccess: (data) => {
       utils.invites.list.invalidate();
-      setInviteOpen(false);
       setInviteEmail("");
       setInviteName("");
+      if (data.emailSent) {
+        toast.success("Invite sent! The contractor will receive an email with a sign-up link.");
+        setInviteOpen(false);
+        setFallbackLink(null);
+      } else {
+        // Email delivery failed (domain not verified in Resend) — show copyable link
+        setFallbackLink(data.inviteUrl);
+        toast.warning("Email could not be delivered. Copy the invite link below to share manually.");
+      }
     },
     onError: (err) => toast.error(err.message),
   });
@@ -55,14 +69,18 @@ export default function CompanyContractors() {
   });
 
   const resendInvite = trpc.invites.resend.useMutation({
-    onSuccess: () => { toast.success("Invite resent! A new email has been sent with a fresh 7-day link."); utils.invites.list.invalidate(); },
+    onSuccess: (data) => {
+      utils.invites.list.invalidate();
+      if (data.emailSent) {
+        toast.success("Invite resent! A new email has been sent with a fresh 7-day link.");
+      } else {
+        setFallbackLink(data.inviteUrl);
+        setInviteOpen(true);
+        toast.warning("Email could not be delivered. Copy the invite link below to share manually.");
+      }
+    },
     onError: (err) => toast.error(err.message),
   });
-
-  // Dialog state
-  const [inviteOpen, setInviteOpen] = useState(false);
-  const [inviteEmail, setInviteEmail] = useState("");
-  const [inviteName, setInviteName] = useState("");
 
   const statusBadge = (status: string) => {
     switch (status) {
@@ -76,11 +94,16 @@ export default function CompanyContractors() {
 
   const handleSendInvite = () => {
     if (!inviteEmail.trim()) { toast.error("Email is required"); return; }
+    setFallbackLink(null);
     createInvite.mutate({
       email: inviteEmail.trim(),
       name: inviteName.trim() || undefined,
       origin: window.location.origin,
     });
+  };
+
+  const handleCopyLink = (link: string) => {
+    navigator.clipboard.writeText(link).then(() => toast.success("Invite link copied to clipboard!"));
   };
 
   return (
@@ -93,9 +116,9 @@ export default function CompanyContractors() {
             {isViewingAsCompany ? `Viewing contractors for ${viewAs.companyName}` : "Manage your contractor relationships"}
           </p>
         </div>
-        <Button onClick={() => setInviteOpen(true)} className="gap-2">
-            <UserPlus className="h-4 w-4" /> Invite Contractor
-          </Button>
+        <Button onClick={() => { setInviteOpen(true); setFallbackLink(null); }} className="gap-2">
+          <UserPlus className="h-4 w-4" /> Invite Contractor
+        </Button>
       </div>
 
       {/* Pending Invites */}
@@ -160,9 +183,9 @@ export default function CompanyContractors() {
                 ? "No contractors connected to this company yet."
                 : "No contractors connected yet. Invite contractors directly or they can request to join through the platform."}
             </p>
-            <Button onClick={() => setInviteOpen(true)} variant="outline" className="gap-2">
-                <UserPlus className="h-4 w-4" /> Invite Your First Contractor
-              </Button>
+            <Button onClick={() => { setInviteOpen(true); setFallbackLink(null); }} variant="outline" className="gap-2">
+              <UserPlus className="h-4 w-4" /> Invite Your First Contractor
+            </Button>
           </CardContent>
         </Card>
       ) : (
@@ -193,25 +216,25 @@ export default function CompanyContractors() {
                     </div>
                   </div>
                   <div className="flex gap-2 shrink-0">
-                      {c.status === "pending" && (
-                        <>
-                          <Button size="sm" variant="outline" className="gap-1 text-green-400 border-green-500/30 hover:bg-green-500/10"
-                            onClick={() => updateRelationship.mutate({ relationshipId: c.relationshipId, status: "approved" })}>
-                            <CheckCircle className="h-3.5 w-3.5" /> Approve
-                          </Button>
-                          <Button size="sm" variant="outline" className="gap-1 text-red-400 border-red-500/30 hover:bg-red-500/10"
-                            onClick={() => updateRelationship.mutate({ relationshipId: c.relationshipId, status: "rejected" })}>
-                            <XCircle className="h-3.5 w-3.5" /> Reject
-                          </Button>
-                        </>
-                      )}
-                      {c.status === "approved" && (
-                        <Button size="sm" variant="outline" className="text-muted-foreground"
-                          onClick={() => updateRelationship.mutate({ relationshipId: c.relationshipId, status: "suspended" })}>
-                          Suspend
+                    {c.status === "pending" && (
+                      <>
+                        <Button size="sm" variant="outline" className="gap-1 text-green-400 border-green-500/30 hover:bg-green-500/10"
+                          onClick={() => updateRelationship.mutate({ relationshipId: c.relationshipId, status: "approved" })}>
+                          <CheckCircle className="h-3.5 w-3.5" /> Approve
                         </Button>
-                      )}
-                    </div>
+                        <Button size="sm" variant="outline" className="gap-1 text-red-400 border-red-500/30 hover:bg-red-500/10"
+                          onClick={() => updateRelationship.mutate({ relationshipId: c.relationshipId, status: "rejected" })}>
+                          <XCircle className="h-3.5 w-3.5" /> Reject
+                        </Button>
+                      </>
+                    )}
+                    {c.status === "approved" && (
+                      <Button size="sm" variant="outline" className="text-muted-foreground"
+                        onClick={() => updateRelationship.mutate({ relationshipId: c.relationshipId, status: "suspended" })}>
+                        Suspend
+                      </Button>
+                    )}
+                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -220,7 +243,7 @@ export default function CompanyContractors() {
       )}
 
       {/* Invite Dialog */}
-      <Dialog open={inviteOpen} onOpenChange={setInviteOpen}>
+      <Dialog open={inviteOpen} onOpenChange={(open) => { setInviteOpen(open); if (!open) setFallbackLink(null); }}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
@@ -229,41 +252,77 @@ export default function CompanyContractors() {
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-2">
-            <p className="text-sm text-muted-foreground">
-              Enter the contractor's email address and we'll send them a personalised invitation with a direct sign-up link. They'll be automatically connected to your company upon registration.
-            </p>
-            <div className="space-y-2">
-              <Label htmlFor="invite-email">Email Address <span className="text-red-400">*</span></Label>
-              <Input
-                id="invite-email"
-                type="email"
-                placeholder="contractor@example.com"
-                value={inviteEmail}
-                onChange={(e) => setInviteEmail(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleSendInvite()}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="invite-name">Name <span className="text-muted-foreground text-xs">(optional)</span></Label>
-              <Input
-                id="invite-name"
-                placeholder="John Smith"
-                value={inviteName}
-                onChange={(e) => setInviteName(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleSendInvite()}
-              />
-            </div>
-            <p className="text-xs text-muted-foreground">
-              The invite link expires in 7 days. You can resend or revoke it at any time from this page.
-            </p>
+            {/* Fallback link shown when email delivery fails */}
+            {fallbackLink ? (
+              <div className="space-y-3">
+                <div className="flex items-start gap-2 p-3 bg-amber-500/10 border border-amber-500/30 rounded-lg">
+                  <AlertTriangle className="h-4 w-4 text-amber-400 mt-0.5 shrink-0" />
+                  <div className="text-sm text-amber-300">
+                    <p className="font-medium mb-1">Email delivery unavailable</p>
+                    <p className="text-amber-400/80 text-xs">
+                      The invite was created successfully but the email could not be sent. This is because the platform's email sender domain hasn't been verified yet. Share the link below directly with the contractor.
+                    </p>
+                  </div>
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-muted-foreground">Invite Link (valid for 7 days)</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      readOnly
+                      value={fallbackLink}
+                      className="text-xs font-mono bg-muted/50 text-foreground"
+                      onClick={(e) => (e.target as HTMLInputElement).select()}
+                    />
+                    <Button size="icon" variant="outline" onClick={() => handleCopyLink(fallbackLink)} title="Copy link">
+                      <Copy className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+                <Button className="w-full" onClick={() => { setInviteOpen(false); setFallbackLink(null); }}>
+                  Done
+                </Button>
+              </div>
+            ) : (
+              <>
+                <p className="text-sm text-muted-foreground">
+                  Enter the contractor's email address and we'll send them a personalised invitation with a direct sign-up link. They'll be automatically connected to your company upon registration.
+                </p>
+                <div className="space-y-2">
+                  <Label htmlFor="invite-email">Email Address <span className="text-red-400">*</span></Label>
+                  <Input
+                    id="invite-email"
+                    type="email"
+                    placeholder="contractor@example.com"
+                    value={inviteEmail}
+                    onChange={(e) => setInviteEmail(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && handleSendInvite()}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="invite-name">Name <span className="text-muted-foreground text-xs">(optional)</span></Label>
+                  <Input
+                    id="invite-name"
+                    placeholder="John Smith"
+                    value={inviteName}
+                    onChange={(e) => setInviteName(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && handleSendInvite()}
+                  />
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  The invite link expires in 7 days. You can resend or revoke it at any time from this page.
+                </p>
+              </>
+            )}
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setInviteOpen(false)}>Cancel</Button>
-            <Button onClick={handleSendInvite} disabled={createInvite.isPending} className="gap-2">
-              <Mail className="h-4 w-4" />
-              {createInvite.isPending ? "Sending..." : "Send Invite"}
-            </Button>
-          </DialogFooter>
+          {!fallbackLink && (
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setInviteOpen(false)}>Cancel</Button>
+              <Button onClick={handleSendInvite} disabled={createInvite.isPending} className="gap-2">
+                <Mail className="h-4 w-4" />
+                {createInvite.isPending ? "Sending..." : "Send Invite"}
+              </Button>
+            </DialogFooter>
+          )}
         </DialogContent>
       </Dialog>
     </div>

@@ -74,7 +74,10 @@ async function sendEmail(opts: {
       html: opts.html,
     });
     if (error) {
-      console.error("[Email] Send error:", error);
+      console.error("[Email] Send error:", JSON.stringify(error));
+      if ((error as any).statusCode === 403 || (error as any).name === 'validation_error') {
+        console.error("[Email] DOMAIN NOT VERIFIED — To send to external recipients, verify a domain at resend.com/domains and update EMAIL_FROM in Settings → Secrets.");
+      }
       return false;
     }
     console.log("[Email] Sent:", opts.subject, "→", opts.to);
@@ -371,5 +374,48 @@ export async function sendNewJobPostedEmail(opts: {
     to: opts.to,
     subject: `🔔 New Job Near You: ${opts.jobTitle} — Accept Before Someone Else Does`,
     html,
+  });
+}
+
+// ─── Job Escalation Email ─────────────────────────────────────────────────────
+export async function sendJobEscalationEmail(params: {
+  to: string;
+  companyName: string;
+  jobTitle: string;
+  jobId: number;
+  propertyName: string;
+  minutesOpen: number;
+  jobsUrl: string;
+}) {
+  const hoursOpen = params.minutesOpen >= 60
+    ? `${Math.floor(params.minutesOpen / 60)}h ${params.minutesOpen % 60}m`
+    : `${params.minutesOpen} minutes`;
+
+  return sendEmail({
+    to: params.to,
+    subject: `⚠️ Job Not Yet Accepted: ${params.jobTitle}`,
+    html: `
+      <div style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:24px">
+        <h2 style="color:#f59e0b;margin-bottom:8px">Job Escalation Alert</h2>
+        <p style="color:#374151">Hi ${params.companyName},</p>
+        <p style="color:#374151">
+          The following maintenance job has been posted to the job board but has not yet been accepted
+          by a contractor after <strong>${hoursOpen}</strong>:
+        </p>
+        <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:16px;margin:16px 0">
+          <p style="margin:0 0 4px;font-weight:600;color:#111827">Job #${params.jobId}: ${params.jobTitle}</p>
+          <p style="margin:0;color:#6b7280;font-size:14px">Property: ${params.propertyName}</p>
+        </div>
+        <p style="color:#374151">
+          You may want to check if the job is visible to contractors, or consider reaching out to a contractor directly.
+        </p>
+        <a href="${params.jobsUrl}" style="display:inline-block;background:#6366f1;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;font-weight:600;margin-top:8px">
+          View Jobs
+        </a>
+        <p style="color:#9ca3af;font-size:12px;margin-top:24px">
+          This is an automated alert from Maintenance Manager.
+        </p>
+      </div>
+    `,
   });
 }

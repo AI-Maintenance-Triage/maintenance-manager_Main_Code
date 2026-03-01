@@ -127,6 +127,53 @@ async function runTrialExpiryCheck(): Promise<void> {
   }
 }
 
+// ─── Job Escalation Check ─────────────────────────────────────────────────────
+async function runJobEscalationCheck(): Promise<void> {
+  const now = Date.now();
+  console.log(`[cron] runJobEscalationCheck started at ${new Date(now).toISOString()}`);
+  let notified = 0;
+  const errors: string[] = [];
+
+  try {
+    const overdueJobs = await db.getOverdueUnacceptedJobs();
+    for (const job of overdueJobs) {
+      try {
+        // Mark as notified so we don't spam
+        await db.markJobEscalationNotified(job.id, now);
+
+        // Notify platform admin
+        const { notifyOwner } = await import("./_core/notification");
+        await notifyOwner({
+          title: `⚠️ Job Not Accepted: ${job.title}`,
+          content: `Job #${job.id} "${job.title}" at ${job.propertyName ?? "unknown property"} (Company: ${job.companyName ?? "unknown"}) has been open for more than the escalation timeout without being accepted by a contractor.`,
+        });
+
+        // Email the company contact if available
+        if (job.companyEmail) {
+          await email.sendJobEscalationEmail({
+            to: job.companyEmail,
+            companyName: job.companyName ?? "Your company",
+            jobTitle: job.title,
+            jobId: job.id,
+            propertyName: job.propertyName ?? "Unknown property",
+            minutesOpen: job.minutesOpen,
+            jobsUrl: `${PLATFORM_ORIGIN}/company/jobs`,
+          });
+        }
+
+        notified++;
+      } catch (e: any) {
+        errors.push(`job ${job.id}: ${e.message}`);
+      }
+    }
+  } catch (e: any) {
+    errors.push(`getOverdueUnacceptedJobs: ${e.message}`);
+  }
+
+  console.log(`[cron] runJobEscalationCheck complete — notified: ${notified}, errors: ${errors.length}`);
+  if (errors.length > 0) console.error("[cron] Escalation errors:", errors);
+}
+
 /**
  * Start all scheduled cron jobs.
  * Call this once from the server entry point after the Express server starts.
@@ -142,10 +189,22 @@ export function startCronJobs(): void {
         console.error("[cron] Unhandled error in runTrialExpiryCheck:", e.message);
       }
     },
-    {
-      timezone: "UTC",
-    }
+    { timezone: "UTC" }
   );
 
-  console.log("[cron] Scheduled: trial expiry check runs daily at midnight UTC");
+  // Run every 15 minutes to check for jobs that have not been accepted within the escalation timeout
+  cron.schedule(
+    "*/15 * * * *",
+    async () => {
+      try {
+        await runJobEscalationCheck();
+      } catch (e: any) {
+        console.error("[cron] Unhandled error in runJobEscalationCheck:", e.message);
+      }
+    },
+    { timezone: "UTC" }
+  );
+
+  console.log("[cron] Scheduled: trial expiry check daily at midnight UTC");
+  console.log("[cron] Scheduled: job escalation check every 15 minutes");
 }

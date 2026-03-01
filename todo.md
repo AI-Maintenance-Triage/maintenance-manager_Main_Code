@@ -830,3 +830,17 @@
 - [x] Per-job fee breakdown on job detail page (labor + parts + platform fee + listing fee = total)
 - [x] Admin fee override per company (custom fee % and listing fee independent of plan tier)
 - [x] Contractor payout history link on contractor billing page ("View Stripe Payouts" button)
+
+## Session 26: Multi-Bank Accounts + Promo Codes + Next 3 Features
+- [x] Multi-bank account: schema (company_payment_methods table), backend procedures (add, list, remove, set default)
+- [x] Multi-bank account: company settings page — add/manage linked bank accounts via Stripe SetupIntent
+- [x] Multi-bank account: bank account selector in job payment approval dialog (select account before submitting payment)
+- [x] Promo code system: schema (promo_codes + company_promo_redemptions tables)
+- [x] Promo code system: admin UI to create/manage promo codes (% off, billing cycles, scope: subscription/service charge/listing fee, random code generator)
+- [x] Promo code redemption: company billing page input field + backend apply/validate logic
+- [x] Promo code: apply active promo discounts to subscription checkout and job cost calculations
+- [x] Promo code vitest: 27 tests covering redemption logic, discount calc, expired/maxed/duplicate edge cases
+- [x] Company fee override badge on company billing page
+- [x] Admin revenue report by company (date range filter + bar chart on Revenue page)
+- [x] Job escalation notifications (email + in-app via notifyOwner, cron every 15 min, escalationNotifiedAt field)
+- [x] Bug: contractor invite email not sending — diagnosed (Resend domain restriction), added copy-link fallback, improved error logging

@@ -183,6 +183,20 @@
       "when": 1772389967421,
       "tag": "0025_purple_legion",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "5",
+      "when": 1772390531245,
+      "tag": "0026_skinny_dakota_north",
+      "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "5",
+      "when": 1772392226826,
+      "tag": "0027_dark_hitman",
+      "breakpoints": true
     }
   ]
 }

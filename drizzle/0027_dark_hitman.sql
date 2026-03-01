@@ -1,0 +1,1 @@
+ALTER TABLE `maintenance_requests` ADD `escalationNotifiedAt` bigint;
