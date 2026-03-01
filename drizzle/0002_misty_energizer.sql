@@ -1,0 +1,1 @@
+ALTER TABLE `maintenance_requests` ADD `postedToBoard` boolean DEFAULT false NOT NULL;

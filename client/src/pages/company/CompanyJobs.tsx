@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useViewAs } from "@/contexts/ViewAsContext";
-import { Plus, Zap, Clock, CheckCircle, AlertTriangle } from "lucide-react";
+import { Plus, Zap, Clock, CheckCircle, AlertTriangle, Globe, X } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -62,6 +62,24 @@ export default function CompanyJobs() {
 
   const [form, setForm] = useState({
     propertyId: "", title: "", description: "", tenantName: "", tenantPhone: "", unitNumber: "",
+  });
+
+  const postToBoard = trpc.jobBoard.post.useMutation({
+    onSuccess: () => {
+      toast.success("Job posted to the contractor board!");
+      utils.jobs.list.invalidate();
+      utils.adminViewAs.companyJobs.invalidate();
+    },
+    onError: (err: any) => toast.error(err.message),
+  });
+
+  const removeFromBoard = trpc.jobBoard.remove.useMutation({
+    onSuccess: () => {
+      toast.success("Job removed from the board.");
+      utils.jobs.list.invalidate();
+      utils.adminViewAs.companyJobs.invalidate();
+    },
+    onError: (err: any) => toast.error(err.message),
   });
 
   const createJob = trpc.jobs.create.useMutation({
@@ -189,11 +207,34 @@ export default function CompanyJobs() {
                       <p className="text-xs text-muted-foreground/70 mt-2 italic">AI: {job.aiReasoning}</p>
                     )}
                   </div>
-                  <div className="flex items-center gap-2 shrink-0">
+                  <div className="flex flex-col items-end gap-2 shrink-0">
                     <span className="flex items-center gap-1 text-xs text-muted-foreground">
                       {statusIcons[job.status]}
                       <span className="capitalize">{job.status.replace("_", " ")}</span>
                     </span>
+                    {canCreate && job.status === "open" && (
+                      job.postedToBoard ? (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="text-xs gap-1 h-7 border-orange-500/40 text-orange-400 hover:bg-orange-500/10"
+                          onClick={() => removeFromBoard.mutate({ jobId: job.id })}
+                          disabled={removeFromBoard.isPending}
+                        >
+                          <X className="h-3 w-3" /> Remove from Board
+                        </Button>
+                      ) : (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="text-xs gap-1 h-7 border-primary/40 text-primary hover:bg-primary/10"
+                          onClick={() => postToBoard.mutate({ jobId: job.id })}
+                          disabled={postToBoard.isPending}
+                        >
+                          <Globe className="h-3 w-3" /> Post to Board
+                        </Button>
+                      )
+                    )}
                   </div>
                 </div>
               </CardContent>

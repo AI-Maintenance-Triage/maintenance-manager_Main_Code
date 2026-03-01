@@ -173,6 +173,8 @@ export const maintenanceRequests = mysqlTable("maintenance_requests", {
   aiSkillTierId: int("aiSkillTierId"),
   aiReasoning: text("aiReasoning"),
   aiClassifiedAt: timestamp("aiClassifiedAt"),
+  // Job board
+  postedToBoard: boolean("postedToBoard").default(false).notNull(),
   // Job status
   status: mysqlEnum("status", ["open", "assigned", "in_progress", "completed", "verified", "paid", "canceled"]).default("open").notNull(),
   assignedContractorId: int("assignedContractorId"),

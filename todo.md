@@ -139,3 +139,16 @@
 - [x] Add first/last name fields for contractors in registration form
 - [x] Add interactive map with ZIP + radius slider for contractor service area
 - [x] Make all company settings fully editable (skill tier prices, GPS, integrations)
+
+## Public Job Board (Service Area Filtering)
+- [x] Add lat/lng columns to properties table for geocoding
+- [x] Add lat/lng columns to contractor_profiles for their base ZIP location
+- [x] Geocode property addresses when properties are created/updated
+- [x] Geocode contractor base ZIP when they register or update service area
+- [x] Build jobBoard.list tRPC query that filters jobs by contractor service radius (Haversine distance)
+- [x] Build jobBoard.accept tRPC mutation for contractors to claim a job
+- [x] Build contractor job board UI page (/contractor/job-board) with filterable job cards
+- [x] Show job details: property city/state (not full address), trade required, urgency, posted date
+- [x] Add "Accept Job" button that assigns the job to the contractor
+- [x] Wire company maintenance request submission to set job status to "posted" on the board
+- [x] Add job board nav item to contractor sidebar

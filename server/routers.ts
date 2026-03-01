@@ -136,6 +136,12 @@ const propertiesRouter = router({
       if (!ctx.user.companyId) throw new TRPCError({ code: "NOT_FOUND" });
       const name = input.name?.trim() || input.address.trim();
       const id = await db.createProperty({ companyId: ctx.user.companyId, ...input, name });
+      // Auto-geocode if no coords provided
+      if (!input.latitude || !input.longitude) {
+        const fullAddress = [input.address, input.city, input.state, input.zipCode].filter(Boolean).join(", ");
+        const coords = await db.geocodeAddress(fullAddress);
+        if (coords) await db.updatePropertyCoords(id, coords.lat, coords.lng);
+      }
       return { id };
     }),
 
@@ -179,13 +185,21 @@ const contractorRouter = router({
         await db.updateUserName(ctx.user.id, fullName);
       }
       const existing = await db.getContractorProfile(ctx.user.id);
+      let profileId: number;
       if (existing) {
         await db.updateContractorProfile(existing.id, profileData);
-        return { id: existing.id };
+        profileId = existing.id;
+      } else {
+        profileId = await db.createContractorProfile({ userId: ctx.user.id, ...profileData });
+        await db.updateUserRole(ctx.user.id, "contractor", undefined, profileId);
       }
-      const id = await db.createContractorProfile({ userId: ctx.user.id, ...profileData });
-      await db.updateUserRole(ctx.user.id, "contractor", undefined, id);
-      return { id };
+      // Auto-geocode contractor base ZIP
+      const zip = profileData.serviceAreaZips?.[0];
+      if (zip) {
+        const coords = await db.geocodeAddress(`${zip}, USA`);
+        if (coords) await db.updateContractorCoords(profileId, coords.lat, coords.lng);
+      }
+      return { id: profileId };
     }),
 
   getProfile: protectedProcedure.query(async ({ ctx }) => {
@@ -541,6 +555,44 @@ const transactionsRouter = router({
   }),
 });
 
+// ─── Job Board Router ─────────────────────────────────────────────────────
+const jobBoardRouter = router({
+  // Contractor: list jobs in their service area
+  list: contractorProcedure.query(async ({ ctx }) => {
+    const profile = await db.getContractorProfile(ctx.user.id);
+    if (!profile) throw new TRPCError({ code: "NOT_FOUND", message: "No contractor profile" });
+    return db.listJobBoardForContractor(profile.id);
+  }),
+
+  // Contractor: accept a job from the board
+  accept: contractorProcedure
+    .input(z.object({ jobId: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      const profile = await db.getContractorProfile(ctx.user.id);
+      if (!profile) throw new TRPCError({ code: "NOT_FOUND", message: "No contractor profile" });
+      await db.acceptJobFromBoard(input.jobId, profile.id);
+      return { success: true };
+    }),
+
+  // Company: post a job to the board
+  post: companyAdminProcedure
+    .input(z.object({ jobId: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      if (!ctx.user.companyId) throw new TRPCError({ code: "NOT_FOUND" });
+      await db.postJobToBoard(input.jobId, ctx.user.companyId);
+      return { success: true };
+    }),
+
+  // Company: remove a job from the board
+  remove: companyAdminProcedure
+    .input(z.object({ jobId: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      if (!ctx.user.companyId) throw new TRPCError({ code: "NOT_FOUND" });
+      await db.removeJobFromBoard(input.jobId, ctx.user.companyId);
+      return { success: true };
+    }),
+});
+
 // ─── Platform Admin Router ──────────────────────────────────────────────────
 const platformRouter = router({
   stats: adminProcedure.query(async () => {
@@ -573,6 +625,7 @@ export const appRouter = router({
   properties: propertiesRouter,
   contractor: contractorRouter,
   jobs: jobsRouter,
+  jobBoard: jobBoardRouter,
   timeTracking: timeTrackingRouter,
   receipts: receiptsRouter,
   integrations: integrationsRouter,

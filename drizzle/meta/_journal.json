@@ -15,6 +15,13 @@
       "when": 1772324810507,
       "tag": "0001_damp_kang",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1772327586220,
+      "tag": "0002_misty_energizer",
+      "breakpoints": true
     }
   ]
 }

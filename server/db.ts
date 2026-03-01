@@ -556,3 +556,161 @@ export async function updateUserName(userId: number, name: string) {
   if (!db) return;
   await db.update(users).set({ name }).where(eq(users.id, userId));
 }
+
+// ─── Geocoding Helper (server-side via Maps proxy) ────────────────────────
+export async function geocodeAddress(address: string): Promise<{ lat: string; lng: string } | null> {
+  try {
+    const { makeRequest } = await import("./_core/map");
+    const result = await makeRequest<any>("/maps/api/geocode/json", { address });
+    if (result?.results?.[0]?.geometry?.location) {
+      const { lat, lng } = result.results[0].geometry.location;
+      return { lat: String(lat), lng: String(lng) };
+    }
+  } catch (err) {
+    console.error("[Geocode] Failed:", err);
+  }
+  return null;
+}
+
+// ─── Update Property Coordinates ──────────────────────────────────────────
+export async function updatePropertyCoords(id: number, lat: string, lng: string) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(properties).set({ latitude: lat, longitude: lng }).where(eq(properties.id, id));
+}
+
+// ─── Update Contractor Coordinates ────────────────────────────────────────
+export async function updateContractorCoords(profileId: number, lat: string, lng: string) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(contractorProfiles).set({ latitude: lat, longitude: lng }).where(eq(contractorProfiles.id, profileId));
+}
+
+// ─── Haversine Distance (miles) ────────────────────────────────────────────
+function haversineDistanceMiles(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 3958.8; // Earth radius in miles
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLon = ((lon2 - lon1) * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos((lat1 * Math.PI) / 180) *
+      Math.cos((lat2 * Math.PI) / 180) *
+      Math.sin(dLon / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+// ─── Job Board: List Jobs Filtered by Contractor Service Area ─────────────
+export async function listJobBoardForContractor(contractorProfileId: number) {
+  const db = await getDb();
+  if (!db) return [];
+
+  // Get contractor's location and radius
+  const [contractor] = await db
+    .select()
+    .from(contractorProfiles)
+    .where(eq(contractorProfiles.id, contractorProfileId))
+    .limit(1);
+
+  if (!contractor) return [];
+
+  const contractorLat = contractor.latitude ? parseFloat(String(contractor.latitude)) : null;
+  const contractorLng = contractor.longitude ? parseFloat(String(contractor.longitude)) : null;
+  const radiusMiles = contractor.serviceRadiusMiles ?? 25;
+
+  // Get all open jobs posted to the board with their property info
+  const jobs = await db
+    .select({
+      job: maintenanceRequests,
+      property: {
+        id: properties.id,
+        name: properties.name,
+        city: properties.city,
+        state: properties.state,
+        zipCode: properties.zipCode,
+        latitude: properties.latitude,
+        longitude: properties.longitude,
+      },
+      company: {
+        id: companies.id,
+        name: companies.name,
+      },
+    })
+    .from(maintenanceRequests)
+    .innerJoin(properties, eq(maintenanceRequests.propertyId, properties.id))
+    .innerJoin(companies, eq(maintenanceRequests.companyId, companies.id))
+    .where(
+      and(
+        eq(maintenanceRequests.postedToBoard, true),
+        eq(maintenanceRequests.status, "open")
+      )
+    )
+    .orderBy(desc(maintenanceRequests.createdAt));
+
+  // Filter by service area if contractor has coordinates
+  if (contractorLat !== null && contractorLng !== null) {
+    return jobs.filter((row) => {
+      const propLat = row.property.latitude ? parseFloat(String(row.property.latitude)) : null;
+      const propLng = row.property.longitude ? parseFloat(String(row.property.longitude)) : null;
+      if (propLat === null || propLng === null) {
+        // If property has no coords, include it (fallback)
+        return true;
+      }
+      const dist = haversineDistanceMiles(contractorLat, contractorLng, propLat, propLng);
+      return dist <= radiusMiles;
+    });
+  }
+
+  // If contractor has no coords yet, return all board jobs
+  return jobs;
+}
+
+// ─── Job Board: Accept a Job ───────────────────────────────────────────────
+export async function acceptJobFromBoard(jobId: number, contractorProfileId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("DB unavailable");
+
+  // Verify job is still open and on the board
+  const [job] = await db
+    .select()
+    .from(maintenanceRequests)
+    .where(
+      and(
+        eq(maintenanceRequests.id, jobId),
+        eq(maintenanceRequests.postedToBoard, true),
+        eq(maintenanceRequests.status, "open")
+      )
+    )
+    .limit(1);
+
+  if (!job) throw new Error("Job is no longer available");
+
+  await db
+    .update(maintenanceRequests)
+    .set({
+      status: "assigned",
+      assignedContractorId: contractorProfileId,
+      assignedAt: new Date(),
+      postedToBoard: false,
+    })
+    .where(eq(maintenanceRequests.id, jobId));
+}
+
+// ─── Job Board: Post a Job to the Board ───────────────────────────────────
+export async function postJobToBoard(jobId: number, companyId: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db
+    .update(maintenanceRequests)
+    .set({ postedToBoard: true })
+    .where(and(eq(maintenanceRequests.id, jobId), eq(maintenanceRequests.companyId, companyId)));
+}
+
+// ─── Job Board: Remove a Job from the Board ───────────────────────────────
+export async function removeJobFromBoard(jobId: number, companyId: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db
+    .update(maintenanceRequests)
+    .set({ postedToBoard: false })
+    .where(and(eq(maintenanceRequests.id, jobId), eq(maintenanceRequests.companyId, companyId)));
+}
