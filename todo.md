@@ -222,3 +222,10 @@
 - [x] Fix: properties.update now re-geocodes when address fields change (same as properties.create)
 - [x] Fix: added detailed server-side logging to updateProfile mutation for future debugging
 - [x] 38 tests passing, 0 TypeScript errors
+
+## Bug: Address Autocomplete Click Still Not Working (Round 2)
+- [x] stopPropagation fix did not work — Radix Dialog z-index/pointer-events blocks pac-container clicks
+- [x] Fix: replaced native Google Places Autocomplete widget with AutocompleteService + PlacesService (manual API)
+- [x] Custom dropdown renders inside the React tree (inside Dialog DOM), no z-index/pointer-events conflict
+- [x] Supports keyboard navigation (arrow keys, Enter, Escape), loading spinner, and "Powered by Google" attribution
+- [x] onMouseDown + preventDefault prevents input blur before click fires (key trick for Dialog compatibility)
