@@ -1202,3 +1202,32 @@
 - [x] Full edit modal: all editable fields in a dialog (title, description, property, tenant info, notes)
 - [x] Delete confirmation dialog before hard delete
 - [x] 3-dot menu hidden once job status is assigned/in_progress/pending_review/completed/paid
+
+## Session 35: Audit Log + Priority Filters + Trust Email
+
+### Priority Override Audit Log
+- [x] Add `jobChangeHistory` table to schema (id, jobId, companyId, userId, changeType, fromValue, toValue, note, createdAt)
+- [x] Log entry when overridePriority is called (changeType: 'priority_override')
+- [x] Log entry when overrideSkillTier is called (changeType: 'skill_tier_override')
+- [x] Backend: jobs.changeHistory query — returns all change entries for a job
+- [x] Company job card: collapsible "Change History" section showing who changed what, from/to, and when
+- [x] Display user name, change type label, from/to values, and timestamp
+
+### Company Jobs Priority Filter Chips
+- [x] Add filter chip row above jobs list: All / Low / Medium / High / Emergency
+- [x] Each chip color-coded to match priority badge colors
+- [x] Filter applies to the displayed job list (client-side filter on loaded jobs)
+- [x] Chip shows count of jobs at that priority level
+- [x] "All" chip selected by default
+
+### Contractor Trust Email Notification
+- [x] When company marks contractor as trusted, send email via Resend
+- [x] Email subject: "You're now a Trusted Contractor with [Company Name]"
+- [x] Email body: explain what trusted status means and that they now have access to the company's private job board
+- [x] Include a CTA button linking to the private jobs tab
+- [x] Only send if contractor has a verified email address
+
+### Tests
+- [x] Vitest tests for change history logging logic
+- [x] Vitest tests for priority filter chip count logic
+- [x] Vitest tests for trust email trigger condition

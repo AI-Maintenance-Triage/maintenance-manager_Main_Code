@@ -494,7 +494,7 @@ const contractorRouter = router({
     .mutation(async ({ ctx, input }) => {
       const companyId = getEffectiveCompanyId(ctx);
       await db.setContractorTrusted(input.relationshipId, companyId, input.isTrusted);
-      // Send in-app notification to contractor when trust is granted
+      // Send in-app notification + email to contractor when trust is granted
       if (input.isTrusted) {
         try {
           const rel = await db.getContractorUserIdByRelationship(input.relationshipId);
@@ -508,6 +508,17 @@ const contractorRouter = router({
               linkRoute: '/contractor/jobs',
               metadata: { companyId },
             });
+            // Also send email notification
+            const contractorUser = await db.getUserById(rel.userId);
+            if (contractorUser?.email) {
+              const appUrl = ctx.req.headers.origin as string ?? '';
+              await email.sendTrustedContractorEmail({
+                to: contractorUser.email,
+                contractorName: contractorUser.name ?? 'Contractor',
+                companyName: company?.name ?? 'A company',
+                appUrl,
+              });
+            }
           }
         } catch { /* non-critical */ }
       }
@@ -915,6 +926,16 @@ const jobsRouter = router({
         isEmergency: input.priority === "emergency",
         skillTierId: matchedTier?.id ?? null,
       });
+      // Log the change to audit history
+      await db.addJobChangeHistory({
+        jobId: input.jobId,
+        companyId,
+        userId: ctx.user.id,
+        changeType: "priority_override",
+        fromValue: (job as any).overridePriority ?? job.aiPriority ?? "unknown",
+        toValue: input.priority,
+        note: input.reason ?? null,
+      });
       return { success: true, newHourlyRate, matchedTierName: matchedTier?.name ?? null };
     }),
 
@@ -953,6 +974,18 @@ const jobsRouter = router({
         hourlyRate: newHourlyRate,
         skillTierId: input.skillTierId,
       });
+      // Log the change to audit history
+      const previousTierId = (job as any).overrideSkillTierId ?? job.skillTierId;
+      const previousTier = tiers.find(t => t.id === previousTierId);
+      await db.addJobChangeHistory({
+        jobId: input.jobId,
+        companyId,
+        userId: ctx.user.id,
+        changeType: "skill_tier_override",
+        fromValue: previousTier?.name ?? "unknown",
+        toValue: tier.name,
+        note: input.reason ?? null,
+      });
       return { success: true, newHourlyRate, tierName: tier.name };
     }),
 
@@ -988,6 +1021,16 @@ const jobsRouter = router({
       if (job.status !== "open") throw new TRPCError({ code: "FORBIDDEN", message: "Only open jobs can be deleted" });
       await db.deleteMaintenanceRequest(input.jobId);
       return { success: true };
+    }),
+
+  // Company: get change history for a job (priority/skill tier overrides)
+  changeHistory: companyAdminProcedure
+    .input(z.object({ jobId: z.number() }))
+    .query(async ({ ctx, input }) => {
+      const companyId = getEffectiveCompanyId(ctx);
+      const job = await db.getMaintenanceRequestById(input.jobId);
+      if (!job || job.companyId !== companyId) throw new TRPCError({ code: "NOT_FOUND" });
+      return db.getJobChangeHistory(input.jobId, companyId);
     }),
 
   // Company: get jobs awaiting verification

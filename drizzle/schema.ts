@@ -734,3 +734,25 @@ export const passwordResetTokens = mysqlTable("password_reset_tokens", {
 });
 export type PasswordResetToken = typeof passwordResetTokens.$inferSelect;
 export type InsertPasswordResetToken = typeof passwordResetTokens.$inferInsert;
+
+// ─── Job Change History (Audit Log) ──────────────────────────────────────────
+// Records every priority or skill tier override made by a company user on a job.
+// Used to display a change history timeline inside the job detail view.
+export const jobChangeHistory = mysqlTable("job_change_history", {
+  id: int("id").autoincrement().primaryKey(),
+  jobId: int("jobId").notNull(),
+  companyId: int("companyId").notNull(),
+  userId: int("userId").notNull(),                          // who made the change
+  changeType: mysqlEnum("changeType", [
+    "priority_override",
+    "skill_tier_override",
+    "status_change",
+    "visibility_change",
+  ]).notNull(),
+  fromValue: varchar("fromValue", { length: 255 }),         // previous value (label)
+  toValue: varchar("toValue", { length: 255 }).notNull(),   // new value (label)
+  note: text("note"),                                       // optional reason/note
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type JobChangeHistory = typeof jobChangeHistory.$inferSelect;
+export type InsertJobChangeHistory = typeof jobChangeHistory.$inferInsert;

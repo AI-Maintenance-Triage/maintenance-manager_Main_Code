@@ -12,7 +12,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useViewAs } from "@/contexts/ViewAsContext";
-import { Plus, Zap, Clock, CheckCircle, AlertTriangle, Globe, X, Route, DollarSign, FileDown, Star, MessageSquare, ChevronDown, ChevronUp, Lock, Unlock, Pencil, MoreVertical, Trash2, Edit } from "lucide-react";
+import { Plus, Zap, Clock, CheckCircle, AlertTriangle, Globe, X, Route, DollarSign, FileDown, Star, MessageSquare, ChevronDown, ChevronUp, Lock, Unlock, Pencil, MoreVertical, Trash2, Edit, History } from "lucide-react";
 import { useState } from "react";
 import { JobCostBreakdown } from "@/components/JobCostBreakdown";
 import { toast } from "sonner";
@@ -52,6 +52,77 @@ const FILTER_TABS: { label: string; value: string; queryStatus: string | string[
   { label: "Paid", value: "paid", queryStatus: ["verified", "paid", "payment_pending_ach"] },
 ];
 
+// Priority filter chips
+const PRIORITY_FILTERS: { label: string; value: string | null; chipClass: string }[] = [
+  { label: "All Priorities", value: null, chipClass: "border-border text-muted-foreground hover:bg-muted/50" },
+  { label: "Low", value: "low", chipClass: "border-green-500/40 text-green-400 bg-green-500/10 hover:bg-green-500/20" },
+  { label: "Medium", value: "medium", chipClass: "border-yellow-500/40 text-yellow-400 bg-yellow-500/10 hover:bg-yellow-500/20" },
+  { label: "High", value: "high", chipClass: "border-orange-500/40 text-orange-400 bg-orange-500/10 hover:bg-orange-500/20" },
+  { label: "Emergency", value: "emergency", chipClass: "border-red-500/40 text-red-400 bg-red-500/10 hover:bg-red-500/20" },
+];
+
+// Change history type labels
+const CHANGE_TYPE_LABELS: Record<string, string> = {
+  priority_override: "Priority changed",
+  skill_tier_override: "Skill tier changed",
+  status_change: "Status changed",
+  visibility_change: "Visibility changed",
+};
+
+function ChangeHistoryPanel({ jobId }: { jobId: number }) {
+  const { data: history, isLoading } = trpc.jobs.changeHistory.useQuery({ jobId });
+
+  if (isLoading) {
+    return (
+      <div className="mt-3 pt-3 border-t border-border/50">
+        <div className="space-y-2">
+          <Skeleton className="h-4 w-48" />
+          <Skeleton className="h-4 w-64" />
+        </div>
+      </div>
+    );
+  }
+
+  if (!history || history.length === 0) {
+    return (
+      <div className="mt-3 pt-3 border-t border-border/50">
+        <p className="text-xs text-muted-foreground italic">No changes recorded yet.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mt-3 pt-3 border-t border-border/50">
+      <div className="space-y-2">
+        {history.map((entry: any) => (
+          <div key={entry.id} className="flex items-start gap-2 text-xs">
+            <div className="w-1.5 h-1.5 rounded-full bg-primary/60 mt-1.5 shrink-0" />
+            <div className="min-w-0 flex-1">
+              <span className="text-muted-foreground">
+                <span className="font-medium text-foreground">{entry.userName ?? "Unknown"}</span>
+                {" "}{CHANGE_TYPE_LABELS[entry.changeType] ?? entry.changeType}:{" "}
+                {entry.fromValue && (
+                  <>
+                    <span className="line-through text-muted-foreground/60">{entry.fromValue}</span>
+                    {" → "}
+                  </>
+                )}
+                <span className="font-medium text-foreground">{entry.toValue}</span>
+              </span>
+              {entry.note && (
+                <span className="text-muted-foreground/70 ml-1">— {entry.note}</span>
+              )}
+              <span className="text-muted-foreground/50 ml-2">
+                {new Date(entry.createdAt).toLocaleString()}
+              </span>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export default function CompanyJobs() {
   const { user } = useAuth();
   const viewAs = useViewAs();
@@ -60,10 +131,12 @@ export default function CompanyJobs() {
 
   const [open, setOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("all");
+  const [activePriority, setActivePriority] = useState<string | null>(null);
   const [replayJob, setReplayJob] = useState<{ id: number; title: string } | null>(null);
   const [rateJob, setRateJob] = useState<{ id: number; contractorName?: string } | null>(null);
   const [commentsJob, setCommentsJob] = useState<{ id: number; title: string } | null>(null);
   const [expandedBreakdown, setExpandedBreakdown] = useState<number | null>(null);
+  const [expandedHistory, setExpandedHistory] = useState<number | null>(null);
 
   // Edit / delete state
   const [editJob, setEditJob] = useState<any | null>(null);
@@ -84,8 +157,16 @@ export default function CompanyJobs() {
     { enabled: !!isViewingAsCompany }
   );
 
-  const jobs = isViewingAsCompany ? viewAsJobs.data : regularJobs.data;
+  const allJobs = isViewingAsCompany ? viewAsJobs.data : regularJobs.data;
   const isLoading = isViewingAsCompany ? viewAsJobs.isLoading : regularJobs.isLoading;
+
+  // Client-side priority filter
+  const jobs = activePriority
+    ? allJobs?.filter((job: any) => {
+        const effective = job.overridePriority ?? job.aiPriority;
+        return effective === activePriority;
+      })
+    : allJobs;
 
   const regularProperties = trpc.properties.list.useQuery(undefined, { enabled: !isViewingAsCompany });
   const viewAsProperties = trpc.adminViewAs.companyProperties.useQuery(
@@ -128,6 +209,8 @@ export default function CompanyJobs() {
     onSuccess: (data: any) => {
       toast.success(`Priority updated${data.newHourlyRate ? ` — new rate: $${data.newHourlyRate}/hr` : ''}.`);
       invalidateJobs();
+      // Refresh change history if open
+      utils.jobs.changeHistory.invalidate();
     },
     onError: (err: any) => toast.error(err.message),
   });
@@ -136,6 +219,7 @@ export default function CompanyJobs() {
     onSuccess: (data: any) => {
       toast.success(`Skill tier updated to "${data.tierName}" — new rate: $${data.newHourlyRate}/hr.`);
       invalidateJobs();
+      utils.jobs.changeHistory.invalidate();
     },
     onError: (err: any) => toast.error(err.message),
   });
@@ -249,7 +333,7 @@ export default function CompanyJobs() {
         </Dialog>
       </div>
 
-      {/* Filter tabs */}
+      {/* Status filter tabs */}
       <div className="flex gap-2 flex-wrap">
         {FILTER_TABS.map((tab) => (
           <Button
@@ -263,6 +347,37 @@ export default function CompanyJobs() {
         ))}
       </div>
 
+      {/* Priority filter chips */}
+      <div className="flex items-center gap-2 flex-wrap">
+        <span className="text-xs text-muted-foreground font-medium mr-1">Priority:</span>
+        {PRIORITY_FILTERS.map((pf) => (
+          <button
+            key={pf.value ?? "all"}
+            onClick={() => setActivePriority(pf.value)}
+            className={`px-3 py-1 rounded-full border text-xs font-medium transition-all ${pf.chipClass} ${
+              activePriority === pf.value
+                ? "ring-2 ring-offset-1 ring-offset-background ring-current opacity-100"
+                : "opacity-70 hover:opacity-100"
+            }`}
+          >
+            {pf.label}
+            {activePriority === pf.value && pf.value !== null && (
+              <span className="ml-1 opacity-70">
+                ({allJobs?.filter((j: any) => (j.overridePriority ?? j.aiPriority) === pf.value).length ?? 0})
+              </span>
+            )}
+          </button>
+        ))}
+        {activePriority && (
+          <button
+            onClick={() => setActivePriority(null)}
+            className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 ml-1"
+          >
+            <X className="h-3 w-3" /> Clear
+          </button>
+        )}
+      </div>
+
       {isLoading ? (
         <div className="space-y-3">{Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-24 w-full" />)}</div>
       ) : !jobs || jobs.length === 0 ? (
@@ -270,7 +385,9 @@ export default function CompanyJobs() {
           <CardContent className="p-12 text-center">
             <AlertTriangle className="h-10 w-10 text-muted-foreground mx-auto mb-4" />
             <p className="text-muted-foreground">
-              {activeTab === "all"
+              {activePriority
+                ? `No ${activePriority} priority jobs${activeTab !== "all" ? ` with status "${currentTab.label}"` : ""}.`
+                : activeTab === "all"
                 ? "No maintenance jobs found. Create your first job to get started."
                 : `No jobs with status "${currentTab.label}".`}
             </p>
@@ -284,8 +401,10 @@ export default function CompanyJobs() {
             const totalCost = laborCost + partsCost;
             const isPaid = job.status === "paid" || job.status === "verified" || job.status === "payment_pending_ach";
             const isBreakdownOpen = expandedBreakdown === job.id;
+            const isHistoryOpen = expandedHistory === job.id;
             const isEditable = EDITABLE_STATUSES.includes(job.status);
             const effectivePriority = job.overridePriority ?? job.aiPriority;
+            const hasHistory = !!(job.overridePriority || job.overrideSkillTierId);
 
             return (
               <Card key={job.id} className="bg-card border-border hover:border-primary/30 transition-colors">
@@ -373,6 +492,19 @@ export default function CompanyJobs() {
                       {job.aiReasoning && (
                         <p className="text-xs text-muted-foreground/70 mt-2 italic">AI: {job.aiReasoning}</p>
                       )}
+                      {/* Change History toggle — shown when there are overrides */}
+                      {hasHistory && (
+                        <button
+                          onClick={() => setExpandedHistory(isHistoryOpen ? null : job.id)}
+                          className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground mt-2 transition-colors"
+                        >
+                          <History className="h-3 w-3" />
+                          {isHistoryOpen ? "Hide" : "Change History"}
+                          {isHistoryOpen ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+                        </button>
+                      )}
+                      {/* Change History panel */}
+                      {isHistoryOpen && <ChangeHistoryPanel jobId={job.id} />}
                     </div>
                     <div className="flex flex-col items-end gap-2 shrink-0">
                       <div className="flex items-center gap-1">

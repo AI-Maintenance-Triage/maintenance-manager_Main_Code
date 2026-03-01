@@ -419,3 +419,34 @@ export async function sendJobEscalationEmail(params: {
     `,
   });
 }
+
+// ─── Trusted Contractor Notification ─────────────────────────────────────
+export async function sendTrustedContractorEmail(opts: {
+  to: string;
+  contractorName: string;
+  companyName: string;
+  appUrl: string;
+}) {
+  const html = layout("You've been marked as a Trusted Contractor", `
+    <h1>You're now a Trusted Contractor! 🌟</h1>
+    <p>Hi ${opts.contractorName},</p>
+    <p><strong>${opts.companyName}</strong> has marked you as a <strong>Trusted Contractor</strong> on Maintenance Manager.</p>
+    <div style="background:#0f2a1a;border:1px solid #166534;border-radius:10px;padding:20px;margin:20px 0;">
+      <p style="margin:0 0 8px;color:#4ade80;font-weight:700;font-size:15px;">What this means for you:</p>
+      <ul style="margin:0;padding-left:20px;color:#86efac;font-size:14px;line-height:2;">
+        <li>Access to <strong>${opts.companyName}'s private job board</strong></li>
+        <li>First look at exclusive jobs before they go public</li>
+        <li>Priority consideration for future assignments</li>
+      </ul>
+    </div>
+    <p>Log in now to check the Private Jobs tab on your job board — new opportunities may already be waiting for you.</p>
+    <a href="${opts.appUrl}/contractor/jobs" class="btn">View Private Job Board →</a>
+    <hr class="divider" />
+    <p style="font-size:13px;color:#737373;">You received this email because your contractor account on Maintenance Manager was marked as trusted by ${opts.companyName}.</p>
+  `);
+  return sendEmail({
+    to: opts.to,
+    subject: `🌟 You're now a Trusted Contractor with ${opts.companyName}`,
+    html,
+  });
+}

@@ -35,6 +35,7 @@ import {
   companyPaymentMethods,
   pmsIntegrations, InsertPmsIntegration,
   passwordResetTokens, InsertPasswordResetToken,
+  jobChangeHistory, InsertJobChangeHistory,
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
@@ -3132,4 +3133,37 @@ export async function updateUserPassword(userId: number, passwordHash: string) {
   const db = await getDb();
   if (!db) return;
   await db.update(users).set({ passwordHash }).where(eq(users.id, userId));
+}
+
+// ─── Job Change History ────────────────────────────────────────────────────
+export async function addJobChangeHistory(data: InsertJobChangeHistory) {
+  const db = await getDb();
+  if (!db) return;
+  await db.insert(jobChangeHistory).values(data);
+}
+
+export async function getJobChangeHistory(jobId: number, companyId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  // Join with users to get the name of who made the change
+  const rows = await db
+    .select({
+      id: jobChangeHistory.id,
+      changeType: jobChangeHistory.changeType,
+      fromValue: jobChangeHistory.fromValue,
+      toValue: jobChangeHistory.toValue,
+      note: jobChangeHistory.note,
+      createdAt: jobChangeHistory.createdAt,
+      userName: users.name,
+    })
+    .from(jobChangeHistory)
+    .leftJoin(users, eq(jobChangeHistory.userId, users.id))
+    .where(
+      and(
+        eq(jobChangeHistory.jobId, jobId),
+        eq(jobChangeHistory.companyId, companyId)
+      )
+    )
+    .orderBy(desc(jobChangeHistory.createdAt));
+  return rows;
 }
