@@ -175,3 +175,11 @@
 - [x] Simplified CompanyProperties.tsx to use single properties.create mutation (works for both regular and impersonating admin)
 - [x] Added 9 impersonation unit tests (all passing)
 - [x] 26 total tests passing, 0 TypeScript errors
+
+## Bug: Job Board Stale Cache After Service Area Update
+- [x] After contractor reduces service radius, job board still shows jobs that are now outside the new radius
+- [x] Root cause 1: ContractorProfile.tsx updateProfile.onSuccess did not invalidate jobBoard.list
+- [x] Root cause 2: updateProfile backend did not re-geocode contractor base ZIP on service area change
+- [x] Fix: invalidate jobBoard.list + contractor.getProfile after any service area update (frontend)
+- [x] Fix: re-geocode contractor base ZIP in updateProfile mutation (backend)
+- [x] Added 10 job board / Haversine unit tests including the exact reported bug scenario

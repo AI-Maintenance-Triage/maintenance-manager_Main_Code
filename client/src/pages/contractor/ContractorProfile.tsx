@@ -35,8 +35,17 @@ export default function ContractorProfile() {
   const isLoading = isViewingAsContractor ? adminLoading : myLoading;
   const readOnly = false; // Admin impersonating a contractor has full access
 
+  const utils = trpc.useUtils();
+
   const updateProfile = trpc.contractor.updateProfile.useMutation({
-    onSuccess: () => toast.success("Profile updated!"),
+    onSuccess: () => {
+      toast.success("Profile updated!");
+      // Invalidate the job board so it re-filters based on the new service area.
+      // Also refresh the profile so the displayed radius/ZIP reflects the saved values.
+      utils.jobBoard.list.invalidate();
+      utils.contractor.getProfile.invalidate();
+      utils.adminViewAs.contractorProfile.invalidate();
+    },
     onError: (err: any) => toast.error(err.message),
   });
 

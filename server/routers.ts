@@ -243,6 +243,13 @@ const contractorRouter = router({
       const profile = await getEffectiveContractorProfile(ctx);
       if (!profile) throw new TRPCError({ code: "NOT_FOUND", message: "No contractor profile" });
       await db.updateContractorProfile(profile.id, input);
+      // Re-geocode base location whenever the service ZIP changes so that
+      // the Haversine distance filter on the job board uses fresh coordinates.
+      const zip = input.serviceAreaZips?.[0];
+      if (zip) {
+        const coords = await db.geocodeAddress(`${zip}, USA`);
+        if (coords) await db.updateContractorCoords(profile.id, coords.lat, coords.lng);
+      }
       return { success: true };
     }),
 
