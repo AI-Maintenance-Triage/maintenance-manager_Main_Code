@@ -396,7 +396,22 @@ export async function listMaintenanceRequests(companyId: number, status?: string
       conditions.push(eq(maintenanceRequests.status, status as any));
     }
   }
-  return db.select().from(maintenanceRequests).where(and(...conditions)).orderBy(desc(maintenanceRequests.createdAt));
+  // Join skillTiers so the frontend always gets the current effective tier name
+  // (after a priority override, skillTierId is updated but aiSkillTier is not)
+  const rows = await db
+    .select({
+      job: maintenanceRequests,
+      effectiveSkillTierName: skillTiers.name,
+    })
+    .from(maintenanceRequests)
+    .leftJoin(skillTiers, eq(maintenanceRequests.skillTierId, skillTiers.id))
+    .where(and(...conditions))
+    .orderBy(desc(maintenanceRequests.createdAt));
+  // Flatten: merge effectiveSkillTierName into the job object for backwards compat
+  return rows.map(r => ({
+    ...r.job,
+    effectiveSkillTierName: r.effectiveSkillTierName ?? r.job.aiSkillTier ?? null,
+  }));
 }
 
 export async function getMaintenanceRequestById(id: number) {
@@ -417,6 +432,12 @@ export async function updateMaintenanceRequest(id: number, data: Partial<InsertM
   const db = await getDb();
   if (!db) return;
   await db.update(maintenanceRequests).set(data).where(eq(maintenanceRequests.id, id));
+}
+
+export async function deleteMaintenanceRequest(id: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.delete(maintenanceRequests).where(eq(maintenanceRequests.id, id));
 }
 
 export async function getJobsForContractor(contractorProfileId: number) {

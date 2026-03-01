@@ -351,7 +351,7 @@ const contractorRouter = router({
   }),
 
   getMyPlan: contractorProcedure.query(async ({ ctx }) => {
-    const profile = await db.getContractorProfile(ctx.user.id);
+    const profile = await getEffectiveContractorProfile(ctx).catch(() => null);
     if (!profile) return null;
     const plan = await db.getEffectivePlanForContractor(profile.id);
     const activeJobs = await db.countActiveJobsForContractor(profile.id);
@@ -918,6 +918,78 @@ const jobsRouter = router({
       return { success: true, newHourlyRate, matchedTierName: matchedTier?.name ?? null };
     }),
 
+  // Company: override the skill tier (and thus hourly rate) on a job
+  overrideSkillTier: companyAdminProcedure
+    .input(z.object({
+      jobId: z.number(),
+      skillTierId: z.number(),
+      reason: z.string().optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const companyId = getEffectiveCompanyId(ctx);
+      const job = await db.getMaintenanceRequestById(input.jobId);
+      if (!job || job.companyId !== companyId) throw new TRPCError({ code: "NOT_FOUND" });
+      // Look up the selected tier to get its hourly rate
+      const tiers = await db.getSkillTiers(companyId);
+      const tier = tiers.find(t => t.id === input.skillTierId);
+      if (!tier) throw new TRPCError({ code: "NOT_FOUND", message: "Skill tier not found" });
+      // Determine effective priority (override or AI) to apply emergency multiplier if needed
+      const effectivePriority = (job as any).overridePriority ?? job.aiPriority;
+      let newHourlyRate: string = tier.hourlyRate;
+      if (effectivePriority === "emergency" && tier.emergencyMultiplier) {
+        const base = parseFloat(tier.hourlyRate);
+        const mult = parseFloat(tier.emergencyMultiplier);
+        if (!isNaN(base) && !isNaN(mult)) {
+          newHourlyRate = (base * mult).toFixed(2);
+        }
+      }
+      await db.updateMaintenanceRequest(input.jobId, {
+        overrideSkillTierId: input.skillTierId,
+        overrideHourlyRate: newHourlyRate,
+        overrideReason: input.reason ?? null,
+        overriddenAt: new Date(),
+        overriddenByUserId: ctx.user.id,
+        // Update live hourlyRate and skillTierId so billing uses the new rate immediately
+        hourlyRate: newHourlyRate,
+        skillTierId: input.skillTierId,
+      });
+      return { success: true, newHourlyRate, tierName: tier.name };
+    }),
+
+  // Company: edit an open job (title, description, property, tenant info, notes)
+  updateJob: companyAdminProcedure
+    .input(z.object({
+      jobId: z.number(),
+      title: z.string().min(1).max(255).optional(),
+      description: z.string().optional(),
+      propertyId: z.number().optional(),
+      tenantName: z.string().max(255).nullable().optional(),
+      tenantPhone: z.string().max(32).nullable().optional(),
+      tenantEmail: z.string().max(320).nullable().optional(),
+      notes: z.string().nullable().optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const companyId = getEffectiveCompanyId(ctx);
+      const job = await db.getMaintenanceRequestById(input.jobId);
+      if (!job || job.companyId !== companyId) throw new TRPCError({ code: "NOT_FOUND" });
+      if (job.status !== "open") throw new TRPCError({ code: "FORBIDDEN", message: "Only open jobs can be edited" });
+      const { jobId, ...updateData } = input;
+      await db.updateMaintenanceRequest(jobId, updateData as any);
+      return { success: true };
+    }),
+
+  // Company: delete an open job (hard delete)
+  deleteJob: companyAdminProcedure
+    .input(z.object({ jobId: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      const companyId = getEffectiveCompanyId(ctx);
+      const job = await db.getMaintenanceRequestById(input.jobId);
+      if (!job || job.companyId !== companyId) throw new TRPCError({ code: "NOT_FOUND" });
+      if (job.status !== "open") throw new TRPCError({ code: "FORBIDDEN", message: "Only open jobs can be deleted" });
+      await db.deleteMaintenanceRequest(input.jobId);
+      return { success: true };
+    }),
+
   // Company: get jobs awaiting verification
   pendingVerification: companyAdminProcedure.query(async ({ ctx }) => {
     if (!getEffectiveCompanyId(ctx)) throw new TRPCError({ code: "NOT_FOUND" });
@@ -1469,8 +1541,9 @@ const commentsRouter = router({
     .mutation(async ({ ctx, input }) => {
       const role = ctx.user.role as string;
       // ─── Plan feature check: jobComments (company-side) ──────────────────────
-      if (role === 'company_admin' && ctx.user.companyId) {
-        const hasComments = await db.companyHasPlanFeature(ctx.user.companyId, "jobComments");
+      if (role === 'company_admin' || (role === 'admin' && ctx.impersonatedCompanyId)) {
+        const effectiveCompanyId = ctx.impersonatedCompanyId ?? ctx.user.companyId;
+        const hasComments = effectiveCompanyId ? await db.companyHasPlanFeature(effectiveCompanyId, "jobComments") : true;
         if (!hasComments) throw new TRPCError({ code: "FORBIDDEN", message: "Job comments are not included in your current plan. Please upgrade to use this feature." });
       }
       const authorRole = (role === 'company_admin' || role === 'admin' || role === 'contractor')

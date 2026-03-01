@@ -1133,3 +1133,72 @@
 - [x] isTrusted defaults to false for auto-added contractors (company must manually trust them)
 - [x] Auto-add happens in the job completion flow (markComplete mutation)
 - [x] Contractor immediately appears in company's /company/contractors tab after job completion
+
+## Session 34: Admin Impersonation Audit & Fixes
+
+### Impersonation Audit — Company Side
+- [ ] CompanyJobs.tsx: priority override dropdown visible and functional when admin impersonates company
+- [ ] CompanyJobs.tsx: visibility badge (Public/Private) shows correctly when impersonating
+- [ ] CompanyJobs.tsx: setVisibility toggle works when impersonating
+- [ ] CompanyContractors.tsx: Mark/Remove Trust button works when impersonating
+- [ ] CompanyDashboard.tsx: Trusted Contractors KPI card shows correct count when impersonating
+- [ ] CompanySettings.tsx: defaultJobBoardVisibility setting saves when impersonating
+- [ ] All company mutations use getEffectiveCompanyId (not ctx.user.companyId directly)
+
+### Impersonation Audit — Contractor Side
+- [ ] ContractorJobBoard.tsx: Public Jobs tab loads when impersonating contractor
+- [ ] ContractorJobBoard.tsx: Private Jobs tab loads when impersonating contractor
+- [ ] ContractorMyJobs.tsx: priority badge (with override) shows when impersonating
+- [ ] ContractorEarnings.tsx: earnings data loads when impersonating
+- [ ] ContractorDashboard.tsx: Free Plan / plan widget shows when impersonating
+- [ ] All contractor queries use getEffectiveContractorProfile (not ctx.user directly)
+
+### Root Cause Investigation
+- [ ] Check if overridePriority is returned in company jobs query (getJobsByCompany)
+- [ ] Check if overridePriority is returned in contractor job board query (listJobBoardForContractor)
+- [ ] Check if overridePriority is returned in contractor allMyJobs query
+- [ ] Verify all new columns (overridePriority, jobBoardVisibility, isTrusted) are included in SELECT queries
+
+### Fixes
+- [ ] Fix any procedures that use ctx.user.companyId directly instead of getEffectiveCompanyId
+- [ ] Fix any procedures that use ctx.user directly instead of getEffectiveContractorProfile
+- [ ] Ensure overridePriority and jobBoardVisibility are returned in all relevant queries
+
+## Session 34: Priority Override Fix + Skill Tier Override + Emergency Multiplier Setting [COMPLETED]
+
+### Priority Override Bug Fixes
+- [x] Fix overridePriority mutation: when priority changes, also re-derive the correct skill tier and update hourlyRate
+- [x] Fix CompanyJobs display: show effective skill tier label based on overridePriority ?? aiPriority (not stale AI skill tier)
+- [x] Fix rate display: show rate corresponding to the effective priority level
+- [x] Show "AI: [original]" footnote when override is active
+
+### Skill Tier Override
+- [x] Add overrideSkillTierId column to maintenanceRequests schema
+- [x] Backend: jobs.overrideSkillTier mutation — company can select a specific skill tier for a job
+- [x] Effective skill tier = overrideSkillTierId ?? AI-assigned skillTierId
+- [x] Effective hourly rate = skill tier's hourlyRate (with emergency multiplier if applicable)
+- [x] Company job card: skill tier dropdown showing all company skill tiers
+- [x] Contractor sees effective skill tier and rate
+
+### Emergency Multiplier Company Setting
+- [x] emergencyMultiplier is a per-skill-tier setting (more flexible than company-level)
+- [x] Each skill tier has its own emergency multiplier (editable in Company Settings → Skill Tiers)
+- [x] overridePriority mutation uses the matched tier's emergencyMultiplier
+- [x] overrideSkillTier mutation uses the selected tier's emergencyMultiplier
+
+### Tests
+- [x] Vitest tests for effective priority + rate resolution (session-34.test.ts, 45 tests)
+- [x] Vitest tests for emergency multiplier application (session-34.test.ts)
+- [x] Vitest tests for skill tier override (session-34.test.ts)
+- [x] Vitest tests for job edit/delete status guard (session-34.test.ts)
+- [x] Vitest tests for impersonation contractor plan fix (session-34.test.ts)
+- [x] 394 total tests passing, 0 TypeScript errors
+
+### Job Edit / Delete (Open Jobs Only)
+- [x] Backend: jobs.update mutation — company can update title, description, propertyId, tenantName, tenantPhone, tenantEmail, notes on open jobs only
+- [x] Backend: jobs.delete mutation — company can delete open jobs only (hard delete)
+- [x] CompanyJobs: MoreVertical 3-dot icon in top-right of each open job card
+- [x] Dropdown: "Edit Job" and "Delete Job" options
+- [x] Full edit modal: all editable fields in a dialog (title, description, property, tenant info, notes)
+- [x] Delete confirmation dialog before hard delete
+- [x] 3-dot menu hidden once job status is assigned/in_progress/pending_review/completed/paid

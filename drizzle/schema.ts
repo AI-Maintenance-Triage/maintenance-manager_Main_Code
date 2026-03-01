@@ -245,6 +245,9 @@ export const maintenanceRequests = mysqlTable("maintenance_requests", {
   // Company priority override: when set, overrides the AI-assigned priority.
   // The overrideHourlyRate reflects the billing rate for the new priority level.
   overridePriority: mysqlEnum("overridePriority", ["low", "medium", "high", "emergency"]),
+  // Company skill tier override: when set, overrides the AI-assigned skill tier for billing.
+  // This directly controls which hourly rate is used, independent of priority level.
+  overrideSkillTierId: int("overrideSkillTierId"),
   overrideHourlyRate: decimal("overrideHourlyRate", { precision: 8, scale: 2 }),
   overrideReason: varchar("overrideReason", { length: 500 }),
   overriddenAt: timestamp("overriddenAt"),
