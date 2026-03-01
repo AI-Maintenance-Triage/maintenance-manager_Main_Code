@@ -22,7 +22,7 @@ import {
   CreditCard, FileText, DollarSign, TrendingUp, Calendar, Download,
   Check, X, Building2, Users, ClipboardList, ArrowUpRight, Zap,
   Star, Shield, Crown, CheckCircle2, AlertCircle, XCircle, ExternalLink,
-  Receipt,
+  Receipt, Plus, Trash2, Star as StarIcon, Wallet,
 } from "lucide-react";
 
 const COMPANY_FEATURE_LABELS: Record<string, string> = {
@@ -81,6 +81,147 @@ function planStatusBadge(status: string) {
   }
 }
 
+function CardBrandIcon({ brand }: { brand: string }) {
+  const brands: Record<string, string> = {
+    visa: "VISA", mastercard: "MC", amex: "AMEX", discover: "DISC",
+    jcb: "JCB", unionpay: "UP", diners: "DC",
+  };
+  return (
+    <span className="inline-flex items-center justify-center w-10 h-6 rounded bg-secondary text-[10px] font-bold text-foreground border border-border">
+      {brands[brand.toLowerCase()] ?? brand.slice(0, 4).toUpperCase()}
+    </span>
+  );
+}
+
+function PaymentMethodsSection() {
+  const utils = trpc.useUtils();
+  const { data: pmData, isLoading: pmLoading } = trpc.stripePayments.listPaymentMethods.useQuery();
+  const createSetupIntent = trpc.stripePayments.createSetupIntent.useMutation({
+    onSuccess: (data) => {
+      if (data.checkoutUrl) {
+        window.open(data.checkoutUrl, "_blank");
+        toast.info("Opening card setup...", { description: "A new tab has been opened. Complete the form to save your card." });
+      }
+    },
+    onError: (err) => toast.error("Could not open payment setup", { description: err.message }),
+  });
+  const setDefault = trpc.stripePayments.setDefaultPaymentMethod.useMutation({
+    onSuccess: () => {
+      toast.success("Default payment method updated");
+      utils.stripePayments.listPaymentMethods.invalidate();
+    },
+    onError: (err) => toast.error(err.message),
+  });
+  const detach = trpc.stripePayments.detachPaymentMethod.useMutation({
+    onSuccess: () => {
+      toast.success("Payment method removed");
+      utils.stripePayments.listPaymentMethods.invalidate();
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
+  const pms = pmData?.paymentMethods ?? [];
+  const defaultId = pmData?.defaultPaymentMethodId;
+
+  const openAddCard = () => {
+    // Create a Stripe Checkout session in setup mode to add a card
+    createSetupIntent.mutate({ origin: window.location.origin });
+  };
+
+  return (
+    <Card className="bg-card border-border">
+      <CardHeader className="pb-3">
+        <div className="flex items-center justify-between">
+          <div>
+            <CardTitle className="text-card-foreground flex items-center gap-2">
+              <Wallet className="h-4 w-4 text-primary" /> Payment Methods
+            </CardTitle>
+            <CardDescription>Saved cards used for subscription billing</CardDescription>
+          </div>
+          <Button
+            size="sm"
+            variant="outline"
+            className="gap-1.5 border-primary/30 text-primary hover:bg-primary/10"
+            onClick={openAddCard}
+            disabled={createSetupIntent.isPending}
+          >
+            <Plus className="h-3.5 w-3.5" />
+            {createSetupIntent.isPending ? "Opening..." : "Add Card"}
+          </Button>
+        </div>
+      </CardHeader>
+      <CardContent>
+        {pmLoading ? (
+          <div className="space-y-3">
+            {[1, 2].map(i => <Skeleton key={i} className="h-14 w-full" />)}
+          </div>
+        ) : pms.length === 0 ? (
+          <div className="text-center py-8">
+            <CreditCard className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
+            <p className="text-sm text-muted-foreground">No payment methods saved.</p>
+            <p className="text-xs text-muted-foreground mt-1">Add a card to use for subscription payments.</p>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {pms.map((pm: any) => {
+              const isDefault = pm.id === defaultId;
+              return (
+                <div
+                  key={pm.id}
+                  className={`flex items-center justify-between p-3 rounded-lg border transition-colors ${
+                    isDefault ? "border-primary/30 bg-primary/5" : "border-border bg-secondary/30"
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <CardBrandIcon brand={pm.brand} />
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-medium text-foreground">
+                          {pm.type === "us_bank_account" ? `Bank ••••${pm.last4}` : `••••  ••••  ••••  ${pm.last4}`}
+                        </span>
+                        {isDefault && (
+                          <Badge className="bg-primary/15 text-primary border-primary/30 text-[10px] px-1.5 py-0 gap-1">
+                            <StarIcon className="h-2.5 w-2.5" /> Default
+                          </Badge>
+                        )}
+                      </div>
+                      {pm.expMonth > 0 && (
+                        <p className="text-xs text-muted-foreground">Expires {String(pm.expMonth).padStart(2, "0")}/{pm.expYear}</p>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    {!isDefault && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground"
+                        onClick={() => setDefault.mutate({ paymentMethodId: pm.id })}
+                        disabled={setDefault.isPending}
+                      >
+                        <StarIcon className="h-3 w-3 mr-1" /> Set Default
+                      </Button>
+                    )}
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 px-2 text-xs text-red-400 hover:text-red-300 hover:bg-red-500/10"
+                      onClick={() => detach.mutate({ paymentMethodId: pm.id })}
+                      disabled={detach.isPending}
+                    >
+                      <Trash2 className="h-3 w-3" />
+                    </Button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 export default function CompanyBilling() {
   const [, setLocation] = useLocation();
   const [billingInterval, setBillingInterval] = useState<"monthly" | "annual">("monthly");
@@ -132,6 +273,15 @@ export default function CompanyBilling() {
       }, 2500);
     } else if (sub === "canceled") {
       toast.info("Checkout canceled", { description: "No changes were made." });
+      setLocation("/company/billing", { replace: true });
+    }
+    const setup = params.get("setup");
+    if (setup === "success") {
+      toast.success("Card saved!", { description: "Your payment method has been added successfully." });
+      setLocation("/company/billing", { replace: true });
+      setTimeout(() => utils.stripePayments.listPaymentMethods.invalidate(), 1500);
+    } else if (setup === "canceled") {
+      toast.info("Card setup canceled", { description: "No card was saved." });
       setLocation("/company/billing", { replace: true });
     }
   }, []);
@@ -285,6 +435,9 @@ export default function CompanyBilling() {
           </CardContent>
         </Card>
       )}
+
+      {/* Payment Methods */}
+      <PaymentMethodsSection />
 
       {/* All Available Plans */}
       <div>

@@ -59,6 +59,7 @@ function planStatusBadge(status: string) {
 function StripeConnectCard() {
   const utils = trpc.useUtils();
   const [onboardingLoading, setOnboardingLoading] = useState(false);
+  const [connectNotEnabled, setConnectNotEnabled] = useState(false);
   const prevIsComplete = useRef<boolean | null>(null);
 
   const { data: connectStatus, isLoading: connectLoading, refetch } =
@@ -86,7 +87,19 @@ function StripeConnectCard() {
     },
     onError: (err) => {
       setOnboardingLoading(false);
-      toast.error("Could not start onboarding", { description: err.message });
+      if (err.message?.includes("STRIPE_CONNECT_NOT_ENABLED")) {
+        setConnectNotEnabled(true);
+        toast.error("Stripe Connect not enabled", {
+          description: "Enable Connect on your Stripe account first: dashboard.stripe.com → Connect → Get started. It's free in test mode.",
+          duration: 12000,
+          action: {
+            label: "Open Stripe",
+            onClick: () => window.open("https://dashboard.stripe.com/connect/accounts/overview", "_blank"),
+          },
+        });
+      } else {
+        toast.error("Could not start onboarding", { description: err.message });
+      }
     },
   });
 
@@ -143,6 +156,36 @@ function StripeConnectCard() {
                 </Badge>
               )}
             </div>
+
+            {connectNotEnabled && (
+              <div className="mt-2 flex items-start gap-3 bg-red-500/10 border border-red-500/20 rounded-lg p-4">
+                <AlertCircle className="h-5 w-5 text-red-400 shrink-0 mt-0.5" />
+                <div className="flex-1 space-y-2">
+                  <p className="text-sm font-medium text-red-400">Stripe Connect is not enabled on this platform</p>
+                  <p className="text-xs text-muted-foreground">
+                    To enable contractor payouts, the platform owner needs to enable Stripe Connect once in the Stripe dashboard. It's free in test mode.
+                  </p>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-7 text-xs gap-1.5 border-red-500/30 text-red-400 hover:bg-red-500/10"
+                      onClick={() => window.open("https://dashboard.stripe.com/connect/accounts/overview", "_blank")}
+                    >
+                      <ExternalLink className="h-3 w-3" /> Enable Connect in Stripe Dashboard
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-7 text-xs text-muted-foreground"
+                      onClick={() => setConnectNotEnabled(false)}
+                    >
+                      Dismiss
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {isComplete ? (
               <div className="space-y-1.5">

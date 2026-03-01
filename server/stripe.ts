@@ -23,14 +23,26 @@ export async function getPlatformSettings() {
 
 // ─── Contractor Connect onboarding ────────────────────────────────────────
 export async function createContractorConnectAccount(email: string) {
-  const account = await stripe.accounts.create({
-    type: "express",
-    email,
-    capabilities: {
-      transfers: { requested: true },
-    },
-  });
-  return account;
+  try {
+    const account = await stripe.accounts.create({
+      type: "express",
+      email,
+      capabilities: {
+        transfers: { requested: true },
+      },
+    });
+    return account;
+  } catch (err: any) {
+    // Stripe Connect not enabled on the platform account
+    if (err?.code === "account_invalid" || err?.message?.includes("connect") || err?.message?.includes("Connect") || err?.type === "StripeInvalidRequestError") {
+      throw new Error(
+        "STRIPE_CONNECT_NOT_ENABLED: Stripe Connect is not enabled on this platform account. " +
+        "To enable it, go to https://dashboard.stripe.com/connect/accounts/overview and click 'Get started with Connect'. " +
+        "In test mode you can enable it for free."
+      );
+    }
+    throw err;
+  }
 }
 
 export async function createContractorOnboardingLink(

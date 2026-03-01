@@ -1638,7 +1638,7 @@ const stripeRouter = router({
   // Company: create a SetupIntent to save a card
   createSetupIntent: companyAdminProcedure
     .input(z.object({ origin: z.string() }))
-    .mutation(async ({ ctx, input: _input }) => {
+    .mutation(async ({ ctx, input }) => {
       const companyId = getEffectiveCompanyId(ctx);
       const company = await db.getCompanyById(companyId);
       if (!company) throw new TRPCError({ code: "NOT_FOUND" });
@@ -1650,8 +1650,18 @@ const stripeRouter = router({
         user.email ?? "",
         company.name
       );
-      const { clientSecret } = await createSetupIntent(customerId);
-      return { clientSecret, customerId };
+
+      // Create a Stripe Checkout session in setup mode to collect a card
+      const session = await stripe.checkout.sessions.create({
+        mode: "setup",
+        customer: customerId,
+        currency: "usd",
+        success_url: `${input.origin}/company/billing?setup=success`,
+        cancel_url: `${input.origin}/company/billing?setup=canceled`,
+        metadata: { companyId: String(companyId) },
+      });
+
+      return { checkoutUrl: session.url, customerId };
     }),
 
   // Company: list saved payment methods
@@ -1659,20 +1669,12 @@ const stripeRouter = router({
     .query(async ({ ctx }) => {
       const companyId = getEffectiveCompanyId(ctx);
       const company = await db.getCompanyById(companyId);
-      if (!company?.stripeCustomerId) return { paymentMethods: [] };
-      const pms = await stripe.paymentMethods.list({
-        customer: company.stripeCustomerId,
-        type: "card",
-      });
-      return {
-        paymentMethods: pms.data.map(pm => ({
-          id: pm.id,
-          brand: pm.card?.brand ?? "unknown",
-          last4: pm.card?.last4 ?? "????",
-          expMonth: pm.card?.exp_month ?? 0,
-          expYear: pm.card?.exp_year ?? 0,
-        })),
-      };
+      if (!company?.stripeCustomerId) return { paymentMethods: [], defaultPaymentMethodId: null };
+      const pms = await listAllPaymentMethods(company.stripeCustomerId);
+      // Get the default payment method from the customer object
+      const customer = await stripe.customers.retrieve(company.stripeCustomerId) as any;
+      const defaultPmId = customer?.invoice_settings?.default_payment_method ?? null;
+      return { paymentMethods: pms, defaultPaymentMethodId: defaultPmId };
     }),
 
   // Admin: get platform fee settings

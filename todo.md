@@ -811,3 +811,8 @@
 - [x] Plan enforcement gates — property limit with upgrade prompt for company plans
 - [x] Auto-assign Free Contractor plan to new contractors on registration
 - [x] Admin subscriber migration tool — move all subscribers from one plan to another
+
+## Session 23
+- [x] Fix Stripe Connect onboarding error in test mode (graceful handling + correct instructions)
+- [x] Company billing: Payment Methods section (add/remove cards, set default payment source via Stripe Customer Portal)
+- [x] Stripe Connect Express: contractor account creation, onboarding link, payout flow
