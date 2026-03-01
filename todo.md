@@ -411,3 +411,10 @@
 - [x] Contractor receipt PDF: server-side PDF at /api/receipt/:jobId (contractor auth only)
 - [x] Contractor receipt PDF: titled "Payment Receipt" with same fields as company invoice (job details, labor, parts, platform fee, payout amount, Stripe refs)
 - [x] Contractor receipt PDF: "Receipt" download button on paid/verified job cards in ContractorMyJobs
+
+## Session 14: Verification Fix, Job Board Ratings, Mobile Bell
+- [x] Verification dialog: fix $0 labor — join time sessions and sum totalLaborMinutes
+- [x] Verification dialog: show Labor Time (h:mm), Hourly Rate, Parts, Platform Fee %, Total
+- [x] Verification dialog: show "No time recorded" if no session exists
+- [x] Ratings: Show company paid-job trust badge on job board listing cards (contractor view)
+- [x] Mobile bell: add notification bell to mobile bottom nav bar (fixed bottom, shows top 4 nav items + bell)

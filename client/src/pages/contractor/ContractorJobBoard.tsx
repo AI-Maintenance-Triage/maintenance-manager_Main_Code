@@ -198,6 +198,11 @@ export default function ContractorJobBoard() {
                     <div className="flex items-center gap-2">
                       <Building2 className="h-3.5 w-3.5 text-primary shrink-0" />
                       <span className="truncate">{company.name}</span>
+                      {company.paidJobCount > 0 && (
+                        <span className="ml-auto shrink-0 text-xs text-green-400 bg-green-500/10 border border-green-500/20 px-1.5 py-0.5 rounded-full">
+                          {company.paidJobCount} paid job{company.paidJobCount !== 1 ? 's' : ''}
+                        </span>
+                      )}
                     </div>
                     <div className="flex items-center gap-2">
                       <MapPin className="h-3.5 w-3.5 text-primary shrink-0" />
@@ -281,7 +286,14 @@ export default function ContractorJobBoard() {
               <div className="grid grid-cols-2 gap-3 text-sm">
                 <div className="space-y-1">
                   <p className="text-xs text-muted-foreground">Company</p>
-                  <p className="font-medium text-foreground">{selectedJob.company.name}</p>
+                  <div className="flex items-center gap-2">
+                    <p className="font-medium text-foreground">{selectedJob.company.name}</p>
+                    {selectedJob.company.paidJobCount > 0 && (
+                      <span className="text-xs text-green-400 bg-green-500/10 border border-green-500/20 px-1.5 py-0.5 rounded-full">
+                        {selectedJob.company.paidJobCount} paid
+                      </span>
+                    )}
+                  </div>
                 </div>
                 <div className="space-y-1">
                   <p className="text-xs text-muted-foreground">Location</p>

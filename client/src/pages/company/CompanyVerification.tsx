@@ -90,6 +90,7 @@ export default function CompanyVerification() {
   const totalCost = subtotal + platformFeeAmount;
   const laborMinutes = job?.totalLaborMinutes ?? 0;
   const hourlyRate = parseFloat(job?.hourlyRate ?? "0");
+  const sessionCount = selected?.job?.sessionCount ?? 0;
 
   if (isLoading) {
     return (
@@ -205,15 +206,22 @@ export default function CompanyVerification() {
                   <div className="flex items-center justify-between text-sm">
                     <div className="flex items-center gap-2 text-muted-foreground">
                       <Timer className="h-4 w-4 text-blue-400" />
-                      <span>Labor</span>
-                      {laborMinutes > 0 && hourlyRate > 0 && (
-                        <span className="text-xs text-muted-foreground/60">
-                          ({Math.floor(laborMinutes / 60)}h {laborMinutes % 60}m @ ${hourlyRate}/hr)
-                        </span>
-                      )}
+                      <div>
+                        <span>Labor</span>
+                        {laborMinutes > 0 && (
+                          <span className="text-xs text-muted-foreground/60 ml-1.5">
+                            {Math.floor(laborMinutes / 60)}h {laborMinutes % 60}m
+                            {hourlyRate > 0 && ` @ $${hourlyRate}/hr`}
+                            {sessionCount > 0 && ` (${sessionCount} session${sessionCount !== 1 ? 's' : ''})`}
+                          </span>
+                        )}
+                        {laborMinutes === 0 && (
+                          <span className="text-xs text-yellow-400/70 ml-1.5">(no time sessions recorded)</span>
+                        )}
+                      </div>
                     </div>
                     <span className="font-medium text-foreground">
-                      {laborCost > 0 ? `$${laborCost.toFixed(2)}` : <span className="text-muted-foreground text-xs">Not recorded</span>}
+                      {laborCost > 0 ? `$${laborCost.toFixed(2)}` : <span className="text-muted-foreground text-xs">$0.00</span>}
                     </span>
                   </div>
 

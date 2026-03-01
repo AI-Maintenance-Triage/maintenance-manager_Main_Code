@@ -538,7 +538,30 @@ const jobsRouter = router({
   // Company: get jobs awaiting verification
   pendingVerification: companyAdminProcedure.query(async ({ ctx }) => {
     if (!getEffectiveCompanyId(ctx)) throw new TRPCError({ code: "NOT_FOUND" });
-    return db.getJobsPendingVerification(getEffectiveCompanyId(ctx));
+    const rows = await db.getJobsPendingVerification(getEffectiveCompanyId(ctx));
+    // Enrich each job with live time session data so the verification dialog
+    // always shows accurate labor minutes even if the job record is stale.
+    const enriched = await Promise.all(rows.map(async (row: any) => {
+      const sessions = await db.getTimeSessionsByJob(row.job.id);
+      const completedSessions = sessions.filter((s: any) => s.status === "completed" && s.totalMinutes);
+      const liveMinutes = completedSessions.reduce((sum: number, s: any) => sum + (s.totalMinutes ?? 0), 0);
+      const storedMinutes = row.job.totalLaborMinutes ?? 0;
+      const totalLaborMinutes = liveMinutes > storedMinutes ? liveMinutes : storedMinutes;
+      const hourlyRate = parseFloat(row.job.hourlyRate ?? "0");
+      const totalLaborCost = hourlyRate > 0 && totalLaborMinutes > 0
+        ? ((totalLaborMinutes / 60) * hourlyRate).toFixed(2)
+        : row.job.totalLaborCost ?? null;
+      return {
+        ...row,
+        job: {
+          ...row.job,
+          totalLaborMinutes: totalLaborMinutes > 0 ? totalLaborMinutes : row.job.totalLaborMinutes,
+          totalLaborCost,
+          sessionCount: completedSessions.length,
+        },
+      };
+    }));
+    return enriched;
   }),
 
   // Company: approve or dispute a completed job

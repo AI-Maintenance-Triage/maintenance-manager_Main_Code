@@ -33,6 +33,7 @@ import { DashboardLayoutSkeleton } from "./DashboardLayoutSkeleton";
 import { Button } from "./ui/button";
 import { Separator } from "./ui/separator";
 import { NotificationBell } from "./NotificationBell";
+import { cn } from "@/lib/utils";
 
 type MenuItem = { icon: React.ComponentType<{ className?: string }>; label: string; path: string };
 type MenuSection = { title: string; items: MenuItem[] };
@@ -271,7 +272,34 @@ function DashboardLayoutContent({ children, setSidebarWidth }: { children: React
             <NotificationBell />
           </div>
         </div>
-        <main className="flex-1 p-4 md:p-6">{children}</main>
+        <main className="flex-1 p-4 md:p-6 pb-20 md:pb-6">{children}</main>
+
+        {/* Mobile bottom nav bar — visible only on small screens */}
+        {isMobile && (
+          <nav className="fixed bottom-0 left-0 right-0 z-50 bg-background/95 backdrop-blur border-t border-border flex items-center justify-around h-16 px-2">
+            {allItems.slice(0, 4).map(item => {
+              const isActive = location === item.path || (item.path !== "/" && location.startsWith(item.path + "/"));
+              return (
+                <button
+                  key={item.path}
+                  onClick={() => setLocation(item.path)}
+                  className={cn(
+                    "flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-lg transition-colors min-w-0",
+                    isActive ? "text-primary" : "text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  <item.icon className="h-5 w-5 shrink-0" />
+                  <span className="text-[10px] truncate max-w-[56px]">{item.label}</span>
+                </button>
+              );
+            })}
+            {/* Notification bell in bottom nav */}
+            <div className="flex flex-col items-center gap-0.5 px-3 py-1.5">
+              <NotificationBell />
+              <span className="text-[10px] text-muted-foreground">Alerts</span>
+            </div>
+          </nav>
+        )}
       </SidebarInset>
     </>
   );

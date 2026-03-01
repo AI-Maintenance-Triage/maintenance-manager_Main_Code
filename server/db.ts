@@ -851,9 +851,21 @@ export async function listJobBoardForContractor(contractorProfileId: number) {
     )
     .orderBy(desc(maintenanceRequests.createdAt));
 
+  // Enrich each job with company paid-job count as a trust signal
+  const enriched = await Promise.all(jobs.map(async (row) => {
+    const [countRow] = await db
+      .select({ count: sql<number>`COUNT(*)` })
+      .from(maintenanceRequests)
+      .where(and(
+        eq(maintenanceRequests.companyId, row.company.id),
+        eq(maintenanceRequests.status, "paid")
+      ));
+    return { ...row, company: { ...row.company, paidJobCount: countRow?.count ?? 0 } };
+  }));
+
   // Filter by service area if contractor has coordinates
   if (contractorLat !== null && contractorLng !== null) {
-    return jobs
+    return enriched
       .map((row) => {
         const propLat = row.property.latitude ? parseFloat(String(row.property.latitude)) : null;
         const propLng = row.property.longitude ? parseFloat(String(row.property.longitude)) : null;
@@ -864,7 +876,6 @@ export async function listJobBoardForContractor(contractorProfileId: number) {
       })
       .filter((row): row is NonNullable<typeof row> => row !== null);
   }
-
   // Contractor has no geocoded coordinates — return empty list so the UI
   // can prompt them to complete their service area setup.
   return [];
