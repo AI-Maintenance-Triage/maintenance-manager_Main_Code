@@ -1493,10 +1493,62 @@ const jobBoardRouter = router({
 
   // Company: post a job to the board
   post: companyAdminProcedure
-    .input(z.object({ jobId: z.number() }))
+    .input(z.object({ jobId: z.number(), origin: z.string().optional() }))
     .mutation(async ({ ctx, input }) => {
-      if (!getEffectiveCompanyId(ctx)) throw new TRPCError({ code: "NOT_FOUND" });
-      await db.postJobToBoard(input.jobId, getEffectiveCompanyId(ctx));
+      const companyId = getEffectiveCompanyId(ctx);
+      await db.postJobToBoard(input.jobId, companyId);
+
+      // Fan-out notifications to all contractors in service area (fire-and-forget)
+      void (async () => {
+        try {
+          const job = await db.getMaintenanceRequestById(input.jobId);
+          if (!job) return;
+          const property = await db.getPropertyByIdOnly(job.propertyId);
+          if (!property) return;
+          const company = await db.getCompanyById(companyId);
+
+          const propLat = property.latitude ? parseFloat(String(property.latitude)) : null;
+          const propLng = property.longitude ? parseFloat(String(property.longitude)) : null;
+          if (propLat === null || propLng === null) return;
+
+          const cityState = [property.city, property.state].filter(Boolean).join(", ") || "Unknown location";
+          const trade = job.aiSkillTier ?? null;
+          const urgency = job.aiPriority ?? "medium";
+          const jobBoardUrl = `${input.origin ?? "https://app.maintenancemanager.com"}/contractor/job-board`;
+
+          const contractors = await db.getContractorsInServiceArea(propLat, propLng, trade);
+          console.log(`[JobBoard] Notifying ${contractors.length} contractors for job #${job.id}`);
+
+          for (const contractor of contractors) {
+            // In-app notification
+            await db.createNotification({
+              userId: contractor.userId,
+              type: "new_job",
+              title: `New Job: ${job.title}`,
+              body: `${urgency === "emergency" ? "🚨 EMERGENCY — " : ""}A new job has been posted in your area: ${job.title} at ${cityState}. First come, first served!`,
+              linkRoute: "/contractor/job-board",
+              metadata: { jobId: job.id, urgency, cityState },
+            });
+
+            // Email notification
+            if (contractor.email) {
+              await email.sendNewJobPostedEmail({
+                to: contractor.email,
+                contractorName: contractor.name ?? "Contractor",
+                jobTitle: job.title,
+                trade,
+                urgency,
+                cityState,
+                companyName: company?.name ?? "A property management company",
+                jobBoardUrl,
+              });
+            }
+          }
+        } catch (err) {
+          console.error("[JobBoard] Notification fan-out error:", err);
+        }
+      })();
+
       return { success: true };
     }),
 

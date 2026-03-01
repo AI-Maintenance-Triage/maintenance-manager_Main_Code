@@ -1,4 +1,4 @@
-import { eq, and, desc, sql, inArray, or, isNull, count, gte } from "drizzle-orm";
+import { eq, and, desc, sql, inArray, or, isNull, isNotNull, count, gte } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import {
   InsertUser, users,
@@ -733,28 +733,61 @@ export async function getPlatformStats() {
     .from(maintenanceRequests)
     .where(sql`status IN ('paid', 'verified')`);
 
-  // Monthly revenue for last 6 months
+  // Monthly revenue for last 12 months
   const monthlyRevenue = await db
     .select({
       month: sql<string>`DATE_FORMAT(createdAt, '%Y-%m')`,
       revenue: sql<string>`COALESCE(SUM(platformFee), 0)`,
       gross: sql<string>`COALESCE(SUM(totalCharged), 0)`,
+      jobCount: sql<number>`COUNT(*)`,
     })
     .from(transactions)
-    .where(sql`status IN ('captured', 'paid_out') AND createdAt >= DATE_SUB(NOW(), INTERVAL 6 MONTH)`)
+    .where(sql`status IN ('captured', 'paid_out') AND createdAt >= DATE_SUB(NOW(), INTERVAL 12 MONTH)`)
     .groupBy(sql`DATE_FORMAT(createdAt, '%Y-%m')`);
+
+  // Top 10 companies by total spend
+  const topCompanies = await db
+    .select({
+      companyId: transactions.companyId,
+      companyName: companies.name,
+      totalSpend: sql<string>`COALESCE(SUM(${transactions.totalCharged}), 0)`,
+      platformFees: sql<string>`COALESCE(SUM(${transactions.platformFee}), 0)`,
+      jobCount: sql<number>`COUNT(*)`,
+    })
+    .from(transactions)
+    .innerJoin(companies, eq(transactions.companyId, companies.id))
+    .where(sql`${transactions.status} IN ('captured', 'paid_out')`)
+    .groupBy(transactions.companyId, companies.name)
+    .orderBy(sql`SUM(${transactions.totalCharged}) DESC`)
+    .limit(10);
+
+  // Average fee per paid job
+  const paidJobsWithFee = paidJobCount?.count ?? 0;
+  const avgFeePerJob = paidJobsWithFee > 0
+    ? (parseFloat(revenue?.total ?? "0") / paidJobsWithFee).toFixed(2)
+    : "0.00";
+
+  // Month-over-month growth (last 2 months)
+  const sorted = [...monthlyRevenue].sort((a, b) => a.month.localeCompare(b.month));
+  const lastMonth = sorted[sorted.length - 1]?.revenue ?? "0";
+  const prevMonth = sorted[sorted.length - 2]?.revenue ?? "0";
+  const momGrowth = parseFloat(prevMonth) > 0
+    ? (((parseFloat(lastMonth) - parseFloat(prevMonth)) / parseFloat(prevMonth)) * 100).toFixed(1)
+    : null;
 
   return {
     totalCompanies: companyCount?.count ?? 0,
     totalContractors: contractorCount?.count ?? 0,
     totalJobs: jobCount?.count ?? 0,
-    paidJobs: paidJobCount?.count ?? 0,
+    paidJobs: paidJobsWithFee,
     totalRevenue: revenue?.total ?? "0.00",
     totalGross: gross?.total ?? "0.00",
+    avgFeePerJob,
+    momGrowth,
     monthlyRevenue,
+    topCompanies,
   };
 }
-
 
 // ─── Admin: List All Contractors ──────────────────────────────────────────
 export async function listAllContractors() {
@@ -1420,7 +1453,7 @@ export async function getUserEmailByContractorProfileId(contractorProfileId: num
 export async function getPropertyByIdOnly(id: number) {
   const db = await getDb();
   if (!db) return undefined;
-  const [row] = await db.select({ name: properties.name }).from(properties).where(eq(properties.id, id)).limit(1);
+  const [row] = await db.select().from(properties).where(eq(properties.id, id)).limit(1);
   return row;
 }
 
@@ -2061,4 +2094,73 @@ export async function refreshContractorInviteToken(id: number, newToken: string,
     .update(contractorInvites)
     .set({ token: newToken, expiresAt: newExpiresAt, status: "pending" })
     .where(eq(contractorInvites.id, id));
+}
+
+// ─── Job Notifications: Find Contractors Whose Service Area Covers a Property ─
+/**
+ * Returns all available contractors (with email) whose service radius covers
+ * the given property coordinates. Used to fan-out new-job notifications.
+ * Optionally filters by required trade.
+ */
+export async function getContractorsInServiceArea(
+  propertyLat: number,
+  propertyLng: number,
+  requiredTrade?: string | null,
+): Promise<Array<{ id: number; userId: number; name: string | null; email: string | null; trades: string[] | null }>> {
+  const db = await getDb();
+  if (!db) return [];
+
+  const rows = await db
+    .select({
+      id: contractorProfiles.id,
+      userId: users.id,
+      latitude: contractorProfiles.latitude,
+      longitude: contractorProfiles.longitude,
+      serviceRadiusMiles: contractorProfiles.serviceRadiusMiles,
+      trades: contractorProfiles.trades,
+      isAvailable: contractorProfiles.isAvailable,
+      name: users.name,
+      email: users.email,
+    })
+    .from(contractorProfiles)
+    .innerJoin(users, eq(contractorProfiles.userId, users.id))
+    .where(
+      and(
+        eq(contractorProfiles.isAvailable, true),
+        isNotNull(contractorProfiles.latitude),
+        isNotNull(contractorProfiles.longitude),
+      )
+    );
+
+  const results: Array<{ id: number; userId: number; name: string | null; email: string | null; trades: string[] | null }> = [];
+
+  for (const row of rows) {
+    const cLat = row.latitude ? parseFloat(String(row.latitude)) : null;
+    const cLng = row.longitude ? parseFloat(String(row.longitude)) : null;
+    if (cLat === null || cLng === null) continue;
+
+    const radiusMiles = row.serviceRadiusMiles ?? 25;
+    const dist = haversineDistanceMiles(cLat, cLng, propertyLat, propertyLng);
+    if (dist > radiusMiles) continue;
+
+    // Optional trade filter
+    if (requiredTrade) {
+      const trades = (row.trades as string[] | null) ?? [];
+      const normalised = requiredTrade.toLowerCase();
+      const hasTrade = trades.some(
+        (t) => t.toLowerCase().includes(normalised) || normalised.includes(t.toLowerCase()),
+      );
+      if (!hasTrade) continue;
+    }
+
+    results.push({
+      id: row.id,
+      userId: row.userId,
+      name: row.name,
+      email: row.email,
+      trades: row.trades as string[] | null,
+    });
+  }
+
+  return results;
 }

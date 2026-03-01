@@ -1,19 +1,20 @@
 import { useState, useRef, useEffect } from "react";
 import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
-import { Bell, CheckCheck, X, MessageSquare, Star, Briefcase, Info } from "lucide-react";
+import { Bell, CheckCheck, X, MessageSquare, Star, Briefcase, Info, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 
-type NotifType = "comment" | "rating" | "job_status" | "general";
+type NotifType = "comment" | "rating" | "job_status" | "new_job" | "general";
 
 function notifIcon(type: string) {
   switch (type as NotifType) {
     case "comment": return <MessageSquare className="h-4 w-4 text-blue-400 shrink-0 mt-0.5" />;
     case "rating": return <Star className="h-4 w-4 text-amber-400 shrink-0 mt-0.5" />;
     case "job_status": return <Briefcase className="h-4 w-4 text-green-400 shrink-0 mt-0.5" />;
+    case "new_job": return <Zap className="h-4 w-4 text-orange-400 shrink-0 mt-0.5" />;
     default: return <Info className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />;
   }
 }
@@ -36,10 +37,10 @@ export function NotificationBell() {
   const utils = trpc.useUtils();
 
   const { data: notifs = [], refetch } = trpc.notifications.list.useQuery(undefined, {
-    refetchInterval: 30000,
+    refetchInterval: 15000, // Poll every 15s — critical for job board speed
   });
   const { data: unreadCount = 0 } = trpc.notifications.unreadCount.useQuery(undefined, {
-    refetchInterval: 30000,
+    refetchInterval: 15000,
   });
 
   const markRead = trpc.notifications.markRead.useMutation({
@@ -147,7 +148,8 @@ export function NotificationBell() {
                     onClick={() => handleNotifClick(n)}
                     className={cn(
                       "w-full text-left px-4 py-3 flex gap-3 hover:bg-muted/30 transition-colors",
-                      !n.isRead && "bg-primary/5"
+                      !n.isRead && n.type === "new_job" ? "bg-orange-500/10 border-l-2 border-orange-500" :
+                      !n.isRead ? "bg-primary/5" : ""
                     )}
                   >
                     {notifIcon(n.type)}
@@ -170,7 +172,10 @@ export function NotificationBell() {
                       )}
                     </div>
                     {!n.isRead && (
-                      <span className="mt-1.5 h-2 w-2 rounded-full bg-primary shrink-0" />
+                      <span className={cn(
+                        "mt-1.5 h-2 w-2 rounded-full shrink-0",
+                        n.type === "new_job" ? "bg-orange-400" : "bg-primary"
+                      )} />
                     )}
                   </button>
                 ))}

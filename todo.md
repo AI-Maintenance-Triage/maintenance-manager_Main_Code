@@ -693,3 +693,19 @@
 - [x] Backend: GET /api/invoices/bulk?from=&to= — streams ZIP of PDFs for paid jobs in date range
 - [x] Frontend: Expense Report page — Bulk Invoice Export card with date range picker
 - [x] Frontend: trigger download of ZIP file on success with toast notification
+
+## Job Board Push Notifications (Current Session)
+- [x] Backend: getContractorsInServiceArea helper — Haversine filter on contractor lat/lng + serviceRadius
+- [x] Backend: send in-app notification to each qualifying contractor when a job is posted
+- [x] Email: sendNewJobPostedEmail — urgent branded email with job title, trade, urgency, city/state, deep link to job board
+- [x] Backend: jobBoard.post procedure — fan-out in-app notification + email to all contractors in service area
+- [x] Frontend: NotificationBell — new_job type with orange/urgent styling and faster 15s polling
+- [x] Frontend: notification dropdown — new_job notifications get orange left-border highlight row
+
+## Admin Platform Revenue Dashboard (Current Session)
+- [x] Backend: extend getPlatformStats to 12 months, add topCompanies, avgFeePerJob, momGrowth
+- [x] Frontend: /admin/revenue page — KPI cards (total revenue, gross, avg fee, MoM growth)
+- [x] Frontend: /admin/revenue page — monthly platform fee bar chart (recharts)
+- [x] Frontend: /admin/revenue page — monthly gross volume line chart
+- [x] Frontend: /admin/revenue page — top 10 companies by spend table
+- [x] Frontend: admin sidebar — Revenue nav item

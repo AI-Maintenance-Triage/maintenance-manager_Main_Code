@@ -322,7 +322,7 @@ export default function CompanyJobs() {
                             size="sm"
                             variant="outline"
                             className="text-xs gap-1 h-7 border-primary/40 text-primary hover:bg-primary/10"
-                            onClick={() => postToBoard.mutate({ jobId: job.id })}
+                            onClick={() => postToBoard.mutate({ jobId: job.id, origin: window.location.origin })}
                             disabled={postToBoard.isPending}
                           >
                             <Globe className="h-3 w-3" /> Post to Board

@@ -315,3 +315,61 @@ export async function sendContractorInviteEmail(opts: {
     html,
   });
 }
+
+// ─── New Job Posted Notification ─────────────────────────────────────────
+export async function sendNewJobPostedEmail(opts: {
+  to: string;
+  contractorName: string;
+  jobTitle: string;
+  trade: string | null;
+  urgency: string;
+  cityState: string;
+  companyName: string;
+  jobBoardUrl: string;
+}) {
+  const urgencyLabel =
+    opts.urgency === "emergency" ? "🚨 EMERGENCY" :
+    opts.urgency === "high" ? "⚡ HIGH PRIORITY" : "📋 Standard";
+
+  const html = layout("New Job Available — Act Fast!", `
+    <h1 style="font-size:22px;margin:0 0 8px 0;">New Job Available Near You</h1>
+    <p style="color:#a3a3a3;margin:0 0 24px 0;">A new maintenance job has been posted in your service area. Jobs are claimed first-come, first-served — act quickly!</p>
+
+    <div style="background:#1c1c1c;border:1px solid #2a2a2a;border-radius:10px;padding:20px;margin:0 0 24px 0;">
+      <p style="font-size:18px;font-weight:700;color:#ffffff;margin:0 0 12px 0;">${opts.jobTitle}</p>
+      <table style="width:100%;border-collapse:collapse;">
+        <tr>
+          <td style="padding:6px 0;color:#737373;font-size:13px;width:120px;">Trade Required</td>
+          <td style="padding:6px 0;color:#e5e5e5;font-size:13px;">${opts.trade ?? "General"}</td>
+        </tr>
+        <tr>
+          <td style="padding:6px 0;color:#737373;font-size:13px;">Location</td>
+          <td style="padding:6px 0;color:#e5e5e5;font-size:13px;">${opts.cityState}</td>
+        </tr>
+        <tr>
+          <td style="padding:6px 0;color:#737373;font-size:13px;">Posted By</td>
+          <td style="padding:6px 0;color:#e5e5e5;font-size:13px;">${opts.companyName}</td>
+        </tr>
+        <tr>
+          <td style="padding:6px 0;color:#737373;font-size:13px;">Priority</td>
+          <td style="padding:6px 0;font-size:13px;font-weight:700;color:#22c55e;">${urgencyLabel}</td>
+        </tr>
+      </table>
+    </div>
+
+    <div style="background:#0f2a1a;border:1px solid #166534;border-radius:8px;padding:14px 18px;margin:0 0 24px 0;">
+      <p style="margin:0;color:#86efac;font-size:13px;font-weight:600;">⏱ First come, first served — the first contractor to accept gets the job.</p>
+    </div>
+
+    <a href="${opts.jobBoardUrl}" class="btn" style="font-size:16px;padding:14px 32px;">View &amp; Accept Job Now →</a>
+
+    <hr class="divider" />
+    <p style="font-size:12px;color:#525252;">You're receiving this because your service area covers this job's location. To manage your notification preferences, visit your contractor settings.</p>
+  `);
+
+  return sendEmail({
+    to: opts.to,
+    subject: `🔔 New Job Near You: ${opts.jobTitle} — Accept Before Someone Else Does`,
+    html,
+  });
+}
