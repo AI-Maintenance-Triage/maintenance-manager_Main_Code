@@ -128,6 +128,17 @@ export default function SignIn() {
                 </div>
               </div>
 
+              {/* Forgot password */}
+              <div className="flex justify-end -mt-1">
+                <button
+                  type="button"
+                  onClick={() => setLocation("/forgot-password")}
+                  className="text-xs text-primary hover:underline"
+                >
+                  Forgot password?
+                </button>
+              </div>
+
               <Button type="submit" className="w-full gap-2 h-11 mt-2" disabled={isLoading}>
                 {isLoading ? (
                   <><Loader2 className="h-4 w-4 animate-spin" /> Signing in...</>

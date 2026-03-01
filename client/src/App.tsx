@@ -28,6 +28,8 @@ import ContractorEarnings from "./pages/contractor/ContractorEarnings";
 import ContractorBilling from "./pages/contractor/ContractorBilling";
 import PlatformDashboard from "./pages/admin/PlatformDashboard";
 import AdminCompanies from "./pages/admin/AdminCompanies";
+import AdminSubscriptionPlans from "./pages/admin/AdminSubscriptionPlans";
+import ResetPassword from "./pages/ResetPassword";
 import { PWAInstallBanner } from "./components/PWAInstallBanner";
 
 function Router() {
@@ -39,6 +41,7 @@ function Router() {
       <Route path="/signup" component={SignUp} />
       <Route path="/signin" component={SignIn} />
       <Route path="/get-started" component={GetStarted} />
+      <Route path="/reset-password" component={ResetPassword} />
       {/* Company Admin Routes */}
       <Route path="/company">
         <DashboardLayout><CompanyDashboard /></DashboardLayout>
@@ -89,6 +92,9 @@ function Router() {
       {/* Platform Admin Routes */}
       <Route path="/admin/companies">
         <DashboardLayout><AdminCompanies /></DashboardLayout>
+      </Route>
+      <Route path="/admin/plans">
+        <DashboardLayout><AdminSubscriptionPlans /></DashboardLayout>
       </Route>
       <Route path="/admin">
         <DashboardLayout><PlatformDashboard /></DashboardLayout>

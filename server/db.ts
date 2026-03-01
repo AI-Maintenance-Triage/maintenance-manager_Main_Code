@@ -18,6 +18,7 @@ import {
   contractorRatings, InsertContractorRating,
   jobComments, InsertJobComment,
   notifications, InsertNotification,
+  subscriptionPlans, InsertSubscriptionPlan,
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
@@ -1444,4 +1445,101 @@ export async function resubmitDisputedJob(
         eq(maintenanceRequests.status, "disputed")
       )
     );
+}
+
+// ─── Password Reset Tokens ─────────────────────────────────────────────────
+export async function setPasswordResetToken(userId: number, token: string, expiresAt: Date) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  await db.update(users).set({
+    resetPasswordToken: token,
+    resetPasswordExpiry: expiresAt,
+  }).where(eq(users.id, userId));
+}
+
+export async function getUserByResetToken(token: string) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(users)
+    .where(eq(users.resetPasswordToken, token))
+    .limit(1);
+  return result.length > 0 ? result[0] : undefined;
+}
+
+export async function clearPasswordResetToken(userId: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(users).set({
+    resetPasswordToken: null,
+    resetPasswordExpiry: null,
+  }).where(eq(users.id, userId));
+}
+
+// ─── Subscription Plans ────────────────────────────────────────────────────
+export async function listSubscriptionPlans() {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(subscriptionPlans).orderBy(subscriptionPlans.sortOrder, subscriptionPlans.createdAt);
+}
+
+export async function getSubscriptionPlanById(id: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(subscriptionPlans).where(eq(subscriptionPlans.id, id)).limit(1);
+  return result.length > 0 ? result[0] : undefined;
+}
+
+export async function createSubscriptionPlan(data: InsertSubscriptionPlan) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  const result = await db.insert(subscriptionPlans).values(data);
+  return result[0].insertId;
+}
+
+export async function updateSubscriptionPlan(id: number, data: Partial<InsertSubscriptionPlan>) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(subscriptionPlans).set(data).where(eq(subscriptionPlans.id, id));
+}
+
+export async function deleteSubscriptionPlan(id: number) {
+  const db = await getDb();
+  if (!db) return;
+  // Unassign from companies first
+  await db.update(companies).set({ planId: null }).where(eq(companies.planId, id));
+  await db.delete(subscriptionPlans).where(eq(subscriptionPlans.id, id));
+}
+
+export async function assignPlanToCompany(companyId: number, planId: number | null) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(companies).set({ planId }).where(eq(companies.id, companyId));
+}
+
+export async function getCompanyWithPlan(companyId: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db
+    .select({
+      company: companies,
+      plan: subscriptionPlans,
+    })
+    .from(companies)
+    .leftJoin(subscriptionPlans, eq(companies.planId, subscriptionPlans.id))
+    .where(eq(companies.id, companyId))
+    .limit(1);
+  return result.length > 0 ? result[0] : undefined;
+}
+
+export async function listCompaniesWithPlans() {
+  const db = await getDb();
+  if (!db) return [];
+  return db
+    .select({
+      company: companies,
+      plan: subscriptionPlans,
+    })
+    .from(companies)
+    .leftJoin(subscriptionPlans, eq(companies.planId, subscriptionPlans.id))
+    .orderBy(desc(companies.createdAt));
 }

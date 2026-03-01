@@ -33,6 +33,8 @@ export const users = mysqlTable("users", {
     jobDisputed?: boolean;
     welcome?: boolean;
   }>(),
+  resetPasswordToken: varchar("resetPasswordToken", { length: 128 }),
+  resetPasswordExpiry: timestamp("resetPasswordExpiry"),
 });
 
 export type User = typeof users.$inferSelect;
@@ -50,6 +52,11 @@ export const companies = mysqlTable("companies", {
   stripeCustomerId: varchar("stripeCustomerId", { length: 128 }),
   subscriptionTier: mysqlEnum("subscriptionTier", ["free", "starter", "professional", "enterprise"]).default("free").notNull(),
   subscriptionStatus: mysqlEnum("subscriptionStatus", ["active", "past_due", "canceled", "trialing"]).default("trialing").notNull(),
+  // FK to subscriptionPlans — single source of truth for plan details
+  planId: int("planId"),
+  // Per-company overrides (null = use plan defaults)
+  planPriceOverride: decimal("planPriceOverride", { precision: 10, scale: 2 }),
+  planNotes: text("planNotes"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
@@ -395,3 +402,36 @@ export const notifications = mysqlTable("notifications", {
 });
 export type Notification = typeof notifications.$inferSelect;
 export type InsertNotification = typeof notifications.$inferInsert;
+
+// ─── Subscription Plans (admin-configurable) ──────────────────────────────
+// The plan record is the single source of truth for name, price, and features.
+// All companies on a plan see changes immediately — no per-company copies.
+export const subscriptionPlans = mysqlTable("subscription_plans", {
+  id: int("id").autoincrement().primaryKey(),
+  name: varchar("name", { length: 128 }).notNull(),          // e.g. "Starter", "Pro"
+  description: text("description"),
+  priceMonthly: decimal("priceMonthly", { precision: 10, scale: 2 }).notNull().default("0.00"),
+  priceAnnual: decimal("priceAnnual", { precision: 10, scale: 2 }).notNull().default("0.00"),
+  // Feature flags — stored as JSON so admin can add new features without migrations
+  features: json("features").$type<{
+    maxProperties?: number | null;       // null = unlimited
+    maxContractors?: number | null;
+    maxJobsPerMonth?: number | null;
+    gpsTimeTracking?: boolean;
+    aiJobClassification?: boolean;
+    expenseReports?: boolean;
+    contractorRatings?: boolean;
+    jobComments?: boolean;
+    emailNotifications?: boolean;
+    billingHistory?: boolean;
+    apiAccess?: boolean;
+    customBranding?: boolean;
+    prioritySupport?: boolean;
+  }>(),
+  isActive: boolean("isActive").default(true).notNull(),
+  sortOrder: int("sortOrder").default(0).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type SubscriptionPlan = typeof subscriptionPlans.$inferSelect;
+export type InsertSubscriptionPlan = typeof subscriptionPlans.$inferInsert;

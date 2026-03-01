@@ -463,3 +463,39 @@
 - [x] Contractor billing: summary cards (total earned, gross billed, platform fees, avg per job)
 - [x] Contractor billing: PDF receipt download per job row
 - [x] Contractor billing: add Billing nav item to contractor sidebar
+
+## Session 18: Password Reset, Configurable Plans, Onboarding Checklist
+- [ ] Password reset: /reset-password?token=... page with new password form
+- [ ] Password reset: server-side token validation and password update endpoint
+- [ ] Password reset: "Forgot password?" link on Sign In page
+- [ ] Password reset: /api/auth/forgot-password endpoint to generate and email token
+- [ ] Plans DB: subscriptionPlans table (id, name, price, billingInterval, features JSON, isActive)
+- [ ] Plans DB: companies.planId FK to subscriptionPlans
+- [ ] Plans admin: /admin/plans page to create, edit, delete plans
+- [ ] Plans admin: feature toggle matrix per plan (checkboxes for each available feature)
+- [ ] Plans admin: set price and billing interval (monthly/annual) per plan
+- [ ] Plans admin: assign plan to a company from the company list
+- [ ] Plans UI: plan badge shown on company cards in admin dashboard
+- [ ] Plans UI: plan name and features shown in company settings header
+- [ ] Contractor onboarding: dismissible checklist card on contractor dashboard
+- [ ] Contractor onboarding: checklist items (profile photo, service area, first job, first rating)
+- [ ] Contractor onboarding: auto-hide when all items are complete
+- [ ] Plans live-update: plan record is single source of truth — no price/feature copies on company row
+- [ ] Plans live-update: all companies on a plan immediately see name/price/feature changes
+- [ ] Plans live-update: future Stripe billing reads price from plan record at charge time
+
+## Subscription Plan System (Session N)
+- [x] Add planPriceOverride and planNotes columns to companies table (migration pushed)
+- [x] Add listPlans, createPlan, updatePlan, deletePlan tRPC procedures (admin only)
+- [x] Add assignCompanyPlan, companyWithPlan, companiesWithPlans tRPC procedures
+- [x] Build /admin/plans page: create/edit/delete plan tiers with pricing, usage limits, and feature toggles
+- [x] Add "Plans" nav item to admin sidebar
+- [x] Company edit dialog (pencil icon on admin dashboard): plan selector dropdown + feature preview
+- [x] Company edit dialog: custom price override field with clear button and comparison display
+- [x] Company edit dialog: internal notes field for plan assignment
+- [x] Contractor edit dialog: informational note explaining contractors use company plans
+- [x] Companies list shows current plan badge (with asterisk if price override is set)
+- [x] Plans page shows how many companies are on each plan
+- [x] Plans page shows list of companies without any plan assigned
+- [x] Build /reset-password page for email/password password reset flow
+- [x] Wire /reset-password route in App.tsx

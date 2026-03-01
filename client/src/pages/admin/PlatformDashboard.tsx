@@ -9,9 +9,11 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Separator } from "@/components/ui/separator";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
-import { Building2, HardHat, ClipboardList, DollarSign, Plus, Wrench, Pencil, Trash2, MapPin, Loader2, Settings, Clock } from "lucide-react";
+import { Building2, HardHat, ClipboardList, DollarSign, Plus, Wrench, Pencil, Trash2, MapPin, Loader2, Settings, Clock, CreditCard, Check, X } from "lucide-react";
 
 const TRADE_OPTIONS = [
   "General Handyman", "Plumbing", "Electrical", "HVAC",
@@ -20,11 +22,25 @@ const TRADE_OPTIONS = [
   "Flooring", "Drywall", "Concrete", "Welding",
 ];
 
+const FEATURE_LABELS: Record<string, string> = {
+  gpsTimeTracking: "GPS Time Tracking",
+  aiJobClassification: "AI Job Classification",
+  expenseReports: "Expense Reports",
+  contractorRatings: "Contractor Ratings",
+  jobComments: "Job Comments",
+  emailNotifications: "Email Notifications",
+  billingHistory: "Billing History",
+  apiAccess: "API Access",
+  customBranding: "Custom Branding",
+  prioritySupport: "Priority Support",
+};
+
 export default function PlatformDashboard() {
   const utils = trpc.useUtils();
   const { data: stats, isLoading } = trpc.platform.stats.useQuery();
   const { data: companies, isLoading: companiesLoading } = trpc.platform.companies.useQuery();
   const { data: contractors, isLoading: contractorsLoading } = trpc.adminViewAs.allContractors.useQuery();
+  const { data: plans } = trpc.adminViewAs.listPlans.useQuery();
 
   // ─── Create Company Form ────────────────────────────────────────────
   const [companyOpen, setCompanyOpen] = useState(false);
@@ -47,12 +63,24 @@ export default function PlatformDashboard() {
   // ─── Edit Company ───────────────────────────────────────────────────
   const [editCompanyOpen, setEditCompanyOpen] = useState(false);
   const [editCompany, setEditCompany] = useState<any>(null);
+  // Plan assignment state
+  const [editCompanyPlanId, setEditCompanyPlanId] = useState<string>("none");
+  const [editCompanyPriceOverride, setEditCompanyPriceOverride] = useState("");
+  const [editCompanyPlanNotes, setEditCompanyPlanNotes] = useState("");
 
   const updateCompany = trpc.adminViewAs.updateCompany.useMutation({
     onSuccess: () => {
       toast.success("Company updated!");
       setEditCompanyOpen(false);
       utils.platform.companies.invalidate();
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
+  const assignCompanyPlan = trpc.adminViewAs.assignCompanyPlan.useMutation({
+    onSuccess: () => {
+      utils.platform.companies.invalidate();
+      utils.adminViewAs.companiesWithPlans.invalidate();
     },
     onError: (err) => toast.error(err.message),
   });
@@ -156,6 +184,9 @@ export default function PlatformDashboard() {
 
   const openEditCompany = (c: any) => {
     setEditCompany({ ...c });
+    setEditCompanyPlanId(c.planId ? String(c.planId) : "none");
+    setEditCompanyPriceOverride(c.planPriceOverride ? String(parseFloat(c.planPriceOverride)) : "");
+    setEditCompanyPlanNotes(c.planNotes ?? "");
     setEditCompanyOpen(true);
   };
 
@@ -164,6 +195,32 @@ export default function PlatformDashboard() {
     setEditContractorTrades(c.profile.trades || []);
     setEditContractorOpen(true);
   };
+
+  const handleSaveCompany = async () => {
+    if (!editCompany) return;
+    // Save basic info
+    await updateCompany.mutateAsync({
+      id: editCompany.id,
+      name: editCompany.name,
+      address: editCompany.address || undefined,
+      phone: editCompany.phone || undefined,
+      email: editCompany.email || undefined,
+    });
+    // Save plan assignment
+    await assignCompanyPlan.mutateAsync({
+      companyId: editCompany.id,
+      planId: editCompanyPlanId !== "none" ? parseInt(editCompanyPlanId) : null,
+      planPriceOverride: editCompanyPriceOverride !== "" ? parseFloat(editCompanyPriceOverride) : null,
+      planNotes: editCompanyPlanNotes || undefined,
+    });
+    toast.success("Company and plan saved!");
+    setEditCompanyOpen(false);
+    utils.platform.companies.invalidate();
+    utils.adminViewAs.companiesWithPlans.invalidate();
+  };
+
+  // Find the currently selected plan object
+  const selectedPlan = plans?.find((p: any) => String(p.id) === editCompanyPlanId);
 
   return (
     <div className="space-y-6">
@@ -383,48 +440,62 @@ export default function PlatformDashboard() {
             </div>
           ) : (
             <div className="space-y-2">
-              {companies.map((c: any) => (
-                <div key={c.id} className="flex items-center justify-between p-3 rounded-lg bg-secondary/50 hover:bg-secondary/80 transition-colors">
-                  <div className="flex items-center gap-3">
-                    <div className="h-9 w-9 rounded-lg bg-blue-500/10 flex items-center justify-center">
-                      <Building2 className="h-4 w-4 text-blue-400" />
+              {companies.map((c: any) => {
+                const companyPlan = plans?.find((p: any) => p.id === c.planId);
+                return (
+                  <div key={c.id} className="flex items-center justify-between p-3 rounded-lg bg-secondary/50 hover:bg-secondary/80 transition-colors">
+                    <div className="flex items-center gap-3">
+                      <div className="h-9 w-9 rounded-lg bg-blue-500/10 flex items-center justify-center">
+                        <Building2 className="h-4 w-4 text-blue-400" />
+                      </div>
+                      <div>
+                        <p className="font-medium text-foreground">{c.name}</p>
+                        <p className="text-xs text-muted-foreground">
+                          ID: {c.id} • Created {new Date(c.createdAt).toLocaleDateString()}
+                          {c.phone ? ` • ${c.phone}` : ""}
+                          {c.email ? ` • ${c.email}` : ""}
+                        </p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="font-medium text-foreground">{c.name}</p>
-                      <p className="text-xs text-muted-foreground">
-                        ID: {c.id} • Created {new Date(c.createdAt).toLocaleDateString()}
-                        {c.phone ? ` • ${c.phone}` : ""}
-                        {c.email ? ` • ${c.email}` : ""}
-                      </p>
+                    <div className="flex items-center gap-2">
+                      {companyPlan ? (
+                        <Badge variant="secondary" className="bg-primary/10 text-primary border-primary/20 text-xs gap-1">
+                          <CreditCard className="h-3 w-3" />
+                          {companyPlan.name}
+                          {c.planPriceOverride && (
+                            <span className="text-primary/70">*</span>
+                          )}
+                        </Badge>
+                      ) : (
+                        <Badge variant="secondary" className="text-xs text-muted-foreground">No Plan</Badge>
+                      )}
+                      <Badge variant="secondary" className="bg-green-600/20 text-green-400 border-green-600/30 text-xs">
+                        {c.subscriptionStatus || "trialing"}
+                      </Badge>
+                      <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground" onClick={() => openEditCompany(c)}>
+                        <Pencil className="h-3.5 w-3.5" />
+                      </Button>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive">
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent className="bg-card border-border">
+                          <AlertDialogHeader>
+                            <AlertDialogTitle className="text-card-foreground">Delete Company</AlertDialogTitle>
+                            <AlertDialogDescription>Are you sure you want to delete "{c.name}"? This action cannot be undone.</AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction onClick={() => deleteCompany.mutate({ id: c.id })} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Delete</AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Badge variant="secondary" className="bg-green-600/20 text-green-400 border-green-600/30 text-xs">
-                      {c.subscriptionStatus || "trialing"}
-                    </Badge>
-                    <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground" onClick={() => openEditCompany(c)}>
-                      <Pencil className="h-3.5 w-3.5" />
-                    </Button>
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive">
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent className="bg-card border-border">
-                        <AlertDialogHeader>
-                          <AlertDialogTitle className="text-card-foreground">Delete Company</AlertDialogTitle>
-                          <AlertDialogDescription>Are you sure you want to delete "{c.name}"? This action cannot be undone.</AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Cancel</AlertDialogCancel>
-                          <AlertDialogAction onClick={() => deleteCompany.mutate({ id: c.id })} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Delete</AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </CardContent>
@@ -446,52 +517,47 @@ export default function PlatformDashboard() {
             </div>
           ) : (
             <div className="space-y-2">
-              {contractors.map((c: any) => {
-                const displayName = c.profile.businessName || c.user.name || `Contractor #${c.profile.id}`;
-                const trades: string[] = Array.isArray(c.profile.trades) ? c.profile.trades : [];
-                return (
-                  <div key={c.profile.id} className="flex items-center justify-between p-3 rounded-lg bg-secondary/50 hover:bg-secondary/80 transition-colors">
-                    <div className="flex items-center gap-3">
-                      <div className="h-9 w-9 rounded-lg bg-green-500/10 flex items-center justify-center">
-                        <Wrench className="h-4 w-4 text-green-400" />
-                      </div>
-                      <div>
-                        <p className="font-medium text-foreground">{displayName}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {c.user.email ? `${c.user.email} • ` : ""}
-                          {trades.length > 0 ? trades.slice(0, 3).join(", ") + (trades.length > 3 ? ` +${trades.length - 3} more` : "") : "No trades listed"}
-                          {c.profile.phone ? ` • ${c.profile.phone}` : ""}
-                        </p>
-                      </div>
+              {contractors.map((c: any) => (
+                <div key={c.profile.id} className="flex items-center justify-between p-3 rounded-lg bg-secondary/50 hover:bg-secondary/80 transition-colors">
+                  <div className="flex items-center gap-3">
+                    <div className="h-9 w-9 rounded-lg bg-green-500/10 flex items-center justify-center">
+                      <HardHat className="h-4 w-4 text-green-400" />
                     </div>
-                    <div className="flex items-center gap-2">
-                      <Badge variant={c.profile.isAvailable ? "default" : "secondary"} className={c.profile.isAvailable ? "bg-green-600/20 text-green-400 border-green-600/30 text-xs" : "text-xs"}>
-                        {c.profile.isAvailable ? "Available" : "Unavailable"}
-                      </Badge>
-                      <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground" onClick={() => openEditContractor(c)}>
-                        <Pencil className="h-3.5 w-3.5" />
-                      </Button>
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive">
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent className="bg-card border-border">
-                          <AlertDialogHeader>
-                            <AlertDialogTitle className="text-card-foreground">Delete Contractor</AlertDialogTitle>
-                            <AlertDialogDescription>Are you sure you want to delete "{displayName}"? This action cannot be undone.</AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>Cancel</AlertDialogCancel>
-                            <AlertDialogAction onClick={() => deleteContractor.mutate({ id: c.profile.id })} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Delete</AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
+                    <div>
+                      <p className="font-medium text-foreground">{c.profile.businessName || c.user.name || "Unnamed"}</p>
+                      <p className="text-xs text-muted-foreground">
+                        ID: {c.profile.id} • {c.user.email || "No email"}
+                        {c.profile.trades?.length ? ` • ${c.profile.trades.slice(0, 2).join(", ")}${c.profile.trades.length > 2 ? "..." : ""}` : ""}
+                      </p>
                     </div>
                   </div>
-                );
-              })}
+                  <div className="flex items-center gap-2">
+                    <Badge variant="secondary" className={`text-xs ${c.profile.isAvailable ? "bg-green-600/20 text-green-400 border-green-600/30" : "bg-secondary text-muted-foreground"}`}>
+                      {c.profile.isAvailable ? "Available" : "Unavailable"}
+                    </Badge>
+                    <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground" onClick={() => openEditContractor(c)}>
+                      <Pencil className="h-3.5 w-3.5" />
+                    </Button>
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive">
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent className="bg-card border-border">
+                        <AlertDialogHeader>
+                          <AlertDialogTitle className="text-card-foreground">Delete Contractor</AlertDialogTitle>
+                          <AlertDialogDescription>Are you sure you want to delete "{c.profile.businessName || c.user.name}"? This action cannot be undone.</AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                          <AlertDialogAction onClick={() => deleteContractor.mutate({ id: c.profile.id })} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Delete</AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  </div>
+                </div>
+              ))}
             </div>
           )}
         </CardContent>
@@ -585,35 +651,127 @@ export default function PlatformDashboard() {
       {/* Edit Company Dialog */}
       {editCompany && (
         <Dialog open={editCompanyOpen} onOpenChange={setEditCompanyOpen}>
-          <DialogContent className="bg-card border-border sm:max-w-md">
+          <DialogContent className="bg-card border-border sm:max-w-lg max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle className="text-card-foreground">Edit Company</DialogTitle>
+              <DialogTitle className="text-card-foreground">Edit Company: {editCompany.name}</DialogTitle>
             </DialogHeader>
-            <div className="space-y-4 pt-2">
-              <div className="space-y-2">
-                <Label className="text-foreground">Company Name *</Label>
-                <Input value={editCompany.name} onChange={e => setEditCompany({ ...editCompany, name: e.target.value })} className="bg-secondary border-border" />
-              </div>
-              <div className="space-y-2">
-                <Label className="text-foreground">Address</Label>
-                <Input value={editCompany.address || ""} onChange={e => setEditCompany({ ...editCompany, address: e.target.value })} className="bg-secondary border-border" />
-              </div>
-              <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-5 pt-2">
+              {/* Basic Info */}
+              <div className="space-y-3">
+                <h3 className="text-sm font-semibold text-foreground">Basic Information</h3>
                 <div className="space-y-2">
-                  <Label className="text-foreground">Phone</Label>
-                  <Input value={editCompany.phone || ""} onChange={e => setEditCompany({ ...editCompany, phone: e.target.value })} className="bg-secondary border-border" />
+                  <Label className="text-foreground">Company Name *</Label>
+                  <Input value={editCompany.name} onChange={e => setEditCompany({ ...editCompany, name: e.target.value })} className="bg-secondary border-border" />
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-foreground">Email</Label>
-                  <Input value={editCompany.email || ""} onChange={e => setEditCompany({ ...editCompany, email: e.target.value })} className="bg-secondary border-border" />
+                  <Label className="text-foreground">Address</Label>
+                  <Input value={editCompany.address || ""} onChange={e => setEditCompany({ ...editCompany, address: e.target.value })} className="bg-secondary border-border" />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-2">
+                    <Label className="text-foreground">Phone</Label>
+                    <Input value={editCompany.phone || ""} onChange={e => setEditCompany({ ...editCompany, phone: e.target.value })} className="bg-secondary border-border" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-foreground">Email</Label>
+                    <Input value={editCompany.email || ""} onChange={e => setEditCompany({ ...editCompany, email: e.target.value })} className="bg-secondary border-border" />
+                  </div>
                 </div>
               </div>
+
+              <Separator />
+
+              {/* Plan Assignment */}
+              <div className="space-y-3">
+                <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                  <CreditCard className="h-4 w-4 text-primary" /> Subscription Plan
+                </h3>
+
+                <div className="space-y-2">
+                  <Label className="text-foreground">Assigned Plan</Label>
+                  <Select value={editCompanyPlanId} onValueChange={setEditCompanyPlanId}>
+                    <SelectTrigger className="bg-secondary border-border">
+                      <SelectValue placeholder="No plan assigned" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-card border-border">
+                      <SelectItem value="none">No plan (unassigned)</SelectItem>
+                      {(plans ?? []).map((p: any) => (
+                        <SelectItem key={p.id} value={String(p.id)}>
+                          {p.name} — ${parseFloat(p.priceMonthly ?? "0").toFixed(0)}/mo
+                          {!p.isActive ? " (inactive)" : ""}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Show plan features when a plan is selected */}
+                {selectedPlan && (
+                  <div className="rounded-lg bg-secondary/50 p-3 space-y-2">
+                    <p className="text-xs font-medium text-muted-foreground">Plan Features</p>
+                    <div className="grid grid-cols-2 gap-1">
+                      {Object.entries(FEATURE_LABELS).map(([key, label]) => {
+                        const enabled = (selectedPlan.features as any)?.[key];
+                        return (
+                          <div key={key} className="flex items-center gap-1.5 text-xs">
+                            {enabled ? (
+                              <Check className="h-3 w-3 text-green-400 shrink-0" />
+                            ) : (
+                              <X className="h-3 w-3 text-muted-foreground/40 shrink-0" />
+                            )}
+                            <span className={enabled ? "text-foreground" : "text-muted-foreground/60"}>{label}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                <div className="space-y-2">
+                  <Label className="text-foreground">
+                    Custom Price Override ($/mo)
+                    <span className="text-xs text-muted-foreground ml-2">— leave blank to use plan default</span>
+                  </Label>
+                  <div className="flex items-center gap-2">
+                    <span className="text-muted-foreground">$</span>
+                    <Input
+                      type="number" min="0" step="0.01"
+                      value={editCompanyPriceOverride}
+                      onChange={e => setEditCompanyPriceOverride(e.target.value)}
+                      placeholder={selectedPlan ? `${parseFloat(selectedPlan.priceMonthly ?? "0").toFixed(2)} (plan default)` : "0.00"}
+                      className="bg-secondary border-border"
+                    />
+                    {editCompanyPriceOverride && (
+                      <Button variant="ghost" size="sm" className="text-xs text-muted-foreground" onClick={() => setEditCompanyPriceOverride("")}>
+                        Clear
+                      </Button>
+                    )}
+                  </div>
+                  {editCompanyPriceOverride && selectedPlan && (
+                    <p className="text-xs text-amber-400">
+                      Custom price: ${parseFloat(editCompanyPriceOverride).toFixed(2)}/mo
+                      (plan default: ${parseFloat(selectedPlan.priceMonthly ?? "0").toFixed(2)}/mo)
+                    </p>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-foreground">Internal Notes</Label>
+                  <Input
+                    value={editCompanyPlanNotes}
+                    onChange={e => setEditCompanyPlanNotes(e.target.value)}
+                    placeholder="e.g. Legacy customer, grandfathered rate"
+                    className="bg-secondary border-border"
+                  />
+                </div>
+              </div>
+
               <Button
                 className="w-full"
-                disabled={!editCompany.name?.trim() || updateCompany.isPending}
-                onClick={() => updateCompany.mutate({ id: editCompany.id, name: editCompany.name, address: editCompany.address || undefined, phone: editCompany.phone || undefined, email: editCompany.email || undefined })}
+                disabled={!editCompany.name?.trim() || updateCompany.isPending || assignCompanyPlan.isPending}
+                onClick={handleSaveCompany}
               >
-                {updateCompany.isPending ? "Saving..." : "Save Changes"}
+                {(updateCompany.isPending || assignCompanyPlan.isPending) ? "Saving..." : "Save All Changes"}
               </Button>
             </div>
           </DialogContent>
@@ -670,6 +828,20 @@ export default function PlatformDashboard() {
                   <Input type="number" value={editContractor.serviceRadiusMiles || 25} onChange={e => setEditContractor({ ...editContractor, serviceRadiusMiles: parseInt(e.target.value) || 25 })} className="bg-secondary border-border" />
                 </div>
               </div>
+
+              <Separator />
+
+              {/* Contractor info note about plans */}
+              <div className="rounded-lg bg-secondary/50 p-3 space-y-1">
+                <p className="text-xs font-medium text-foreground flex items-center gap-1.5">
+                  <CreditCard className="h-3.5 w-3.5 text-primary" /> Subscription Plans
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Contractors are not directly assigned to subscription plans — plans are assigned to companies.
+                  Contractor feature access is determined by the companies they work with.
+                </p>
+              </div>
+
               <Button
                 className="w-full"
                 disabled={updateContractor.isPending}

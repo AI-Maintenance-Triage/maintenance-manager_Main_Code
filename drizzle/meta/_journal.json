@@ -85,6 +85,27 @@
       "when": 1772370943500,
       "tag": "0011_cool_trish_tilby",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "5",
+      "when": 1772372573818,
+      "tag": "0012_little_yellow_claw",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "5",
+      "when": 1772372639317,
+      "tag": "0013_brown_husk",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "5",
+      "when": 1772372911378,
+      "tag": "0014_magical_fixer",
+      "breakpoints": true
     }
   ]
 }

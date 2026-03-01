@@ -275,4 +275,122 @@ export const adminViewAsRouter = router({
       await db.deleteContractorProfile(input.id);
       return { success: true };
     }),
+
+  // ─── Subscription Plans CRUD ──────────────────────────────────────────────
+  listPlans: adminProcedure.query(async () => {
+    return db.listSubscriptionPlans();
+  }),
+
+  createPlan: adminProcedure
+    .input(z.object({
+      name: z.string().min(1),
+      description: z.string().optional(),
+      priceMonthly: z.number().min(0),
+      priceAnnual: z.number().min(0),
+      isActive: z.boolean().default(true),
+      sortOrder: z.number().default(0),
+      features: z.object({
+        maxProperties: z.number().nullable().optional(),
+        maxContractors: z.number().nullable().optional(),
+        maxJobsPerMonth: z.number().nullable().optional(),
+        gpsTimeTracking: z.boolean().optional(),
+        aiJobClassification: z.boolean().optional(),
+        expenseReports: z.boolean().optional(),
+        contractorRatings: z.boolean().optional(),
+        jobComments: z.boolean().optional(),
+        emailNotifications: z.boolean().optional(),
+        billingHistory: z.boolean().optional(),
+        apiAccess: z.boolean().optional(),
+        customBranding: z.boolean().optional(),
+        prioritySupport: z.boolean().optional(),
+      }).optional(),
+    }))
+    .mutation(async ({ input }) => {
+      const id = await db.createSubscriptionPlan({
+        name: input.name,
+        description: input.description ?? null,
+        priceMonthly: String(input.priceMonthly),
+        priceAnnual: String(input.priceAnnual),
+        isActive: input.isActive,
+        sortOrder: input.sortOrder,
+        features: input.features ?? {},
+      });
+      return { id };
+    }),
+
+  updatePlan: adminProcedure
+    .input(z.object({
+      id: z.number(),
+      name: z.string().min(1).optional(),
+      description: z.string().optional(),
+      priceMonthly: z.number().min(0).optional(),
+      priceAnnual: z.number().min(0).optional(),
+      isActive: z.boolean().optional(),
+      sortOrder: z.number().optional(),
+      features: z.object({
+        maxProperties: z.number().nullable().optional(),
+        maxContractors: z.number().nullable().optional(),
+        maxJobsPerMonth: z.number().nullable().optional(),
+        gpsTimeTracking: z.boolean().optional(),
+        aiJobClassification: z.boolean().optional(),
+        expenseReports: z.boolean().optional(),
+        contractorRatings: z.boolean().optional(),
+        jobComments: z.boolean().optional(),
+        emailNotifications: z.boolean().optional(),
+        billingHistory: z.boolean().optional(),
+        apiAccess: z.boolean().optional(),
+        customBranding: z.boolean().optional(),
+        prioritySupport: z.boolean().optional(),
+      }).optional(),
+    }))
+    .mutation(async ({ input }) => {
+      const { id, priceMonthly, priceAnnual, ...rest } = input;
+      await db.updateSubscriptionPlan(id, {
+        ...rest,
+        ...(priceMonthly !== undefined ? { priceMonthly: String(priceMonthly) } : {}),
+        ...(priceAnnual !== undefined ? { priceAnnual: String(priceAnnual) } : {}),
+      });
+      return { success: true };
+    }),
+
+  deletePlan: adminProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ input }) => {
+      await db.deleteSubscriptionPlan(input.id);
+      return { success: true };
+    }),
+
+  // ─── Assign Plan to Company ───────────────────────────────────────────────
+  assignCompanyPlan: adminProcedure
+    .input(z.object({
+      companyId: z.number(),
+      planId: z.number().nullable(),
+      planPriceOverride: z.number().nullable().optional(),
+      planNotes: z.string().optional(),
+    }))
+    .mutation(async ({ input }) => {
+      const updateData: Record<string, unknown> = {
+        planId: input.planId,
+        planNotes: input.planNotes ?? null,
+      };
+      if (input.planPriceOverride != null) {
+        updateData.planPriceOverride = String(input.planPriceOverride);
+      } else {
+        updateData.planPriceOverride = null;
+      }
+      await db.updateCompany(input.companyId, updateData as any);
+      return { success: true };
+    }),
+
+  // Get company with plan info
+  companyWithPlan: adminProcedure
+    .input(z.object({ companyId: z.number() }))
+    .query(async ({ input }) => {
+      return db.getCompanyWithPlan(input.companyId);
+    }),
+
+  // List companies with their plans
+  companiesWithPlans: adminProcedure.query(async () => {
+    return db.listCompaniesWithPlans();
+  }),
 });

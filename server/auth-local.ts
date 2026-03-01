@@ -7,6 +7,7 @@
 import type { Express, Request, Response } from "express";
 import bcrypt from "bcryptjs";
 import { SignJWT, jwtVerify } from "jose";
+import crypto from "crypto";
 import { COOKIE_NAME, ONE_YEAR_MS } from "@shared/const";
 import { ENV } from "./_core/env";
 import { getSessionCookieOptions } from "./_core/cookies";
@@ -99,6 +100,82 @@ export function registerLocalAuthRoutes(app: Express) {
     } catch (error) {
       console.error("[Auth] Registration failed:", error);
       res.status(500).json({ error: "Registration failed. Please try again." });
+    }
+  });
+
+  // ─── Forgot Password ──────────────────────────────────────────────────
+  app.post("/api/auth/forgot-password", async (req: Request, res: Response) => {
+    try {
+      const { email, origin } = req.body;
+      if (!email) {
+        res.status(400).json({ error: "Email is required" });
+        return;
+      }
+      const normalizedEmail = email.trim().toLowerCase();
+      const user = await db.getUserByEmail(normalizedEmail);
+      // Always return success to prevent email enumeration
+      if (!user || !user.passwordHash) {
+        res.json({ success: true });
+        return;
+      }
+      // Generate a secure random token (hex, 64 chars)
+      const token = crypto.randomBytes(32).toString("hex");
+      const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+      await db.setPasswordResetToken(user.id, token, expiresAt);
+      // Build reset URL using the frontend origin
+      const appOrigin = origin || req.headers.origin || "http://localhost:3000";
+      const resetUrl = `${appOrigin}/reset-password?token=${token}`;
+      // Send email (fire-and-forget)
+      emailService.sendPasswordResetEmail({
+        to: user.email!,
+        name: user.name ?? "there",
+        resetUrl,
+      }).catch(err => console.error("[Email] Password reset email failed:", err));
+      res.json({ success: true });
+    } catch (error) {
+      console.error("[Auth] Forgot password failed:", error);
+      res.status(500).json({ error: "Failed to process request. Please try again." });
+    }
+  });
+
+  // ─── Reset Password ───────────────────────────────────────────────────
+  app.post("/api/auth/reset-password", async (req: Request, res: Response) => {
+    try {
+      const { token, password } = req.body;
+      if (!token || !password) {
+        res.status(400).json({ error: "Token and new password are required" });
+        return;
+      }
+      if (typeof password !== "string" || password.length < 6) {
+        res.status(400).json({ error: "Password must be at least 6 characters" });
+        return;
+      }
+      const user = await db.getUserByResetToken(token);
+      if (!user || !user.resetPasswordExpiry) {
+        res.status(400).json({ error: "Invalid or expired reset link. Please request a new one." });
+        return;
+      }
+      // Check expiry
+      if (new Date() > user.resetPasswordExpiry) {
+        await db.clearPasswordResetToken(user.id);
+        res.status(400).json({ error: "This reset link has expired. Please request a new one." });
+        return;
+      }
+      // Hash new password and update
+      const passwordHash = await bcrypt.hash(password, SALT_ROUNDS);
+      await db.updateUserRole(user.id, user.role as "user" | "admin" | "company_admin" | "contractor");
+      // Update password directly
+      const dbConn = await db.getDb();
+      if (dbConn) {
+        const { eq } = await import("drizzle-orm");
+        const { users } = await import("../drizzle/schema");
+        await dbConn.update(users).set({ passwordHash }).where(eq(users.id, user.id));
+      }
+      await db.clearPasswordResetToken(user.id);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("[Auth] Reset password failed:", error);
+      res.status(500).json({ error: "Failed to reset password. Please try again." });
     }
   });
 

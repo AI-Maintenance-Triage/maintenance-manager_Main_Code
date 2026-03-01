@@ -1,0 +1,167 @@
+import { useState } from "react";
+import { useLocation } from "wouter";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { toast } from "sonner";
+import { KeyRound, CheckCircle2, XCircle, Eye, EyeOff } from "lucide-react";
+
+export default function ResetPassword() {
+  const [, navigate] = useLocation();
+  const params = new URLSearchParams(window.location.search);
+  const token = params.get("token") ?? "";
+
+  const [password, setPassword] = useState("");
+  const [confirm, setConfirm] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [success, setSuccess] = useState(false);
+  const [error, setError] = useState("");
+
+  if (!token) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+        <Card className="bg-card border-border w-full max-w-md">
+          <CardContent className="p-8 text-center">
+            <XCircle className="h-12 w-12 text-destructive mx-auto mb-4" />
+            <h2 className="text-lg font-semibold text-card-foreground mb-2">Invalid Reset Link</h2>
+            <p className="text-sm text-muted-foreground mb-6">
+              This password reset link is missing a token. Please request a new reset link.
+            </p>
+            <Button onClick={() => navigate("/signin")} className="w-full">
+              Back to Sign In
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (success) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+        <Card className="bg-card border-border w-full max-w-md">
+          <CardContent className="p-8 text-center">
+            <CheckCircle2 className="h-12 w-12 text-green-400 mx-auto mb-4" />
+            <h2 className="text-lg font-semibold text-card-foreground mb-2">Password Reset!</h2>
+            <p className="text-sm text-muted-foreground mb-6">
+              Your password has been updated successfully. You can now sign in with your new password.
+            </p>
+            <Button onClick={() => navigate("/signin")} className="w-full">
+              Sign In
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+
+    if (password.length < 6) {
+      setError("Password must be at least 6 characters.");
+      return;
+    }
+    if (password !== confirm) {
+      setError("Passwords do not match.");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const res = await fetch("/api/auth/reset-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token, password }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error ?? "Failed to reset password. Please try again.");
+      } else {
+        setSuccess(true);
+        toast.success("Password reset successfully!");
+      }
+    } catch {
+      setError("Network error. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-background flex items-center justify-center p-4">
+      <Card className="bg-card border-border w-full max-w-md">
+        <CardHeader className="text-center pb-2">
+          <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-3">
+            <KeyRound className="h-6 w-6 text-primary" />
+          </div>
+          <CardTitle className="text-xl text-card-foreground">Set New Password</CardTitle>
+          <CardDescription>Enter a new password for your account.</CardDescription>
+        </CardHeader>
+        <CardContent className="pt-4">
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="password">New Password</Label>
+              <div className="relative">
+                <Input
+                  id="password"
+                  type={showPassword ? "text" : "password"}
+                  value={password}
+                  onChange={e => setPassword(e.target.value)}
+                  placeholder="At least 6 characters"
+                  className="bg-secondary border-border pr-10"
+                  required
+                  minLength={6}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(v => !v)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  tabIndex={-1}
+                >
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="confirm">Confirm Password</Label>
+              <Input
+                id="confirm"
+                type={showPassword ? "text" : "password"}
+                value={confirm}
+                onChange={e => setConfirm(e.target.value)}
+                placeholder="Repeat new password"
+                className="bg-secondary border-border"
+                required
+              />
+            </div>
+
+            {error && (
+              <div className="flex items-center gap-2 p-3 rounded-lg bg-destructive/10 border border-destructive/20">
+                <XCircle className="h-4 w-4 text-destructive shrink-0" />
+                <p className="text-sm text-destructive">{error}</p>
+              </div>
+            )}
+
+            <Button type="submit" className="w-full" disabled={loading}>
+              {loading ? "Resetting..." : "Reset Password"}
+            </Button>
+
+            <Button
+              type="button"
+              variant="ghost"
+              className="w-full text-muted-foreground"
+              onClick={() => navigate("/signin")}
+            >
+              Back to Sign In
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
