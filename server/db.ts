@@ -673,13 +673,44 @@ export async function getPlatformStats() {
   const [companyCount] = await db.select({ count: sql<number>`COUNT(*)` }).from(companies);
   const [contractorCount] = await db.select({ count: sql<number>`COUNT(*)` }).from(contractorProfiles);
   const [jobCount] = await db.select({ count: sql<number>`COUNT(*)` }).from(maintenanceRequests);
-  const [revenue] = await db.select({ total: sql<string>`COALESCE(SUM(platformFee), 0)` }).from(transactions).where(eq(transactions.status, "paid_out"));
+
+  // Platform revenue = sum of platform fees from captured/paid_out transactions
+  const [revenue] = await db
+    .select({ total: sql<string>`COALESCE(SUM(platformFee), 0)` })
+    .from(transactions)
+    .where(sql`status IN ('captured', 'paid_out')`);
+
+  // Total charged to companies (gross)
+  const [gross] = await db
+    .select({ total: sql<string>`COALESCE(SUM(totalCharged), 0)` })
+    .from(transactions)
+    .where(sql`status IN ('captured', 'paid_out')`);
+
+  // Paid jobs count
+  const [paidJobCount] = await db
+    .select({ count: sql<number>`COUNT(*)` })
+    .from(maintenanceRequests)
+    .where(sql`status IN ('paid', 'verified')`);
+
+  // Monthly revenue for last 6 months
+  const monthlyRevenue = await db
+    .select({
+      month: sql<string>`DATE_FORMAT(createdAt, '%Y-%m')`,
+      revenue: sql<string>`COALESCE(SUM(platformFee), 0)`,
+      gross: sql<string>`COALESCE(SUM(totalCharged), 0)`,
+    })
+    .from(transactions)
+    .where(sql`status IN ('captured', 'paid_out') AND createdAt >= DATE_SUB(NOW(), INTERVAL 6 MONTH)`)
+    .groupBy(sql`DATE_FORMAT(createdAt, '%Y-%m')`);
 
   return {
     totalCompanies: companyCount?.count ?? 0,
     totalContractors: contractorCount?.count ?? 0,
     totalJobs: jobCount?.count ?? 0,
+    paidJobs: paidJobCount?.count ?? 0,
     totalRevenue: revenue?.total ?? "0.00",
+    totalGross: gross?.total ?? "0.00",
+    monthlyRevenue,
   };
 }
 
@@ -1289,4 +1320,56 @@ export async function getUserIdByContractorProfileId(contractorProfileId: number
     .where(eq(users.contractorProfileId, contractorProfileId))
     .limit(1);
   return row?.id ?? null;
+}
+
+// ─── Email helpers: get user contact info for transactional emails ─────────
+export async function getCompanyAdminEmails(companyId: number): Promise<Array<{ name: string | null; email: string | null }>> {
+  const db = await getDb();
+  if (!db) return [];
+  return db
+    .select({ name: users.name, email: users.email })
+    .from(users)
+    .where(and(eq(users.companyId, companyId), eq(users.role, "company_admin")));
+}
+
+export async function getUserEmailByContractorProfileId(contractorProfileId: number): Promise<{ name: string | null; email: string | null } | null> {
+  const db = await getDb();
+  if (!db) return null;
+  const [row] = await db
+    .select({ name: users.name, email: users.email })
+    .from(users)
+    .where(eq(users.contractorProfileId, contractorProfileId))
+    .limit(1);
+  return row ?? null;
+}
+
+// ─── Get property by ID only (for email notifications, no company check) ──
+export async function getPropertyByIdOnly(id: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const [row] = await db.select({ name: properties.name }).from(properties).where(eq(properties.id, id)).limit(1);
+  return row;
+}
+
+// ─── Dispute resubmission ──────────────────────────────────────────────────
+export async function resubmitDisputedJob(
+  jobId: number,
+  contractorProfileId: number,
+  responseNote: string
+) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  await db.update(maintenanceRequests)
+    .set({
+      status: "pending_verification",
+      disputeResponseNote: responseNote,
+      resubmittedAt: new Date(),
+    })
+    .where(
+      and(
+        eq(maintenanceRequests.id, jobId),
+        eq(maintenanceRequests.assignedContractorId, contractorProfileId),
+        eq(maintenanceRequests.status, "disputed")
+      )
+    );
 }

@@ -64,6 +64,13 @@
       "when": 1772341529625,
       "tag": "0008_majestic_venom",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "5",
+      "when": 1772370346605,
+      "tag": "0009_funny_stellaris",
+      "breakpoints": true
     }
   ]
 }

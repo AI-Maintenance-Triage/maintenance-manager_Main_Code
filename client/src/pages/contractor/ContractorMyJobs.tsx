@@ -159,6 +159,8 @@ function JobCard({ row, onUpdate, readOnly = false }: { row: any; onUpdate: () =
   const [completionNotes, setCompletionNotes] = useState("");
   const [photoUrls, setPhotoUrls] = useState<string[]>([]);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [showResubmitDialog, setShowResubmitDialog] = useState(false);
+  const [resubmitNote, setResubmitNote] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // ── Continuous GPS tracking state ────────────────────────────────────────
@@ -210,6 +212,16 @@ function JobCard({ row, onUpdate, readOnly = false }: { row: any; onUpdate: () =
       setShowCompleteDialog(false);
       setCompletionNotes("");
       setPhotoUrls([]);
+      onUpdate();
+    },
+    onError: (err: any) => toast.error(err.message),
+  });
+
+  const resubmitDispute = trpc.contractor.resubmitDispute.useMutation({
+    onSuccess: () => {
+      toast.success("Job resubmitted for verification!");
+      setShowResubmitDialog(false);
+      setResubmitNote("");
       onUpdate();
     },
     onError: (err: any) => toast.error(err.message),
@@ -433,10 +445,23 @@ function JobCard({ row, onUpdate, readOnly = false }: { row: any; onUpdate: () =
                 </div>
               )}
 
-              {job.status === "disputed" && job.disputeNotes && (
-                <div className="mt-2 p-3 rounded-lg bg-red-500/10 border border-red-500/20">
-                  <p className="text-xs font-medium text-red-400 mb-1 flex items-center gap-1"><XCircle className="h-3 w-3" /> Dispute Notes</p>
-                  <p className="text-xs text-red-300">{job.disputeNotes}</p>
+              {job.status === "disputed" && (
+                <div className="mt-2 p-3 rounded-lg bg-red-500/10 border border-red-500/20 space-y-2">
+                  <p className="text-xs font-medium text-red-400 flex items-center gap-1"><XCircle className="h-3 w-3" /> Job Disputed</p>
+                  {job.disputeNotes && <p className="text-xs text-red-300">{job.disputeNotes}</p>}
+                  {job.disputeResponseNote && (
+                    <p className="text-xs text-orange-300"><span className="font-medium">Your response:</span> {job.disputeResponseNote}</p>
+                  )}
+                  {!job.disputeResponseNote && !readOnly && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="text-xs gap-1 h-7 border-red-500/40 text-red-400 hover:bg-red-500/10"
+                      onClick={() => setShowResubmitDialog(true)}
+                    >
+                      <CheckCheck className="h-3 w-3" /> Resubmit for Verification
+                    </Button>
+                  )}
                 </div>
               )}
               {job.status === "pending_verification" && (
@@ -597,6 +622,47 @@ function JobCard({ row, onUpdate, readOnly = false }: { row: any; onUpdate: () =
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Resubmit Dispute Dialog */}
+      <Dialog open={showResubmitDialog} onOpenChange={setShowResubmitDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <CheckCheck className="h-5 w-5 text-orange-400" />
+              Resubmit for Verification
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <p className="text-sm text-muted-foreground">
+              Explain what you addressed from the dispute notes. The company will review your response before re-verifying.
+            </p>
+            <div className="space-y-2">
+              <Label htmlFor="resubmit-note">Your Response <span className="text-red-400">*</span></Label>
+              <Textarea
+                id="resubmit-note"
+                placeholder="Describe what you fixed or clarified (minimum 10 characters)..."
+                value={resubmitNote}
+                onChange={(e) => setResubmitNote(e.target.value)}
+                rows={4}
+                className="resize-none"
+              />
+              <p className="text-xs text-muted-foreground">{resubmitNote.length} / 10 minimum</p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowResubmitDialog(false)}>Cancel</Button>
+            <Button
+              onClick={() => resubmitDispute.mutate({ jobId: job.id, responseNote: resubmitNote })}
+              disabled={resubmitDispute.isPending || resubmitNote.trim().length < 10}
+              className="bg-orange-600 hover:bg-orange-700 text-white"
+            >
+              {resubmitDispute.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCheck className="h-4 w-4" />}
+              Resubmit Job
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <Sheet open={showComments} onOpenChange={setShowComments}>
         <SheetContent side="right" className="w-full sm:max-w-md p-0 flex flex-col">
           <SheetHeader className="px-4 pt-4 pb-0 shrink-0">

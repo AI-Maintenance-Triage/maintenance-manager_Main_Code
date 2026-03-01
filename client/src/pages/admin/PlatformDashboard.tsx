@@ -299,6 +299,7 @@ export default function PlatformDashboard() {
           {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-24 w-full" />)}
         </div>
       ) : (
+        <>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <Card className="bg-card border-border">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
@@ -316,19 +317,54 @@ export default function PlatformDashboard() {
           </Card>
           <Card className="bg-card border-border">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Total Jobs</CardTitle>
+              <CardTitle className="text-sm font-medium text-muted-foreground">Jobs (Paid)</CardTitle>
               <ClipboardList className="h-4 w-4 text-yellow-400" />
             </CardHeader>
-            <CardContent><div className="text-3xl font-bold text-card-foreground">{stats?.totalJobs ?? 0}</div></CardContent>
+            <CardContent>
+              <div className="text-3xl font-bold text-card-foreground">{stats?.totalJobs ?? 0}</div>
+              <p className="text-xs text-muted-foreground mt-1">{stats?.paidJobs ?? 0} paid / verified</p>
+            </CardContent>
           </Card>
           <Card className="bg-card border-border">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Total Revenue</CardTitle>
+              <CardTitle className="text-sm font-medium text-muted-foreground">Platform Revenue</CardTitle>
               <DollarSign className="h-4 w-4 text-primary" />
             </CardHeader>
-            <CardContent><div className="text-3xl font-bold text-card-foreground">${stats?.totalRevenue ?? "0"}</div></CardContent>
+            <CardContent>
+              <div className="text-3xl font-bold text-card-foreground">${parseFloat(stats?.totalRevenue ?? "0").toFixed(2)}</div>
+              <p className="text-xs text-muted-foreground mt-1">Gross billed: ${parseFloat(stats?.totalGross ?? "0").toFixed(2)}</p>
+            </CardContent>
           </Card>
         </div>
+
+        {/* Monthly Revenue Trend */}
+        {stats?.monthlyRevenue && stats.monthlyRevenue.length > 0 && (
+          <Card className="bg-card border-border">
+            <CardHeader>
+              <CardTitle className="text-sm font-medium text-card-foreground">Monthly Revenue (Last 6 Months)</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-end gap-2 h-24">
+                {stats.monthlyRevenue.map((m: any) => {
+                  const maxGross = Math.max(...stats.monthlyRevenue.map((x: any) => parseFloat(x.gross ?? "0")), 1);
+                  const height = Math.max((parseFloat(m.gross ?? "0") / maxGross) * 100, 4);
+                  return (
+                    <div key={m.month} className="flex flex-col items-center gap-1 flex-1">
+                      <p className="text-xs text-muted-foreground">${parseFloat(m.gross ?? "0").toFixed(0)}</p>
+                      <div
+                        className="w-full rounded-t bg-primary/60 hover:bg-primary transition-colors"
+                        style={{ height: `${height}%` }}
+                        title={`${m.month}: $${parseFloat(m.gross ?? "0").toFixed(2)} gross, $${parseFloat(m.revenue ?? "0").toFixed(2)} platform fee`}
+                      />
+                      <p className="text-xs text-muted-foreground">{m.month?.slice(5)}</p>
+                    </div>
+                  );
+                })}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+        </>
       )}
 
       {/* Companies List */}

@@ -8,6 +8,8 @@ import * as db from "./db";
 import type { ContractorProfile } from "../drizzle/schema";
 import { classifyMaintenanceRequest } from "./ai-classify";
 import { notifyOwner } from "./_core/notification";
+import * as email from "./email";
+import { ENV } from "./_core/env";
 import { adminViewAsRouter } from "./routers/admin-viewas";
 import {
   stripe,
@@ -379,6 +381,26 @@ const contractorRouter = router({
         assignedAt: new Date(),
         status: "assigned",
       });
+
+      // Email: notify contractor of new assignment
+      try {
+        const job = await db.getMaintenanceRequestById(input.jobId);
+        const contractorUser = await db.getUserEmailByContractorProfileId(profile.id);
+        const property = job?.propertyId ? await db.getPropertyByIdOnly(job.propertyId) : null;
+        const company = job?.companyId ? await db.getCompanyById(job.companyId) : null;
+        if (contractorUser?.email && job) {
+          email.sendJobAssignedEmail({
+            to: contractorUser.email,
+            contractorName: contractorUser.name ?? "Contractor",
+            jobTitle: job.title,
+            jobId: job.id,
+            propertyName: property?.name ?? "Property",
+            companyName: company?.name ?? "Company",
+            appUrl: ENV.appUrl,
+          }).catch(() => {});
+        }
+      } catch { /* non-critical */ }
+
       return { success: true };
     }),
 
@@ -419,6 +441,64 @@ const contractorRouter = router({
         totalLaborCost,
         hourlyRate > 0 ? hourlyRate.toFixed(2) : null
       );
+
+      // Email: notify company admins that job is ready for verification
+      try {
+        const jobData = await db.getMaintenanceRequestById(input.jobId);
+        if (jobData?.companyId) {
+          const admins = await db.getCompanyAdminEmails(jobData.companyId);
+          const property = jobData.propertyId ? await db.getPropertyByIdOnly(jobData.propertyId) : null;
+          const contractorUser = await db.getUserEmailByContractorProfileId(profile.id);
+          for (const admin of admins) {
+            if (admin.email) {
+              email.sendJobSubmittedEmail({
+                to: admin.email,
+                companyAdminName: admin.name ?? "Admin",
+                jobTitle: jobData.title,
+                contractorName: contractorUser?.name ?? "Contractor",
+                propertyName: property?.name ?? "Property",
+                appUrl: ENV.appUrl,
+              }).catch(() => {});
+            }
+          }
+        }
+      } catch { /* non-critical */ }
+
+      return { success: true };
+    }),
+
+  // Contractor: resubmit a disputed job with a response note
+  resubmitDispute: contractorProcedure
+    .input(z.object({
+      jobId: z.number(),
+      responseNote: z.string().min(10, "Please provide at least 10 characters explaining the resubmission"),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const profile = await getEffectiveContractorProfile(ctx);
+      if (!profile) throw new TRPCError({ code: "NOT_FOUND" });
+      await db.resubmitDisputedJob(input.jobId, profile.id, input.responseNote);
+
+      // Email: notify company admins of resubmission
+      try {
+        const job = await db.getMaintenanceRequestById(input.jobId);
+        if (job?.companyId) {
+          const admins = await db.getCompanyAdminEmails(job.companyId);
+          const contractorUser = await db.getUserEmailByContractorProfileId(profile.id);
+          for (const admin of admins) {
+            if (admin.email) {
+              email.sendDisputeResubmittedEmail({
+                to: admin.email,
+                companyAdminName: admin.name ?? "Admin",
+                contractorName: contractorUser?.name ?? "Contractor",
+                jobTitle: job.title,
+                responseNote: input.responseNote,
+                appUrl: ENV.appUrl,
+              }).catch(() => {});
+            }
+          }
+        }
+      } catch { /* non-critical */ }
+
       return { success: true };
     }),
 
@@ -655,6 +735,22 @@ const jobsRouter = router({
             totalCost: (result.totalChargeCents / 100).toFixed(2),
           });
 
+          // Email: notify contractor of payment
+          try {
+            const contractorUser = contractorProfile?.id
+              ? await db.getUserEmailByContractorProfileId(contractorProfile.id)
+              : null;
+            if (contractorUser?.email) {
+              email.sendJobPaidEmail({
+                to: contractorUser.email,
+                contractorName: contractorUser.name ?? "Contractor",
+                jobTitle: job.title,
+                payoutAmount: `$${(result.jobCostCents / 100).toFixed(2)}`,
+                appUrl: ENV.appUrl,
+              }).catch(() => {});
+            }
+          } catch { /* non-critical */ }
+
           return {
             success: true,
             paymentSkipped: false,
@@ -667,6 +763,25 @@ const jobsRouter = router({
           const message = err instanceof Error ? err.message : "Payment processing failed";
           return { success: true, paymentSkipped: true, reason: message };
         }
+      }
+
+      // Email: notify contractor if job was disputed
+      if (input.action === "dispute") {
+        try {
+          const job = await db.getMaintenanceRequestById(input.jobId);
+          if (job?.assignedContractorId) {
+            const contractorUser = await db.getUserEmailByContractorProfileId(job.assignedContractorId);
+            if (contractorUser?.email) {
+              email.sendJobDisputedEmail({
+                to: contractorUser.email,
+                contractorName: contractorUser.name ?? "Contractor",
+                jobTitle: job.title,
+                disputeReason: input.notes,
+                appUrl: ENV.appUrl,
+              }).catch(() => {});
+            }
+          }
+        } catch { /* non-critical */ }
       }
 
       return { success: true };
@@ -1013,8 +1128,9 @@ const commentsRouter = router({
         const preview = input.message.length > 80 ? input.message.slice(0, 80) + '...' : input.message;
 
         if (role === 'contractor') {
-          // Notify company admins
+          // Notify company admins (in-app + email)
           const companyUserIds = await db.getCompanyAdminUserIds(job.companyId);
+          const companyAdminEmails = await db.getCompanyAdminEmails(job.companyId);
           for (const uid of companyUserIds) {
             await db.createNotification({
               userId: uid,
@@ -1025,8 +1141,23 @@ const commentsRouter = router({
               metadata: { jobId: input.maintenanceRequestId },
             });
           }
+          // Email each admin
+          for (const admin of companyAdminEmails) {
+            if (admin.email) {
+              email.sendNewCommentEmail({
+                to: admin.email,
+                recipientName: admin.name ?? 'Admin',
+                authorName: senderName,
+                jobTitle: job.title,
+                commentPreview: preview,
+                jobId: input.maintenanceRequestId,
+                appUrl: ENV.appUrl,
+                role: 'company',
+              }).catch(() => {});
+            }
+          }
         } else {
-          // Notify the assigned contractor
+          // Notify the assigned contractor (in-app + email)
           if (job.assignedContractorId) {
             const contractorUserId = await db.getUserIdByContractorProfileId(job.assignedContractorId);
             if (contractorUserId && contractorUserId !== ctx.user.id) {
@@ -1038,6 +1169,19 @@ const commentsRouter = router({
                 linkRoute: contractorLinkRoute,
                 metadata: { jobId: input.maintenanceRequestId },
               });
+            }
+            const contractorUser = await db.getUserEmailByContractorProfileId(job.assignedContractorId);
+            if (contractorUser?.email) {
+              email.sendNewCommentEmail({
+                to: contractorUser.email,
+                recipientName: contractorUser.name ?? 'Contractor',
+                authorName: senderName,
+                jobTitle: job.title,
+                commentPreview: preview,
+                jobId: input.maintenanceRequestId,
+                appUrl: ENV.appUrl,
+                role: 'contractor',
+              }).catch(() => {});
             }
           }
         }

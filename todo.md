@@ -418,3 +418,25 @@
 - [x] Verification dialog: show "No time recorded" if no session exists
 - [x] Ratings: Show company paid-job trust badge on job board listing cards (contractor view)
 - [x] Mobile bell: add notification bell to mobile bottom nav bar (fixed bottom, shows top 4 nav items + bell)
+
+## Session 15: Email System, Dispute Flow, Admin Revenue Fix
+- [x] Email: install Resend SDK and create server/email.ts helper
+- [x] Email: HTML email templates (welcome, password reset, job assigned, job submitted, job verified/paid, new comment, dispute opened)
+- [x] Email: send welcome email on new user registration
+- [x] Email: send password reset email with secure token link
+- [x] Email: send email when job is assigned to contractor
+- [x] Email: send email when contractor submits job for verification
+- [x] Email: send email when company verifies/pays a job
+- [x] Email: send email when new comment is posted on a job
+- [x] Email: send email when a job is disputed
+- [ ] Email: unsubscribe / notification preferences respected
+- [x] Dispute: contractor "Resubmit after dispute" button on disputed job cards
+- [x] Dispute: resubmit requires a response note explaining the resolution
+- [x] Dispute: company sees the contractor's response note in verification queue
+- [x] Admin revenue: sum transactions.totalCharged for real revenue total on admin overview
+- [x] Admin revenue: show monthly revenue trend on admin overview
+
+## Future: Infrastructure & Accounts (Do Later)
+- [ ] Custom domain: purchase domain and brand name for the platform
+- [ ] Email: add verified sending domain to Resend and update EMAIL_FROM from sandbox to real branded address (e.g. noreply@yourdomain.com)
+- [ ] Stripe: connect live Stripe account via Settings → Payment, complete KYC verification, swap test keys for live keys

@@ -11,6 +11,7 @@ import { COOKIE_NAME, ONE_YEAR_MS } from "@shared/const";
 import { ENV } from "./_core/env";
 import { getSessionCookieOptions } from "./_core/cookies";
 import * as db from "./db";
+import * as emailService from "./email";
 
 const SALT_ROUNDS = 12;
 
@@ -76,6 +77,15 @@ export function registerLocalAuthRoutes(app: Express) {
       const sessionToken = await createLocalSessionToken(user);
       const cookieOptions = getSessionCookieOptions(req);
       res.cookie(COOKIE_NAME, sessionToken, { ...cookieOptions, maxAge: ONE_YEAR_MS });
+
+      // Send welcome email (fire-and-forget — don't block response)
+      if (user.email) {
+        emailService.sendWelcomeEmail({
+          to: user.email,
+          name: user.name ?? "there",
+          role: user.role ?? "company_admin",
+        }).catch(err => console.error("[Email] Welcome email failed:", err));
+      }
 
       res.json({
         success: true,
