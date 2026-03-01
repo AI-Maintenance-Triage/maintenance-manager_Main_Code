@@ -1,8 +1,32 @@
+import { useState, useEffect } from "react";
+import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Receipt, DollarSign, TrendingUp, Briefcase, Calendar, Download, Minus } from "lucide-react";
+import { Progress } from "@/components/ui/progress";
+import { toast } from "sonner";
+import {
+  Receipt, DollarSign, TrendingUp, Briefcase, Calendar, Download,
+  Check, X, ClipboardList, Building2, ArrowUpRight, Zap,
+  Star, Shield, Crown, CheckCircle2, AlertCircle, XCircle, CreditCard,
+} from "lucide-react";
+
+const CONTRACTOR_FEATURE_LABELS: Record<string, string> = {
+  gpsTimeTracking: "GPS Time Tracking",
+  aiJobClassification: "AI Job Classification",
+  expenseReports: "Expense Reports",
+  contractorRatings: "Ratings & Reviews",
+  jobComments: "Job Comments",
+  emailNotifications: "Email Notifications",
+  billingHistory: "Billing History",
+  apiAccess: "API Access",
+  customBranding: "Custom Branding",
+  prioritySupport: "Priority Support",
+};
+
+const PLAN_ICONS = [Zap, Star, Shield, Crown];
 
 function fmt(val: string | number | null | undefined) {
   const n = parseFloat(String(val ?? "0"));
@@ -21,164 +45,423 @@ function statusColor(status: string) {
   }
 }
 
-export default function ContractorBilling() {
-  const { data: earnings, isLoading } = trpc.contractor.getEarnings.useQuery();
+function planStatusBadge(status: string) {
+  switch (status) {
+    case "active": return <Badge className="bg-green-500/15 text-green-400 border-green-500/30 gap-1"><CheckCircle2 className="h-3 w-3" /> Active</Badge>;
+    case "trialing": return <Badge className="bg-blue-500/15 text-blue-400 border-blue-500/30 gap-1"><Zap className="h-3 w-3" /> Trial</Badge>;
+    case "canceled": return <Badge className="bg-yellow-500/15 text-yellow-400 border-yellow-500/30 gap-1"><AlertCircle className="h-3 w-3" /> Canceling</Badge>;
+    case "expired": return <Badge className="bg-red-500/15 text-red-400 border-red-500/30 gap-1"><XCircle className="h-3 w-3" /> Expired</Badge>;
+    default: return null;
+  }
+}
 
+export default function ContractorBilling() {
+  const [, setLocation] = useLocation();
+  const [billingInterval, setBillingInterval] = useState<"monthly" | "annual">("monthly");
+  const [checkoutLoading, setCheckoutLoading] = useState<number | null>(null);
+
+  const { data: earnings, isLoading: earningsLoading } = trpc.contractor.getEarnings.useQuery();
+  const { data: planData, isLoading: planLoading } = trpc.contractor.getMyPlan.useQuery();
+  const { data: availablePlans, isLoading: plansLoading } = trpc.contractor.listAvailablePlans.useQuery();
+
+  const createCheckout = trpc.stripePayments.createContractorPlanCheckout.useMutation({
+    onSuccess: (data) => {
+      if (data.checkoutUrl) {
+        window.open(data.checkoutUrl, "_blank");
+        toast.success("Redirecting to checkout", { description: "A new tab has been opened for payment." });
+      }
+      setCheckoutLoading(null);
+    },
+    onError: (err) => {
+      toast.error("Checkout failed", { description: err.message });
+      setCheckoutLoading(null);
+    },
+  });
+
+  const cancelSubscription = trpc.stripePayments.cancelContractorPlanSubscription.useMutation({
+    onSuccess: (data) => toast.success("Subscription canceled", { description: data.message }),
+    onError: (err) => toast.error(err.message),
+  });
+
+  // Handle Stripe redirect
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const sub = params.get("subscription");
+    if (sub === "success") {
+      toast.success("Subscription activated!", { description: "Your plan has been updated." });
+      setLocation("/contractor/billing", { replace: true });
+    } else if (sub === "canceled") {
+      toast.info("Checkout canceled", { description: "No changes were made." });
+      setLocation("/contractor/billing", { replace: true });
+    }
+  }, []);
+
+  const plan = planData?.plan;
+  const usage = planData?.usage;
   const rawTxns = earnings?.transactions ?? [];
   const totalEarned = earnings?.totalEarned ?? 0;
-  const totalFees = rawTxns.reduce((s: number, t: any) => s + parseFloat(String(t.platformFee ?? "0")), 0);
   const totalGross = rawTxns.reduce((s: number, t: any) => s + parseFloat(String(t.totalCharged ?? "0")), 0);
   const avgPerJob = rawTxns.length > 0 ? totalEarned / rawTxns.length : 0;
 
-  if (isLoading) return (
-    <div className="space-y-6">
-      <Skeleton className="h-10 w-64" />
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        {[...Array(4)].map((_, i) => <Skeleton key={i} className="h-28 w-full" />)}
-      </div>
-      <Skeleton className="h-96 w-full" />
-    </div>
-  );
+  const activePlans = (availablePlans ?? []).filter((p) => p.isActive).sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <div>
         <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
-          <Receipt className="h-6 w-6 text-primary" /> Payment History
+          <CreditCard className="h-6 w-6 text-primary" /> Billing & Subscription
         </h1>
-        <p className="text-muted-foreground mt-1">Your earnings breakdown — payout received per completed job</p>
+        <p className="text-muted-foreground mt-1">Manage your subscription plan and view your payment history</p>
       </div>
 
-      {/* Summary cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      {/* Current Plan Summary */}
+      {planLoading ? (
+        <Skeleton className="h-36 w-full" />
+      ) : (
         <Card className="bg-card border-border">
-          <CardContent className="p-5">
-            <div className="flex items-center gap-2 mb-1">
-              <DollarSign className="h-4 w-4 text-primary" />
-              <span className="text-xs text-muted-foreground">Total Earned</span>
+          <CardContent className="p-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="space-y-1">
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Current Plan</p>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h2 className="text-xl font-bold text-foreground">{plan?.name ?? "No Plan"}</h2>
+                  {plan && planStatusBadge("active")}
+                </div>
+                {plan?.description && <p className="text-sm text-muted-foreground">{plan.description}</p>}
+                {!plan && <p className="text-sm text-muted-foreground">You are not currently on a subscription plan. Choose a plan below to get started.</p>}
+              </div>
+              {plan && (
+                <div className="text-right shrink-0">
+                  <p className="text-3xl font-bold text-foreground">
+                    ${parseFloat(plan.priceMonthly ?? "0").toFixed(0)}
+                    <span className="text-sm font-normal text-muted-foreground">/mo</span>
+                  </p>
+                </div>
+              )}
             </div>
-            <p className="text-2xl font-bold text-green-400">{fmt(totalEarned)}</p>
-            <p className="text-xs text-muted-foreground mt-1">{rawTxns.length} paid jobs</p>
-          </CardContent>
-        </Card>
-        <Card className="bg-card border-border">
-          <CardContent className="p-5">
-            <div className="flex items-center gap-2 mb-1">
-              <TrendingUp className="h-4 w-4 text-blue-400" />
-              <span className="text-xs text-muted-foreground">Gross Billed</span>
-            </div>
-            <p className="text-2xl font-bold text-foreground">{fmt(totalGross)}</p>
-            <p className="text-xs text-muted-foreground mt-1">Before platform fee</p>
-          </CardContent>
-        </Card>
-        <Card className="bg-card border-border">
-          <CardContent className="p-5">
-            <div className="flex items-center gap-2 mb-1">
-              <Minus className="h-4 w-4 text-orange-400" />
-              <span className="text-xs text-muted-foreground">Platform Fees</span>
-            </div>
-            <p className="text-2xl font-bold text-orange-400">{fmt(totalFees)}</p>
-            <p className="text-xs text-muted-foreground mt-1">Added to job cost</p>
-          </CardContent>
-        </Card>
-        <Card className="bg-card border-border">
-          <CardContent className="p-5">
-            <div className="flex items-center gap-2 mb-1">
-              <Briefcase className="h-4 w-4 text-purple-400" />
-              <span className="text-xs text-muted-foreground">Avg per Job</span>
-            </div>
-            <p className="text-2xl font-bold text-foreground">{fmt(avgPerJob)}</p>
-          </CardContent>
-        </Card>
-      </div>
 
-      {/* Transaction table */}
-      <Card className="bg-card border-border">
-        <CardHeader>
-          <CardTitle className="text-card-foreground">Payment Records</CardTitle>
-          <CardDescription>Download a receipt PDF for any completed job</CardDescription>
-        </CardHeader>
-        <CardContent className="p-0">
-          {rawTxns.length === 0 ? (
-            <div className="p-12 text-center">
-              <Receipt className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
-              <p className="text-muted-foreground">No payments yet. Completed and verified jobs will appear here.</p>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-border">
-                    <th className="text-left px-4 py-3 text-muted-foreground font-medium">Date</th>
-                    <th className="text-left px-4 py-3 text-muted-foreground font-medium">Job</th>
-                    <th className="text-right px-4 py-3 text-muted-foreground font-medium">Labor</th>
-                    <th className="text-right px-4 py-3 text-muted-foreground font-medium">Parts</th>
-                    <th className="text-right px-4 py-3 text-muted-foreground font-medium">Gross</th>
-                    <th className="text-right px-4 py-3 text-muted-foreground font-medium">Your Payout</th>
-                    <th className="text-center px-4 py-3 text-muted-foreground font-medium">Status</th>
-                    <th className="text-center px-4 py-3 text-muted-foreground font-medium">Receipt</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {rawTxns.map((t: any) => (
-                    <tr key={t.id} className="border-b border-border/50 hover:bg-secondary/30 transition-colors">
-                      <td className="px-4 py-3 text-muted-foreground whitespace-nowrap">
-                        <div className="flex items-center gap-1.5">
-                          <Calendar className="h-3.5 w-3.5" />
-                          {t.paidAt ? new Date(t.paidAt).toLocaleDateString() : new Date(t.createdAt).toLocaleDateString()}
+            {/* Usage gauges */}
+            {plan && usage && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-5 pt-5 border-t border-border">
+                {[
+                  { icon: ClipboardList, label: "Active Jobs", value: usage.activeJobs, max: (plan.features as any)?.maxActiveJobs },
+                  { icon: Building2, label: "Approved Companies", value: usage.approvedCompanies, max: (plan.features as any)?.maxCompanies },
+                ].map(({ icon: Icon, label, value, max }) => (
+                  <div key={label} className="space-y-1.5">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="flex items-center gap-1 text-muted-foreground"><Icon className="h-3 w-3" /> {label}</span>
+                      <span className="text-foreground font-medium">{value}{max != null ? ` / ${max}` : " / ∞"}</span>
+                    </div>
+                    {max != null ? (
+                      <Progress value={Math.min(100, (value / max) * 100)} className="h-1.5" />
+                    ) : (
+                      <div className="h-1.5 rounded-full bg-secondary" />
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Cancel subscription */}
+            {plan && (
+              <div className="mt-4 pt-4 border-t border-border flex justify-end">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-xs text-muted-foreground hover:text-red-400"
+                  onClick={() => {
+                    if (confirm("Are you sure you want to cancel your subscription? It will remain active until the end of the billing period.")) {
+                      cancelSubscription.mutate();
+                    }
+                  }}
+                  disabled={cancelSubscription.isPending}
+                >
+                  Cancel Subscription
+                </Button>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Available Plans */}
+      <div>
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h2 className="text-lg font-semibold text-foreground">Available Plans</h2>
+            <p className="text-sm text-muted-foreground">Choose the plan that fits your workflow</p>
+          </div>
+          <div className="flex items-center gap-1 bg-secondary rounded-lg p-1">
+            <button
+              onClick={() => setBillingInterval("monthly")}
+              className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${billingInterval === "monthly" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
+            >
+              Monthly
+            </button>
+            <button
+              onClick={() => setBillingInterval("annual")}
+              className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${billingInterval === "annual" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
+            >
+              Annual <span className="text-green-400 ml-1">Save ~17%</span>
+            </button>
+          </div>
+        </div>
+
+        {plansLoading ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {[1, 2, 3].map((i) => <Skeleton key={i} className="h-72 w-full" />)}
+          </div>
+        ) : activePlans.length === 0 ? (
+          <Card className="bg-card border-border">
+            <CardContent className="p-12 text-center">
+              <CreditCard className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
+              <p className="text-muted-foreground">No subscription plans are available yet. Contact your account manager.</p>
+              <Button variant="outline" className="mt-4 gap-2 border-primary/30 text-primary hover:bg-primary/10"
+                onClick={() => window.open("mailto:support@example.com?subject=Plan Inquiry", "_blank")}>
+                <ArrowUpRight className="h-4 w-4" /> Contact Us
+              </Button>
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {activePlans.map((p, idx) => {
+              const isCurrent = plan?.id === p.id;
+              const PlanIcon = PLAN_ICONS[idx % PLAN_ICONS.length];
+              const displayPrice = billingInterval === "annual"
+                ? parseFloat(p.priceAnnual ?? "0") / 12
+                : parseFloat(p.priceMonthly ?? "0");
+              const features = (p.features as any) ?? {};
+              const hasStripePrice = billingInterval === "annual" ? !!p.stripePriceIdAnnual : !!p.stripePriceIdMonthly;
+              const currentPlanIdx = activePlans.findIndex(ap => ap.id === plan?.id);
+
+              return (
+                <Card
+                  key={p.id}
+                  className={`relative flex flex-col transition-all ${isCurrent
+                    ? "border-primary bg-primary/5 shadow-lg shadow-primary/10"
+                    : "border-border bg-card hover:border-border/80"}`}
+                >
+                  {isCurrent && (
+                    <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+                      <span className="bg-primary text-primary-foreground text-xs font-semibold px-3 py-1 rounded-full">Current Plan</span>
+                    </div>
+                  )}
+                  <CardHeader className="pb-3">
+                    <div className="flex items-center gap-2 mb-1">
+                      <div className={`p-1.5 rounded-md ${isCurrent ? "bg-primary/20" : "bg-secondary"}`}>
+                        <PlanIcon className={`h-4 w-4 ${isCurrent ? "text-primary" : "text-muted-foreground"}`} />
+                      </div>
+                      <CardTitle className="text-base text-card-foreground">{p.name}</CardTitle>
+                    </div>
+                    {p.description && <CardDescription className="text-xs">{p.description}</CardDescription>}
+                    <div className="mt-2">
+                      <span className="text-3xl font-bold text-foreground">${displayPrice.toFixed(0)}</span>
+                      <span className="text-sm text-muted-foreground">/mo</span>
+                      {billingInterval === "annual" && parseFloat(p.priceAnnual ?? "0") > 0 && (
+                        <p className="text-xs text-muted-foreground mt-0.5">Billed ${parseFloat(p.priceAnnual ?? "0").toFixed(0)}/yr</p>
+                      )}
+                    </div>
+                  </CardHeader>
+                  <CardContent className="flex-1 flex flex-col gap-4">
+                    {/* Limits */}
+                    <div className="space-y-1 text-xs">
+                      {[
+                        { label: "Active Jobs", val: features.maxActiveJobs },
+                        { label: "Companies", val: features.maxCompanies },
+                      ].map(({ label, val }) => (
+                        <div key={label} className="flex justify-between text-muted-foreground">
+                          <span>{label}</span>
+                          <span className="font-medium text-foreground">{val != null ? val : "Unlimited"}</span>
                         </div>
-                      </td>
-                      <td className="px-4 py-3 text-foreground max-w-[200px]">
-                        <div className="truncate font-medium">{t.jobTitle ?? `Job #${t.maintenanceRequestId}`}</div>
-                        {t.propertyName && <div className="text-xs text-muted-foreground truncate">{t.propertyName}</div>}
-                      </td>
-                      <td className="px-4 py-3 text-right text-foreground">{fmt(t.laborCost)}</td>
-                      <td className="px-4 py-3 text-right text-foreground">{fmt(t.partsCost)}</td>
-                      <td className="px-4 py-3 text-right text-muted-foreground">{fmt(t.totalCharged)}</td>
-                      <td className="px-4 py-3 text-right font-bold text-green-400">{fmt(t.contractorPayout)}</td>
-                      <td className="px-4 py-3 text-center">
-                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border ${statusColor(t.status)}`}>
-                          {t.status.replace("_", " ")}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-center">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-7 px-2 text-xs text-primary hover:text-primary"
-                          onClick={() => window.open(`/api/receipt/${t.maintenanceRequestId}`, "_blank")}
-                        >
-                          <Download className="h-3.5 w-3.5 mr-1" />
-                          PDF
+                      ))}
+                    </div>
+                    {/* Features */}
+                    <div className="space-y-1.5">
+                      {Object.entries(CONTRACTOR_FEATURE_LABELS).map(([key, label]) => {
+                        const enabled = features[key] ?? false;
+                        return (
+                          <div key={key} className="flex items-center gap-1.5 text-xs">
+                            {enabled
+                              ? <Check className="h-3 w-3 text-green-400 shrink-0" />
+                              : <X className="h-3 w-3 text-muted-foreground/30 shrink-0" />}
+                            <span className={enabled ? "text-foreground" : "text-muted-foreground/50"}>{label}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    {/* Action */}
+                    <div className="mt-auto pt-2">
+                      {isCurrent ? (
+                        <Button variant="outline" className="w-full border-primary/30 text-primary" disabled>
+                          <CheckCircle2 className="h-4 w-4 mr-2" /> Current Plan
                         </Button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-                <tfoot>
-                  <tr className="bg-secondary/30">
-                    <td colSpan={2} className="px-4 py-3 font-semibold text-foreground">Totals</td>
-                    <td className="px-4 py-3 text-right font-semibold text-foreground">
-                      {fmt(rawTxns.reduce((s: number, t: any) => s + parseFloat(String(t.laborCost ?? "0")), 0))}
-                    </td>
-                    <td className="px-4 py-3 text-right font-semibold text-foreground">
-                      {fmt(rawTxns.reduce((s: number, t: any) => s + parseFloat(String(t.partsCost ?? "0")), 0))}
-                    </td>
-                    <td className="px-4 py-3 text-right font-semibold text-muted-foreground">{fmt(totalGross)}</td>
-                    <td className="px-4 py-3 text-right font-bold text-green-400">{fmt(totalEarned)}</td>
-                    <td colSpan={2} />
-                  </tr>
-                </tfoot>
-              </table>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+                      ) : hasStripePrice ? (
+                        <Button
+                          className="w-full"
+                          variant={idx >= currentPlanIdx ? "default" : "outline"}
+                          disabled={checkoutLoading === p.id}
+                          onClick={() => {
+                            setCheckoutLoading(p.id);
+                            createCheckout.mutate({ planId: p.id, billingInterval, origin: window.location.origin });
+                          }}
+                        >
+                          {checkoutLoading === p.id ? "Loading..." : plan ? (idx > currentPlanIdx ? "Upgrade" : "Switch") : "Subscribe"}
+                        </Button>
+                      ) : (
+                        <Button
+                          variant="outline"
+                          className="w-full border-primary/30 text-primary hover:bg-primary/10"
+                          onClick={() => window.open("mailto:support@example.com?subject=Plan Inquiry: " + p.name, "_blank")}
+                        >
+                          <ArrowUpRight className="h-4 w-4 mr-2" /> Contact Us
+                        </Button>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+        )}
+      </div>
 
-      {/* Note about platform fee */}
-      <p className="text-xs text-muted-foreground text-center">
-        The platform fee is charged to the company on top of the job cost — your payout is the full agreed job amount.
-      </p>
+      {/* Subscription Fees Section */}
+      <div>
+        <h2 className="text-lg font-semibold text-foreground mb-4">Subscription Fees</h2>
+        <Card className="bg-card border-border">
+          <CardContent className="p-6">
+            {plan ? (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="font-medium text-foreground">{plan.name}</p>
+                    <p className="text-xs text-muted-foreground">Monthly subscription</p>
+                  </div>
+                  <p className="text-lg font-bold text-foreground">${parseFloat(plan.priceMonthly ?? "0").toFixed(2)}/mo</p>
+                </div>
+                {parseFloat(plan.priceAnnual ?? "0") > 0 && (
+                  <p className="text-xs text-muted-foreground">Annual option: ${parseFloat(plan.priceAnnual ?? "0").toFixed(2)}/yr (saves ~${(parseFloat(plan.priceMonthly ?? "0") * 12 - parseFloat(plan.priceAnnual ?? "0")).toFixed(0)})</p>
+                )}
+                <p className="text-xs text-muted-foreground pt-2 border-t border-border">
+                  Subscription charges are billed directly by Stripe. View your invoices in the Stripe customer portal.
+                </p>
+              </div>
+            ) : (
+              <div className="text-center py-6">
+                <CreditCard className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
+                <p className="text-muted-foreground text-sm">No active subscription. Choose a plan above to get started.</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Job Earnings History */}
+      <div>
+        <h2 className="text-lg font-semibold text-foreground mb-4">Job Earnings History</h2>
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-6">
+          {[
+            { icon: DollarSign, color: "text-green-400", label: "Total Earned", value: fmt(totalEarned), sub: `${rawTxns.length} paid jobs` },
+            { icon: TrendingUp, color: "text-blue-400", label: "Gross Billed", value: fmt(totalGross), sub: "Before platform fee" },
+            { icon: Briefcase, color: "text-purple-400", label: "Avg Per Job", value: fmt(avgPerJob), sub: null },
+          ].map(({ icon: Icon, color, label, value, sub }) => (
+            <Card key={label} className="bg-card border-border">
+              <CardContent className="p-5">
+                <div className="flex items-center gap-2 mb-1">
+                  <Icon className={`h-4 w-4 ${color}`} />
+                  <span className="text-xs text-muted-foreground">{label}</span>
+                </div>
+                <p className="text-2xl font-bold text-foreground">{value}</p>
+                {sub && <p className="text-xs text-muted-foreground mt-1">{sub}</p>}
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+
+        <Card className="bg-card border-border">
+          <CardHeader>
+            <CardTitle className="text-card-foreground">Job Transactions</CardTitle>
+            <CardDescription>Your payout is the full agreed job amount — platform fee is charged to the company</CardDescription>
+          </CardHeader>
+          <CardContent className="p-0">
+            {earningsLoading ? (
+              <div className="p-6 space-y-3">{[1, 2, 3].map(i => <Skeleton key={i} className="h-12 w-full" />)}</div>
+            ) : rawTxns.length === 0 ? (
+              <div className="p-12 text-center">
+                <Receipt className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
+                <p className="text-muted-foreground">No payments yet. Completed and verified jobs will appear here.</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-border">
+                      <th className="text-left px-4 py-3 text-muted-foreground font-medium">Date</th>
+                      <th className="text-left px-4 py-3 text-muted-foreground font-medium">Job</th>
+                      <th className="text-right px-4 py-3 text-muted-foreground font-medium">Labor</th>
+                      <th className="text-right px-4 py-3 text-muted-foreground font-medium">Parts</th>
+                      <th className="text-right px-4 py-3 text-muted-foreground font-medium">Gross</th>
+                      <th className="text-right px-4 py-3 text-muted-foreground font-medium">Your Payout</th>
+                      <th className="text-center px-4 py-3 text-muted-foreground font-medium">Status</th>
+                      <th className="text-center px-4 py-3 text-muted-foreground font-medium">Receipt</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {rawTxns.map((t: any) => (
+                      <tr key={t.id} className="border-b border-border/50 hover:bg-secondary/30 transition-colors">
+                        <td className="px-4 py-3 text-muted-foreground whitespace-nowrap">
+                          <div className="flex items-center gap-1.5">
+                            <Calendar className="h-3.5 w-3.5" />
+                            {t.paidAt ? new Date(t.paidAt).toLocaleDateString() : new Date(t.createdAt).toLocaleDateString()}
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 text-foreground max-w-[200px]">
+                          <div className="truncate font-medium">{t.jobTitle ?? `Job #${t.maintenanceRequestId}`}</div>
+                          {t.propertyName && <div className="text-xs text-muted-foreground truncate">{t.propertyName}</div>}
+                        </td>
+                        <td className="px-4 py-3 text-right text-foreground">{fmt(t.laborCost)}</td>
+                        <td className="px-4 py-3 text-right text-foreground">{fmt(t.partsCost)}</td>
+                        <td className="px-4 py-3 text-right text-muted-foreground">{fmt(t.totalCharged)}</td>
+                        <td className="px-4 py-3 text-right font-bold text-green-400">{fmt(t.contractorPayout)}</td>
+                        <td className="px-4 py-3 text-center">
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border ${statusColor(t.status)}`}>
+                            {t.status.replace("_", " ")}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-center">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 px-2 text-xs text-primary hover:text-primary"
+                            onClick={() => window.open(`/api/receipt/${t.maintenanceRequestId}`, "_blank")}
+                          >
+                            <Download className="h-3.5 w-3.5 mr-1" />
+                            PDF
+                          </Button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot>
+                    <tr className="bg-secondary/30">
+                      <td colSpan={2} className="px-4 py-3 font-semibold text-foreground">Totals</td>
+                      <td className="px-4 py-3 text-right font-semibold text-foreground">
+                        {fmt(rawTxns.reduce((s: number, t: any) => s + parseFloat(String(t.laborCost ?? "0")), 0))}
+                      </td>
+                      <td className="px-4 py-3 text-right font-semibold text-foreground">
+                        {fmt(rawTxns.reduce((s: number, t: any) => s + parseFloat(String(t.partsCost ?? "0")), 0))}
+                      </td>
+                      <td className="px-4 py-3 text-right font-semibold text-muted-foreground">{fmt(totalGross)}</td>
+                      <td className="px-4 py-3 text-right font-bold text-green-400">{fmt(totalEarned)}</td>
+                      <td colSpan={2} />
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }

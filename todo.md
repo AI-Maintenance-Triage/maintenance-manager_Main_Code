@@ -533,3 +533,37 @@
 - [x] Add contractor.getMyPlan query
 - [x] Enforce contractor plan limits in backend (max active jobs, max companies)
 - [x] Build company billing page plan display with usage gauges and upgrade CTA
+
+## Plan Hardening + Stripe Billing (Session N+3)
+- [x] Schema: add planStatus (active/trialing/expired), planExpiresAt, planAssignedAt to companies + contractor_profiles
+- [x] Schema: push migration
+- [x] Backend: enforce GPS time tracking feature flag (clockIn/clockOut/pingLocation procedures)
+- [x] Backend: enforce AI classification feature flag (classifyMaintenanceRequest call)
+- [x] Backend: enforce expense reports feature flag (reports.getExpenseReport procedure)
+- [x] Backend: enforce contractor ratings feature flag (ratings.create procedure)
+- [x] Backend: enforce job comments feature flag (comments.create procedure)
+- [x] Backend: enforce API access feature flag (placeholder apiAccess guard)
+- [x] Backend: enforce email notifications feature flag (check before sending each email type)
+- [x] Backend: plan expiry check helper — returns null plan if expired
+- [ ] Backend: enforce plan limits for contractors (maxActiveJobs already done; add maxCompanies guard)
+- [x] Stripe: create checkout session tied to plan stripePriceId (company self-serve subscribe)
+- [x] Stripe: webhook checkout.session.completed → assign plan + set planStatus=active + planAssignedAt
+- [x] Stripe: webhook customer.subscription.deleted → set planStatus=expired
+- [x] Stripe: webhook invoice.payment_failed → set planStatus=expired after grace period
+- [x] Frontend: company billing page — "Subscribe" button that opens Stripe checkout for current plan
+- [x] Frontend: company billing page — show plan status badge (active/trialing/expired)
+- [x] Frontend: contractor billing page — plan card with usage gauge, feature list, upgrade CTA
+- [x] Tests: plan limit enforcement (properties, contractors, jobs/month)
+- [x] Tests: contractor plan limits (maxActiveJobs, maxCompanies)
+- [x] Tests: fee calculation (platformFeePercent from plan vs global fallback)
+- [x] Tests: per-listing fee calculation (plan-level toggle + amount)
+- [x] Tests: plan expiry — expired plan returns null features, limits not enforced (no plan = no limits)
+- [x] Tests: Stripe checkout session creation with correct priceId
+- [x] Tests: Stripe webhook plan assignment
+
+## Billing Page Fixes (COMPLETED)
+- [x] Fix company billing page bugs (plan display, Stripe checkout, cancel subscription)
+- [x] Build contractor billing page: current plan card, subscription cost history, all available plans grid, upgrade button
+- [x] Add contractor plan Stripe checkout procedure to stripeRouter
+- [x] Add webhook handling for contractor subscription events (checkout.session.completed for contractors)
+- [x] Write 66 tests for plan enforcement, fee calculation, and Stripe billing logic (all passing)

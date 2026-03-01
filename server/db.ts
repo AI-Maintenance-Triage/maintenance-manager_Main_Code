@@ -1702,3 +1702,97 @@ export async function listSubscriptionPlansByType(planType: "company" | "contrac
     .where(eq(subscriptionPlans.planType, planType))
     .orderBy(subscriptionPlans.sortOrder, subscriptionPlans.name);
 }
+
+// ─── Plan Feature Enforcement Helpers ────────────────────────────────────────
+
+/**
+ * Returns the effective plan for a company, but only if the plan is active (not expired/canceled).
+ * Returns null if no plan, no planId, or plan is expired/canceled.
+ */
+export async function getActivePlanForCompany(companyId: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db
+    .select({ company: companies, plan: subscriptionPlans })
+    .from(companies)
+    .leftJoin(subscriptionPlans, eq(companies.planId, subscriptionPlans.id))
+    .where(eq(companies.id, companyId))
+    .limit(1);
+  if (!result.length || !result[0].plan) return null;
+  const { company, plan } = result[0];
+  // Check plan lifecycle status
+  const now = Date.now();
+  if (company.planStatus === "expired" || company.planStatus === "canceled") return null;
+  if (company.planExpiresAt && company.planExpiresAt < now) return null;
+  return {
+    ...plan,
+    effectiveMonthlyPrice: company.planPriceOverride
+      ? parseFloat(company.planPriceOverride)
+      : parseFloat(plan.priceMonthly ?? "0"),
+    planStatus: company.planStatus,
+    planNotes: company.planNotes ?? null,
+  };
+}
+
+/**
+ * Returns the effective plan for a contractor, but only if active (not expired/canceled).
+ */
+export async function getActivePlanForContractor(contractorProfileId: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const profiles = await db
+    .select()
+    .from(contractorProfiles)
+    .where(eq(contractorProfiles.id, contractorProfileId))
+    .limit(1);
+  const profile = profiles[0];
+  if (!profile || !profile.planId) return null;
+  const now = Date.now();
+  if (profile.planStatus === "expired" || profile.planStatus === "canceled") return null;
+  if (profile.planExpiresAt && profile.planExpiresAt < now) return null;
+  const plans = await db
+    .select()
+    .from(subscriptionPlans)
+    .where(eq(subscriptionPlans.id, profile.planId))
+    .limit(1);
+  const plan = plans[0];
+  if (!plan) return null;
+  return {
+    ...plan,
+    effectivePrice: profile.planPriceOverride != null
+      ? parseFloat(profile.planPriceOverride)
+      : parseFloat(plan.priceMonthly ?? "0"),
+    planStatus: profile.planStatus,
+    planNotes: profile.planNotes ?? null,
+  };
+}
+
+/**
+ * Check if a company's active plan has a specific feature enabled.
+ * Returns true if: no plan assigned (no restrictions), OR plan has the feature enabled.
+ * Returns false only if a plan is assigned AND the feature is explicitly disabled.
+ */
+export async function companyHasPlanFeature(
+  companyId: number,
+  feature: keyof NonNullable<typeof subscriptionPlans.$inferSelect["features"]>
+): Promise<boolean> {
+  const plan = await getActivePlanForCompany(companyId);
+  if (!plan) return true; // No plan = no restrictions
+  const featureValue = (plan.features as Record<string, unknown> | null)?.[feature as string];
+  if (featureValue === undefined || featureValue === null) return true; // Feature not configured = allowed
+  return featureValue === true;
+}
+
+/**
+ * Check if a contractor's active plan has a specific feature enabled.
+ */
+export async function contractorHasPlanFeature(
+  contractorProfileId: number,
+  feature: keyof NonNullable<typeof subscriptionPlans.$inferSelect["features"]>
+): Promise<boolean> {
+  const plan = await getActivePlanForContractor(contractorProfileId);
+  if (!plan) return true; // No plan = no restrictions
+  const featureValue = (plan.features as Record<string, unknown> | null)?.[feature as string];
+  if (featureValue === undefined || featureValue === null) return true;
+  return featureValue === true;
+}

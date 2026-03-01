@@ -89,6 +89,11 @@ const companyRouter = router({
     return db.getCompanyDashboardStats(getEffectiveCompanyId(ctx));
   }),
 
+  // Public list of active company plans (for upgrade UI)
+  listAvailablePlans: companyAdminProcedure.query(async () => {
+    return db.listSubscriptionPlansByType("company");
+  }),
+
   // Returns the company's effective plan (plan-level or company-override)
   getMyPlan: companyAdminProcedure.query(async ({ ctx }) => {
     if (!getEffectiveCompanyId(ctx)) return null;
@@ -288,6 +293,11 @@ const contractorRouter = router({
 
   getProfile: protectedProcedure.query(async ({ ctx }) => {
     return getEffectiveContractorProfile(ctx);
+  }),
+
+  // List all active contractor plans (for upgrade UI)
+  listAvailablePlans: contractorProcedure.query(async () => {
+    return db.listSubscriptionPlansByType("contractor");
   }),
 
   getMyPlan: contractorProcedure.query(async ({ ctx }) => {
@@ -678,10 +688,11 @@ const jobsRouter = router({
         ...input,
       });
 
-      // AI classification
+      // AI classification (plan-gated)
       try {
+        const aiEnabled = await db.companyHasPlanFeature(companyId, "aiJobClassification");
         const tiers = await db.getSkillTiers(getEffectiveCompanyId(ctx));
-        if (tiers.length > 0) {
+        if (aiEnabled && tiers.length > 0) {
           const classification = await classifyMaintenanceRequest(input.title, input.description, tiers);
           const matchedTier = tiers.find(t => t.name.toLowerCase() === classification.skillTierName.toLowerCase());
           await db.updateMaintenanceRequest(id, {
@@ -928,6 +939,9 @@ const timeTrackingRouter = router({
     .mutation(async ({ ctx, input }) => {
       const profile = await getEffectiveContractorProfile(ctx);
       if (!profile) throw new TRPCError({ code: "NOT_FOUND" });
+      // ─── Plan feature check: gpsTimeTracking ──────────────────────────────
+      const hasGps = await db.contractorHasPlanFeature(profile.id, "gpsTimeTracking");
+      if (!hasGps) throw new TRPCError({ code: "FORBIDDEN", message: "GPS time tracking is not included in your current plan. Please upgrade to use this feature." });
       const job = await db.getMaintenanceRequestById(input.jobId);
       if (!job) throw new TRPCError({ code: "NOT_FOUND" });
       if (job.assignedContractorId !== profile.id) throw new TRPCError({ code: "FORBIDDEN" });
@@ -1015,7 +1029,11 @@ const timeTrackingRouter = router({
       longitude: z.string(),
       locationType: z.enum(["property", "store", "origin", "transit", "unknown"]).optional(),
     }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ ctx, input }) => {
+      // ─── Plan feature check: gpsTimeTracking ──────────────────────────────
+      const profile = await getEffectiveContractorProfile(ctx);
+      const hasGps = await db.contractorHasPlanFeature(profile.id, "gpsTimeTracking");
+      if (!hasGps) throw new TRPCError({ code: "FORBIDDEN", message: "GPS tracking is not included in your current plan." });
       await db.addLocationPing({
         timeSessionId: input.sessionId,
         latitude: input.latitude,
@@ -1157,6 +1175,9 @@ const transactionsRouter = router({
   expenseReport: companyAdminProcedure.query(async ({ ctx }) => {
     const companyId = getEffectiveCompanyId(ctx);
     if (!companyId) throw new TRPCError({ code: "NOT_FOUND" });
+    // ─── Plan feature check: expenseReports ──────────────────────────────────
+    const hasReports = await db.companyHasPlanFeature(companyId, "expenseReports");
+    if (!hasReports) throw new TRPCError({ code: "FORBIDDEN", message: "Expense reports are not included in your current plan. Please upgrade to access this feature." });
     return db.getCompanyExpenseReport(companyId);
   }),
 });
@@ -1172,6 +1193,9 @@ const ratingsRouter = router({
     }))
     .mutation(async ({ ctx, input }) => {
       const companyId = getEffectiveCompanyId(ctx);
+      // ─── Plan feature check: contractorRatings ───────────────────────────────
+      const hasRatings = await db.companyHasPlanFeature(companyId, "contractorRatings");
+      if (!hasRatings) throw new TRPCError({ code: "FORBIDDEN", message: "Contractor ratings are not included in your current plan. Please upgrade to use this feature." });
       // Verify the job belongs to this company and is paid
       const job = await db.getMaintenanceRequestById(input.maintenanceRequestId);
       if (!job || job.companyId !== companyId) throw new TRPCError({ code: "NOT_FOUND" });
@@ -1223,6 +1247,11 @@ const commentsRouter = router({
     }))
     .mutation(async ({ ctx, input }) => {
       const role = ctx.user.role as string;
+      // ─── Plan feature check: jobComments (company-side) ──────────────────────
+      if (role === 'company_admin' && ctx.user.companyId) {
+        const hasComments = await db.companyHasPlanFeature(ctx.user.companyId, "jobComments");
+        if (!hasComments) throw new TRPCError({ code: "FORBIDDEN", message: "Job comments are not included in your current plan. Please upgrade to use this feature." });
+      }
       const authorRole = (role === 'company_admin' || role === 'admin' || role === 'contractor')
         ? role as 'company_admin' | 'contractor' | 'admin'
         : 'company_admin' as const;
@@ -1459,6 +1488,150 @@ const stripeRouter = router({
   getPlatformSettings: adminProcedure
     .query(async () => {
       return getPlatformSettings();
+    }),
+
+  // Company: create a Stripe Checkout session for subscribing to a plan
+  createPlanCheckout: companyAdminProcedure
+    .input(z.object({
+      planId: z.number(),
+      billingInterval: z.enum(["monthly", "annual"]),
+      origin: z.string(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const companyId = getEffectiveCompanyId(ctx);
+      const company = await db.getCompanyById(companyId);
+      if (!company) throw new TRPCError({ code: "NOT_FOUND" });
+      const user = await db.getUserById(ctx.user.id);
+      if (!user) throw new TRPCError({ code: "NOT_FOUND" });
+
+      // Fetch the plan
+      const drizzleDb = await db.getDb();
+      if (!drizzleDb) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const { subscriptionPlans } = await import("../drizzle/schema");
+      const { eq } = await import("drizzle-orm");
+      const plans = await drizzleDb.select().from(subscriptionPlans).where(eq(subscriptionPlans.id, input.planId)).limit(1);
+      const plan = plans[0];
+      if (!plan) throw new TRPCError({ code: "NOT_FOUND", message: "Plan not found" });
+
+      // Determine the Stripe Price ID
+      const stripePriceId = input.billingInterval === "annual"
+        ? plan.stripePriceIdAnnual
+        : plan.stripePriceIdMonthly;
+      if (!stripePriceId) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: `This plan does not have a Stripe Price ID configured for ${input.billingInterval} billing. Please contact your administrator.`,
+        });
+      }
+
+      const customerId = await getOrCreateStripeCustomer(companyId, user.email ?? "", company.name);
+
+      const session = await stripe.checkout.sessions.create({
+        mode: "subscription",
+        customer: customerId,
+        line_items: [{ price: stripePriceId, quantity: 1 }],
+        allow_promotion_codes: true,
+        success_url: `${input.origin}/company/billing?subscription=success`,
+        cancel_url: `${input.origin}/company/billing?subscription=canceled`,
+        client_reference_id: companyId.toString(),
+        metadata: {
+          company_id: companyId.toString(),
+          plan_id: input.planId.toString(),
+          billing_interval: input.billingInterval,
+          customer_email: user.email ?? "",
+          customer_name: user.name ?? "",
+        },
+      });
+
+      return { checkoutUrl: session.url };
+    }),
+
+  // Company: cancel their current subscription
+  cancelPlanSubscription: companyAdminProcedure
+    .mutation(async ({ ctx }) => {
+      const companyId = getEffectiveCompanyId(ctx);
+      const company = await db.getCompanyById(companyId);
+      if (!company) throw new TRPCError({ code: "NOT_FOUND" });
+      if (!company.stripeSubscriptionId) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "No active subscription found." });
+      }
+      // Cancel at period end (not immediately)
+      await stripe.subscriptions.update(company.stripeSubscriptionId, {
+        cancel_at_period_end: true,
+      });
+      await db.updateCompany(companyId, { planStatus: "canceled" });
+      return { success: true, message: "Your subscription will be canceled at the end of the current billing period." };
+    }),
+
+  // Contractor: create Stripe checkout session for a contractor plan
+  createContractorPlanCheckout: contractorProcedure
+    .input(z.object({
+      planId: z.number(),
+      billingInterval: z.enum(["monthly", "annual"]),
+      origin: z.string(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const profile = await db.getContractorProfile(ctx.user.id);
+      if (!profile) throw new TRPCError({ code: "NOT_FOUND", message: "Contractor profile not found" });
+      const user = await db.getUserById(ctx.user.id);
+      if (!user) throw new TRPCError({ code: "NOT_FOUND" });
+
+      const drizzleDb = await db.getDb();
+      if (!drizzleDb) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const { subscriptionPlans } = await import("../drizzle/schema");
+      const { eq } = await import("drizzle-orm");
+      const plans = await drizzleDb.select().from(subscriptionPlans).where(eq(subscriptionPlans.id, input.planId)).limit(1);
+      const plan = plans[0];
+      if (!plan) throw new TRPCError({ code: "NOT_FOUND", message: "Plan not found" });
+      if (plan.planType !== "contractor") throw new TRPCError({ code: "BAD_REQUEST", message: "This plan is not a contractor plan." });
+
+      const stripePriceId = input.billingInterval === "annual"
+        ? plan.stripePriceIdAnnual
+        : plan.stripePriceIdMonthly;
+      if (!stripePriceId) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: `This plan does not have a Stripe Price ID configured for ${input.billingInterval} billing. Please contact your administrator.`,
+        });
+      }
+
+      // Get or create Stripe customer for contractor (reuse company helper with profile id as key)
+      const customerId = await getOrCreateStripeCustomer(profile.id, user.email ?? "", user.name ?? "");
+
+      const session = await stripe.checkout.sessions.create({
+        mode: "subscription",
+        customer: customerId,
+        line_items: [{ price: stripePriceId, quantity: 1 }],
+        allow_promotion_codes: true,
+        success_url: `${input.origin}/contractor/billing?subscription=success`,
+        cancel_url: `${input.origin}/contractor/billing?subscription=canceled`,
+        client_reference_id: `contractor_${profile.id}`,
+        metadata: {
+          contractor_profile_id: profile.id.toString(),
+          plan_id: input.planId.toString(),
+          billing_interval: input.billingInterval,
+          customer_email: user.email ?? "",
+          customer_name: user.name ?? "",
+          entity_type: "contractor",
+        },
+      });
+
+      return { checkoutUrl: session.url };
+    }),
+
+  // Contractor: cancel their current subscription
+  cancelContractorPlanSubscription: contractorProcedure
+    .mutation(async ({ ctx }) => {
+      const profile = await db.getContractorProfile(ctx.user.id);
+      if (!profile) throw new TRPCError({ code: "NOT_FOUND" });
+      if (!profile.stripeSubscriptionId) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "No active subscription found." });
+      }
+      await stripe.subscriptions.update(profile.stripeSubscriptionId, {
+        cancel_at_period_end: true,
+      });
+      await db.updateContractorProfile(profile.id, { planStatus: "canceled" });
+      return { success: true, message: "Your subscription will be canceled at the end of the current billing period." };
     }),
 
   // Admin: update platform fee settings

@@ -57,10 +57,14 @@ export const companies = mysqlTable("companies", {
   // Per-company overrides (null = use plan defaults)
   planPriceOverride: decimal("planPriceOverride", { precision: 10, scale: 2 }),
   planNotes: text("planNotes"),
+  // Plan lifecycle
+  planStatus: mysqlEnum("planStatus", ["active", "trialing", "expired", "canceled"]).default("trialing").notNull(),
+  planAssignedAt: bigint("planAssignedAt", { mode: "number" }),
+  planExpiresAt: bigint("planExpiresAt", { mode: "number" }),
+  stripeSubscriptionId: varchar("stripeSubscriptionId", { length: 255 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
-
 export type Company = typeof companies.$inferSelect;
 export type InsertCompany = typeof companies.$inferInsert;
 
@@ -154,10 +158,14 @@ export const contractorProfiles = mysqlTable("contractor_profiles", {
   planId: int("planId"),                                     // FK to subscription_plans (planType='contractor')
   planPriceOverride: decimal("planPriceOverride", { precision: 10, scale: 2 }), // null = use plan default
   planNotes: text("planNotes"),                              // internal admin notes
+  // Plan lifecycle
+  planStatus: mysqlEnum("planStatus", ["active", "trialing", "expired", "canceled"]).default("trialing").notNull(),
+  planAssignedAt: bigint("planAssignedAt", { mode: "number" }),
+  planExpiresAt: bigint("planExpiresAt", { mode: "number" }),
+  stripeSubscriptionId: varchar("stripeSubscriptionId", { length: 255 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
-
 export type ContractorProfile = typeof contractorProfiles.$inferSelect;
 export type InsertContractorProfile = typeof contractorProfiles.$inferInsert;
 
