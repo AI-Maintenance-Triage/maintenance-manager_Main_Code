@@ -69,6 +69,11 @@ export const companySettings = mysqlTable("company_settings", {
   escalationTimeoutMinutes: int("escalationTimeoutMinutes").default(60),
   // Platform fee override (percentage charged on top of job cost)
   platformFeePercent: decimal("platformFeePercent", { precision: 5, scale: 2 }).default("10.00"),
+  // Notification Preferences
+  notifyOnClockIn: boolean("notifyOnClockIn").default(true).notNull(),
+  notifyOnClockOut: boolean("notifyOnClockOut").default(true).notNull(),
+  notifyOnJobSubmitted: boolean("notifyOnJobSubmitted").default(true).notNull(),
+  notifyOnNewContractor: boolean("notifyOnNewContractor").default(true).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });

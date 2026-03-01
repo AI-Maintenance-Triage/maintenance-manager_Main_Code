@@ -1,0 +1,17 @@
+{
+  "name": "Maintenance Manager",
+  "short_name": "MaintMgr",
+  "description": "AI-powered maintenance management with GPS contractor tracking",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0a0a0a",
+  "theme_color": "#6366f1",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/favicon.ico",
+      "sizes": "any",
+      "type": "image/x-icon"
+    }
+  ]
+}

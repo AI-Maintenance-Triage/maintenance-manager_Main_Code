@@ -107,6 +107,11 @@ const settingsRouter = router({
       autoApproveContractors: z.boolean().optional(),
       escalationTimeoutMinutes: z.number().min(5).max(1440).optional(),
       platformFeePercent: z.string().optional(),
+      // Notification preferences
+      notifyOnClockIn: z.boolean().optional(),
+      notifyOnClockOut: z.boolean().optional(),
+      notifyOnJobSubmitted: z.boolean().optional(),
+      notifyOnNewContractor: z.boolean().optional(),
     }))
     .mutation(async ({ ctx, input }) => {
       if (!getEffectiveCompanyId(ctx)) throw new TRPCError({ code: "NOT_FOUND" });
@@ -402,7 +407,7 @@ const contractorRouter = router({
 // ─── Maintenance Requests Router ────────────────────────────────────────────
 const jobsRouter = router({
   list: companyAdminProcedure
-    .input(z.object({ status: z.string().optional() }).optional())
+    .input(z.object({ status: z.union([z.string(), z.array(z.string())]).optional() }).optional())
     .query(async ({ ctx, input }) => {
       if (!getEffectiveCompanyId(ctx)) throw new TRPCError({ code: "NOT_FOUND" });
       return db.listMaintenanceRequests(getEffectiveCompanyId(ctx), input?.status);
@@ -637,13 +642,16 @@ const timeTrackingRouter = router({
         await db.updateMaintenanceRequest(input.jobId, { status: "in_progress" });
       }
 
-      // Notify company owner that contractor clocked in
+      // Notify company owner that contractor clocked in (if preference enabled)
       try {
-        const contractorDisplayName = profile.businessName ?? ctx.user.name ?? "A contractor";
-        await notifyOwner({
-          title: `\uD83D\uDCCD Contractor Clocked In \u2014 ${job.title}`,
-          content: `${contractorDisplayName} has clocked in on "${job.title}". Live GPS tracking is now active.`,
-        });
+        const companySettings = await db.getCompanySettings(job.companyId);
+        if (companySettings?.notifyOnClockIn !== false) {
+          const contractorDisplayName = profile.businessName ?? ctx.user.name ?? "A contractor";
+          await notifyOwner({
+            title: `\uD83D\uDCCD Contractor Clocked In \u2014 ${job.title}`,
+            content: `${contractorDisplayName} has clocked in on "${job.title}". Live GPS tracking is now active.`,
+          });
+        }
       } catch { /* non-critical — don't fail the clock-in */ }
 
       return { sessionId: id };
@@ -666,17 +674,21 @@ const timeTrackingRouter = router({
         status: "completed",
       });
 
-      // Notify company owner that contractor clocked out
+      // Notify company owner that contractor clocked out (if preference enabled)
       try {
         const profile = await getEffectiveContractorProfile(ctx);
-        const contractorDisplayName = profile.businessName ?? ctx.user.name ?? "A contractor";
-        const methodLabel =
-          input.method === "auto_geofence" ? " (auto \u2014 returned to origin)" :
-          input.method === "auto_timeout" ? " (auto \u2014 session timeout)" : "";
-        await notifyOwner({
-          title: `\u23F1\uFE0F Contractor Clocked Out${methodLabel}`,
-          content: `${contractorDisplayName} has clocked out${methodLabel}. GPS tracking has stopped.`,
-        });
+        const session = await db.getTimeSessionById(input.sessionId);
+        const companySettings = session ? await db.getCompanySettings(session.companyId) : null;
+        if (companySettings?.notifyOnClockOut !== false) {
+          const contractorDisplayName = profile.businessName ?? ctx.user.name ?? "A contractor";
+          const methodLabel =
+            input.method === "auto_geofence" ? " (auto \u2014 returned to origin)" :
+            input.method === "auto_timeout" ? " (auto \u2014 session timeout)" : "";
+          await notifyOwner({
+            title: `\u23F1\uFE0F Contractor Clocked Out${methodLabel}`,
+            content: `${contractorDisplayName} has clocked out${methodLabel}. GPS tracking has stopped.`,
+          });
+        }
       } catch { /* non-critical */ }
 
       return { success: true };
@@ -742,6 +754,13 @@ const timeTrackingRouter = router({
         };
       }));
       return enriched;
+    }),
+
+  getCompletedSessionsForCompany: companyAdminProcedure
+    .input(z.object({ limit: z.number().optional() }))
+    .query(async ({ ctx, input }) => {
+      const companyId = getEffectiveCompanyId(ctx);
+      return db.getCompletedSessionsByCompany(companyId, input.limit ?? 50);
     }),
 });
 

@@ -24,6 +24,7 @@ import ContractorMyJobs from "./pages/contractor/ContractorMyJobs";
 import ContractorProfile from "./pages/contractor/ContractorProfile";
 import PlatformDashboard from "./pages/admin/PlatformDashboard";
 import AdminCompanies from "./pages/admin/AdminCompanies";
+import { PWAInstallBanner } from "./components/PWAInstallBanner";
 
 function Router() {
   return (
@@ -90,6 +91,7 @@ function App() {
           <TooltipProvider>
             <Toaster />
             <Router />
+            <PWAInstallBanner />
           </TooltipProvider>
         </ViewAsProvider>
       </ThemeProvider>

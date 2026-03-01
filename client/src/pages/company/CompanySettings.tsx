@@ -10,7 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useViewAs } from "@/contexts/ViewAsContext";
-import { Plus, Trash2, Settings, DollarSign, MapPin, Clock, Link2, Pencil } from "lucide-react";
+import { Plus, Trash2, Settings, DollarSign, MapPin, Clock, Link2, Pencil, Bell } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
@@ -33,11 +33,13 @@ export default function CompanySettings() {
           <TabsTrigger value="general"><Settings className="h-4 w-4 mr-1.5" />General</TabsTrigger>
           <TabsTrigger value="rates"><DollarSign className="h-4 w-4 mr-1.5" />Skill Tiers</TabsTrigger>
           <TabsTrigger value="tracking"><MapPin className="h-4 w-4 mr-1.5" />GPS & Time</TabsTrigger>
+          <TabsTrigger value="notifications"><Bell className="h-4 w-4 mr-1.5" />Notifications</TabsTrigger>
           <TabsTrigger value="integrations"><Link2 className="h-4 w-4 mr-1.5" />Integrations</TabsTrigger>
         </TabsList>
         <TabsContent value="general"><GeneralSettings readOnly={false} companyId={isViewingAsCompany ? viewAs.companyId! : undefined} /></TabsContent>
         <TabsContent value="rates"><SkillTiersSettings readOnly={false} isAdmin={isAdmin} companyId={isViewingAsCompany ? viewAs.companyId! : undefined} /></TabsContent>
         <TabsContent value="tracking"><TrackingSettings readOnly={false} companyId={isViewingAsCompany ? viewAs.companyId! : undefined} /></TabsContent>
+        <TabsContent value="notifications"><NotificationSettings readOnly={false} companyId={isViewingAsCompany ? viewAs.companyId! : undefined} /></TabsContent>
         <TabsContent value="integrations"><IntegrationSettings readOnly={false} companyId={isViewingAsCompany ? viewAs.companyId! : undefined} /></TabsContent>
       </Tabs>
     </div>
@@ -315,6 +317,75 @@ function TrackingSettings({ readOnly, companyId }: { readOnly: boolean; companyI
                 <SelectItem value="hybrid_with_cap">Hybrid with Cap — On-site + capped off-site time</SelectItem>
               </SelectContent>
             </Select>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+function NotificationSettings({ readOnly, companyId }: { readOnly: boolean; companyId?: number }) {
+  const regularSettings = trpc.settings.get.useQuery(undefined, { enabled: !readOnly });
+  const viewAsSettings = trpc.adminViewAs.companySettings.useQuery({ companyId: companyId! }, { enabled: readOnly && !!companyId });
+  const settings = readOnly ? viewAsSettings.data : regularSettings.data;
+  const isLoading = readOnly ? viewAsSettings.isLoading : regularSettings.isLoading;
+  const updateSettings = trpc.settings.update.useMutation({ onSuccess: () => toast.success("Notification preferences saved!") });
+
+  const [notifyClockIn, setNotifyClockIn] = useState(true);
+  const [notifyClockOut, setNotifyClockOut] = useState(true);
+  const [notifyJobSubmitted, setNotifyJobSubmitted] = useState(true);
+  const [notifyNewContractor, setNotifyNewContractor] = useState(true);
+
+  useEffect(() => {
+    if (settings) {
+      setNotifyClockIn((settings as any).notifyOnClockIn ?? true);
+      setNotifyClockOut((settings as any).notifyOnClockOut ?? true);
+      setNotifyJobSubmitted((settings as any).notifyOnJobSubmitted ?? true);
+      setNotifyNewContractor((settings as any).notifyOnNewContractor ?? true);
+    }
+  }, [settings]);
+
+  if (isLoading) return <Skeleton className="h-64 w-full" />;
+
+  const toggle = (field: string, value: boolean) => {
+    if (!readOnly) updateSettings.mutate({ [field]: value } as any);
+  };
+
+  return (
+    <div className="space-y-6">
+      <Card className="bg-card border-border">
+        <CardHeader>
+          <CardTitle className="text-card-foreground flex items-center gap-2"><Bell className="h-5 w-5 text-primary" /> Notification Preferences</CardTitle>
+          <CardDescription>Choose which events trigger platform notifications to your account</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-5">
+          <div className="flex items-center justify-between">
+            <div>
+              <Label className="text-sm font-medium">Contractor Clocked In</Label>
+              <p className="text-xs text-muted-foreground">Notify when a contractor starts GPS tracking on a job</p>
+            </div>
+            <Switch checked={notifyClockIn} disabled={readOnly} onCheckedChange={(v) => { setNotifyClockIn(v); toggle("notifyOnClockIn", v); }} />
+          </div>
+          <div className="flex items-center justify-between">
+            <div>
+              <Label className="text-sm font-medium">Contractor Clocked Out</Label>
+              <p className="text-xs text-muted-foreground">Notify when a contractor ends their session (manual or auto)</p>
+            </div>
+            <Switch checked={notifyClockOut} disabled={readOnly} onCheckedChange={(v) => { setNotifyClockOut(v); toggle("notifyOnClockOut", v); }} />
+          </div>
+          <div className="flex items-center justify-between">
+            <div>
+              <Label className="text-sm font-medium">Job Submitted for Verification</Label>
+              <p className="text-xs text-muted-foreground">Notify when a contractor marks a job as complete and submits it for your review</p>
+            </div>
+            <Switch checked={notifyJobSubmitted} disabled={readOnly} onCheckedChange={(v) => { setNotifyJobSubmitted(v); toggle("notifyOnJobSubmitted", v); }} />
+          </div>
+          <div className="flex items-center justify-between">
+            <div>
+              <Label className="text-sm font-medium">New Contractor Application</Label>
+              <p className="text-xs text-muted-foreground">Notify when a contractor requests to join your company</p>
+            </div>
+            <Switch checked={notifyNewContractor} disabled={readOnly} onCheckedChange={(v) => { setNotifyNewContractor(v); toggle("notifyOnNewContractor", v); }} />
           </div>
         </CardContent>
       </Card>

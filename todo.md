@@ -323,3 +323,17 @@
 - [x] ETA displayed in the selected contractor info overlay on the map
 - [x] ETA displayed in the left-panel contractor list card
 - [x] Route to job site drawn on map when contractor is selected (blue polyline via Directions API)
+
+## Session 9: Live Cost, Past Jobs Tab, Payment Confirmation, Bug Fixes
+- [x] Live Tracking: live job cost ticker in left panel (updates every second, rounds to 2 decimal places)
+- [x] Live Tracking: live job cost shown in map overlay when contractor is selected
+- [x] Live Tracking: add "Past Jobs" tab alongside "Live Jobs" tab
+- [x] Past Jobs tab: list of completed sessions with route replay, job cost, duration, clock-out method
+- [x] Past Jobs tab: View Route button opens RouteReplayDialog
+- [x] Job verification: payment confirmation dialog showing final job cost before company approves
+- [x] Job verification: company must acknowledge the payment amount before approving
+- [x] Bug fix: completed and paid jobs not appearing in "Paid" filter tab on CompanyJobs
+- [x] PWA install prompt on contractor dashboard ("Add to Home Screen")
+- [x] Company notification preferences: toggle clock-in/clock-out notifications in settings
+- [x] notifyOnClockIn, notifyOnClockOut, notifyOnJobSubmitted, notifyOnNewContractor fields in DB
+- [x] Backend respects notification preferences before sending alerts

@@ -158,7 +158,7 @@ export const adminViewAsRouter = router({
     }),
 
   companyJobs: adminProcedure
-    .input(z.object({ companyId: z.number(), status: z.string().optional() }))
+    .input(z.object({ companyId: z.number(), status: z.union([z.string(), z.array(z.string())]).optional() }))
     .query(async ({ input }) => {
       return db.listMaintenanceRequests(input.companyId, input.status);
     }),

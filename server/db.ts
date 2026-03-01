@@ -292,11 +292,17 @@ export async function updateContractorCompanyStatus(id: number, status: "pending
 }
 
 // ─── Maintenance Requests ──────────────────────────────────────────────────
-export async function listMaintenanceRequests(companyId: number, status?: string) {
+export async function listMaintenanceRequests(companyId: number, status?: string | string[]) {
   const db = await getDb();
   if (!db) return [];
   const conditions = [eq(maintenanceRequests.companyId, companyId)];
-  if (status) conditions.push(eq(maintenanceRequests.status, status as any));
+  if (status) {
+    if (Array.isArray(status)) {
+      conditions.push(inArray(maintenanceRequests.status, status as any[]));
+    } else {
+      conditions.push(eq(maintenanceRequests.status, status as any));
+    }
+  }
   return db.select().from(maintenanceRequests).where(and(...conditions)).orderBy(desc(maintenanceRequests.createdAt));
 }
 
@@ -388,6 +394,13 @@ export async function updateTimeSession(id: number, data: Partial<InsertTimeSess
   await db.update(timeSessions).set(data).where(eq(timeSessions.id, id));
 }
 
+export async function getTimeSessionById(sessionId: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const rows = await db.select().from(timeSessions).where(eq(timeSessions.id, sessionId)).limit(1);
+  return rows[0] ?? null;
+}
+
 export async function getTimeSessionsByJob(maintenanceRequestId: number) {
   const db = await getDb();
   if (!db) return [];
@@ -424,6 +437,8 @@ export async function getActiveSessionsByCompany(companyId: number) {
     jobAddress: properties.address,
     jobLat: properties.latitude,
     jobLng: properties.longitude,
+    hourlyRate: maintenanceRequests.hourlyRate,
+    isEmergency: maintenanceRequests.isEmergency,
   })
   .from(timeSessions)
   .leftJoin(contractorProfiles, eq(timeSessions.contractorProfileId, contractorProfiles.id))
@@ -433,6 +448,41 @@ export async function getActiveSessionsByCompany(companyId: number) {
     eq(timeSessions.companyId, companyId),
     eq(timeSessions.status, "active"),
   ));
+  return sessions;
+}
+
+// Get completed/clocked-out time sessions for a company (for Past Jobs tab)
+export async function getCompletedSessionsByCompany(companyId: number, limit = 50) {
+  const db = await getDb();
+  if (!db) return [];
+  const sessions = await db.select({
+    sessionId: timeSessions.id,
+    maintenanceRequestId: timeSessions.maintenanceRequestId,
+    contractorProfileId: timeSessions.contractorProfileId,
+    clockInTime: timeSessions.clockInTime,
+    clockOutTime: timeSessions.clockOutTime,
+    totalMinutes: timeSessions.totalMinutes,
+    clockOutMethod: timeSessions.clockOutMethod,
+    contractorName: contractorProfiles.businessName,
+    contractorPhone: contractorProfiles.phone,
+    jobTitle: maintenanceRequests.title,
+    jobAddress: properties.address,
+    jobLat: properties.latitude,
+    jobLng: properties.longitude,
+    hourlyRate: maintenanceRequests.hourlyRate,
+    isEmergency: maintenanceRequests.isEmergency,
+    jobStatus: maintenanceRequests.status,
+  })
+  .from(timeSessions)
+  .leftJoin(contractorProfiles, eq(timeSessions.contractorProfileId, contractorProfiles.id))
+  .leftJoin(maintenanceRequests, eq(timeSessions.maintenanceRequestId, maintenanceRequests.id))
+  .leftJoin(properties, eq(maintenanceRequests.propertyId, properties.id))
+  .where(and(
+    eq(timeSessions.companyId, companyId),
+    eq(timeSessions.status, "completed"),
+  ))
+  .orderBy(desc(timeSessions.clockOutTime))
+  .limit(limit);
   return sessions;
 }
 

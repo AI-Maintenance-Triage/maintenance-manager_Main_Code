@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useViewAs } from "@/contexts/ViewAsContext";
-import { Plus, Zap, Clock, CheckCircle, AlertTriangle, Globe, X, Route } from "lucide-react";
+import { Plus, Zap, Clock, CheckCircle, AlertTriangle, Globe, X, Route, DollarSign } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { RouteReplayDialog } from "@/components/RouteReplayDialog";
@@ -26,10 +26,22 @@ const statusIcons: Record<string, React.ReactNode> = {
   open: <Clock className="h-3.5 w-3.5" />,
   assigned: <Zap className="h-3.5 w-3.5" />,
   in_progress: <Zap className="h-3.5 w-3.5" />,
+  pending_verification: <Clock className="h-3.5 w-3.5 text-orange-400" />,
   completed: <CheckCircle className="h-3.5 w-3.5" />,
-  verified: <CheckCircle className="h-3.5 w-3.5" />,
-  paid: <CheckCircle className="h-3.5 w-3.5" />,
+  verified: <CheckCircle className="h-3.5 w-3.5 text-blue-400" />,
+  paid: <CheckCircle className="h-3.5 w-3.5 text-green-400" />,
 };
+
+// Filter tab definitions — "paid" tab shows both verified and paid
+const FILTER_TABS: { label: string; value: string; queryStatus: string | string[] | undefined }[] = [
+  { label: "All", value: "all", queryStatus: undefined },
+  { label: "Open", value: "open", queryStatus: "open" },
+  { label: "Assigned", value: "assigned", queryStatus: "assigned" },
+  { label: "In Progress", value: "in_progress", queryStatus: "in_progress" },
+  { label: "Pending Review", value: "pending_verification", queryStatus: "pending_verification" },
+  { label: "Completed", value: "completed", queryStatus: "completed" },
+  { label: "Paid", value: "paid", queryStatus: ["verified", "paid"] },
+];
 
 export default function CompanyJobs() {
   const { user } = useAuth();
@@ -38,17 +50,19 @@ export default function CompanyJobs() {
   const isViewingAsCompany = isAdmin && viewAs.mode === "company" && viewAs.companyId;
 
   const [open, setOpen] = useState(false);
-  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [activeTab, setActiveTab] = useState("all");
   const [replayJob, setReplayJob] = useState<{ id: number; title: string } | null>(null);
   const utils = trpc.useUtils();
 
+  const currentTab = FILTER_TABS.find(t => t.value === activeTab) ?? FILTER_TABS[0];
+
   // Use adminViewAs for admin impersonation, regular for company admin
   const regularJobs = trpc.jobs.list.useQuery(
-    statusFilter !== "all" ? { status: statusFilter } : {},
+    currentTab.queryStatus !== undefined ? { status: currentTab.queryStatus as any } : {},
     { enabled: !isViewingAsCompany }
   );
   const viewAsJobs = trpc.adminViewAs.companyJobs.useQuery(
-    { companyId: viewAs.companyId!, status: statusFilter !== "all" ? statusFilter : undefined },
+    { companyId: viewAs.companyId!, status: currentTab.queryStatus as any },
     { enabled: !!isViewingAsCompany }
   );
 
@@ -95,9 +109,6 @@ export default function CompanyJobs() {
     onError: (err: any) => toast.error(err.message),
   });
 
-  // Admin impersonating a company can create jobs using the company's context
-  const canCreate = true;
-
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -107,69 +118,73 @@ export default function CompanyJobs() {
             {isViewingAsCompany ? `Managing jobs for ${viewAs.companyName}` : "Manage maintenance requests across your properties"}
           </p>
         </div>
-        {canCreate && (
-          <Dialog open={open} onOpenChange={setOpen}>
-            <DialogTrigger asChild>
-              <Button className="gap-2"><Plus className="h-4 w-4" /> New Job</Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-lg bg-card">
-              <DialogHeader>
-                <DialogTitle className="text-card-foreground">Create Maintenance Request</DialogTitle>
-              </DialogHeader>
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label>Property</Label>
-                  <Select value={form.propertyId} onValueChange={(v) => setForm({ ...form, propertyId: v })}>
-                    <SelectTrigger><SelectValue placeholder="Select property" /></SelectTrigger>
-                    <SelectContent>
-                      {properties?.map((p: any) => (
-                        <SelectItem key={p.id} value={String(p.id)}>{p.name} — {p.address}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label>Title</Label>
-                  <Input placeholder="e.g. Water leaking under kitchen sink" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
-                </div>
-                <div className="space-y-2">
-                  <Label>Description</Label>
-                  <Textarea placeholder="Describe the issue in detail..." value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} rows={3} />
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>Tenant Name</Label>
-                    <Input placeholder="John Doe" value={form.tenantName} onChange={(e) => setForm({ ...form, tenantName: e.target.value })} />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Unit #</Label>
-                    <Input placeholder="e.g. 2B" value={form.unitNumber} onChange={(e) => setForm({ ...form, unitNumber: e.target.value })} />
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <Label>Tenant Phone</Label>
-                  <Input placeholder="(555) 123-4567" value={form.tenantPhone} onChange={(e) => setForm({ ...form, tenantPhone: e.target.value })} />
-                </div>
-                <Button
-                  onClick={() => createJob.mutate({
-                    propertyId: Number(form.propertyId), title: form.title, description: form.description,
-                    tenantName: form.tenantName || undefined, tenantPhone: form.tenantPhone || undefined, unitNumber: form.unitNumber || undefined,
-                  })}
-                  disabled={!form.propertyId || !form.title || !form.description || createJob.isPending}
-                  className="w-full"
-                >
-                  {createJob.isPending ? "Creating & Classifying..." : "Create Job"}
-                </Button>
+        <Dialog open={open} onOpenChange={setOpen}>
+          <DialogTrigger asChild>
+            <Button className="gap-2"><Plus className="h-4 w-4" /> New Job</Button>
+          </DialogTrigger>
+          <DialogContent className="max-w-lg bg-card">
+            <DialogHeader>
+              <DialogTitle className="text-card-foreground">Create Maintenance Request</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label>Property</Label>
+                <Select value={form.propertyId} onValueChange={(v) => setForm({ ...form, propertyId: v })}>
+                  <SelectTrigger><SelectValue placeholder="Select property" /></SelectTrigger>
+                  <SelectContent>
+                    {properties?.map((p: any) => (
+                      <SelectItem key={p.id} value={String(p.id)}>{p.name} — {p.address}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
-            </DialogContent>
-          </Dialog>
-        )}
+              <div className="space-y-2">
+                <Label>Title</Label>
+                <Input placeholder="e.g. Water leaking under kitchen sink" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
+              </div>
+              <div className="space-y-2">
+                <Label>Description</Label>
+                <Textarea placeholder="Describe the issue in detail..." value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} rows={3} />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Tenant Name</Label>
+                  <Input placeholder="John Doe" value={form.tenantName} onChange={(e) => setForm({ ...form, tenantName: e.target.value })} />
+                </div>
+                <div className="space-y-2">
+                  <Label>Unit #</Label>
+                  <Input placeholder="e.g. 2B" value={form.unitNumber} onChange={(e) => setForm({ ...form, unitNumber: e.target.value })} />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label>Tenant Phone</Label>
+                <Input placeholder="(555) 123-4567" value={form.tenantPhone} onChange={(e) => setForm({ ...form, tenantPhone: e.target.value })} />
+              </div>
+              <Button
+                onClick={() => createJob.mutate({
+                  propertyId: Number(form.propertyId), title: form.title, description: form.description,
+                  tenantName: form.tenantName || undefined, tenantPhone: form.tenantPhone || undefined, unitNumber: form.unitNumber || undefined,
+                })}
+                disabled={!form.propertyId || !form.title || !form.description || createJob.isPending}
+                className="w-full"
+              >
+                {createJob.isPending ? "Creating & Classifying..." : "Create Job"}
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
 
+      {/* Filter tabs */}
       <div className="flex gap-2 flex-wrap">
-        {["all", "open", "assigned", "in_progress", "completed", "paid"].map((s) => (
-          <Button key={s} variant={statusFilter === s ? "default" : "outline"} size="sm" onClick={() => setStatusFilter(s)} className="capitalize">
-            {s === "all" ? "All" : s.replace("_", " ")}
+        {FILTER_TABS.map((tab) => (
+          <Button
+            key={tab.value}
+            variant={activeTab === tab.value ? "default" : "outline"}
+            size="sm"
+            onClick={() => setActiveTab(tab.value)}
+          >
+            {tab.label}
           </Button>
         ))}
       </div>
@@ -180,80 +195,100 @@ export default function CompanyJobs() {
         <Card className="bg-card border-border">
           <CardContent className="p-12 text-center">
             <AlertTriangle className="h-10 w-10 text-muted-foreground mx-auto mb-4" />
-            <p className="text-muted-foreground">No maintenance jobs found. Create your first job to get started.</p>
+            <p className="text-muted-foreground">
+              {activeTab === "all"
+                ? "No maintenance jobs found. Create your first job to get started."
+                : `No jobs with status "${currentTab.label}".`}
+            </p>
           </CardContent>
         </Card>
       ) : (
         <div className="space-y-3">
-          {jobs.map((job: any) => (
-            <Card key={job.id} className="bg-card border-border hover:border-primary/30 transition-colors">
-              <CardContent className="p-4">
-                <div className="flex items-start justify-between gap-4">
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2 mb-1">
-                      <h3 className="font-medium text-card-foreground truncate">{job.title}</h3>
-                      {job.isEmergency && <Badge variant="destructive" className="text-xs">Emergency</Badge>}
-                    </div>
-                    <p className="text-sm text-muted-foreground line-clamp-2 mb-2">{job.description}</p>
-                    <div className="flex items-center gap-3 text-xs text-muted-foreground flex-wrap">
-                      {job.aiPriority && (
-                        <span className={`px-2 py-0.5 rounded-full border ${priorityColors[job.aiPriority] || ""}`}>
-                          {job.aiPriority} priority
-                        </span>
+          {jobs.map((job: any) => {
+            const laborCost = parseFloat(job.totalLaborCost ?? "0");
+            const partsCost = parseFloat(job.totalPartsCost ?? "0");
+            const totalCost = laborCost + partsCost;
+            const isPaid = job.status === "paid" || job.status === "verified";
+
+            return (
+              <Card key={job.id} className="bg-card border-border hover:border-primary/30 transition-colors">
+                <CardContent className="p-4">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <h3 className="font-medium text-card-foreground truncate">{job.title}</h3>
+                        {job.isEmergency && <Badge variant="destructive" className="text-xs">Emergency</Badge>}
+                      </div>
+                      <p className="text-sm text-muted-foreground line-clamp-2 mb-2">{job.description}</p>
+                      <div className="flex items-center gap-3 text-xs text-muted-foreground flex-wrap">
+                        {job.aiPriority && (
+                          <span className={`px-2 py-0.5 rounded-full border ${priorityColors[job.aiPriority] || ""}`}>
+                            {job.aiPriority} priority
+                          </span>
+                        )}
+                        {job.aiSkillTier && <span className="text-primary">{job.aiSkillTier}</span>}
+                        {job.hourlyRate && <span>${job.hourlyRate}/hr</span>}
+                        {job.tenantName && <span>Tenant: {job.tenantName}</span>}
+                        {/* Show final cost on paid/verified jobs */}
+                        {isPaid && totalCost > 0 && (
+                          <span className="flex items-center gap-0.5 text-green-400 font-medium">
+                            <DollarSign className="h-3 w-3" />{totalCost.toFixed(2)} total
+                          </span>
+                        )}
+                      </div>
+                      {job.aiReasoning && (
+                        <p className="text-xs text-muted-foreground/70 mt-2 italic">AI: {job.aiReasoning}</p>
                       )}
-                      {job.aiSkillTier && <span className="text-primary">{job.aiSkillTier}</span>}
-                      {job.hourlyRate && <span>${job.hourlyRate}/hr</span>}
-                      {job.tenantName && <span>Tenant: {job.tenantName}</span>}
                     </div>
-                    {job.aiReasoning && (
-                      <p className="text-xs text-muted-foreground/70 mt-2 italic">AI: {job.aiReasoning}</p>
-                    )}
-                  </div>
-                  <div className="flex flex-col items-end gap-2 shrink-0">
-                    <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                      {statusIcons[job.status]}
-                      <span className="capitalize">{job.status.replace("_", " ")}</span>
-                    </span>
-                    {(job.status === "completed" || job.status === "verified" || job.status === "paid") && (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="text-xs gap-1 h-7 border-blue-500/40 text-blue-400 hover:bg-blue-500/10"
-                        onClick={() => setReplayJob({ id: job.id, title: job.title })}
-                      >
-                        <Route className="h-3 w-3" /> View Route
-                      </Button>
-                    )}
-                    {canCreate && job.status === "open" && (
-                      job.postedToBoard ? (
+                    <div className="flex flex-col items-end gap-2 shrink-0">
+                      <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                        {statusIcons[job.status]}
+                        <span className="capitalize">{job.status.replace(/_/g, " ")}</span>
+                      </span>
+                      {/* View Route button for completed/verified/paid jobs */}
+                      {(job.status === "completed" || job.status === "verified" || job.status === "paid") && (
                         <Button
                           size="sm"
                           variant="outline"
-                          className="text-xs gap-1 h-7 border-orange-500/40 text-orange-400 hover:bg-orange-500/10"
-                          onClick={() => removeFromBoard.mutate({ jobId: job.id })}
-                          disabled={removeFromBoard.isPending}
+                          className="text-xs gap-1 h-7 border-blue-500/40 text-blue-400 hover:bg-blue-500/10"
+                          onClick={() => setReplayJob({ id: job.id, title: job.title })}
                         >
-                          <X className="h-3 w-3" /> Remove from Board
+                          <Route className="h-3 w-3" /> View Route
                         </Button>
-                      ) : (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="text-xs gap-1 h-7 border-primary/40 text-primary hover:bg-primary/10"
-                          onClick={() => postToBoard.mutate({ jobId: job.id })}
-                          disabled={postToBoard.isPending}
-                        >
-                          <Globe className="h-3 w-3" /> Post to Board
-                        </Button>
-                      )
-                    )}
+                      )}
+                      {/* Post/Remove from board for open jobs */}
+                      {job.status === "open" && (
+                        job.postedToBoard ? (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="text-xs gap-1 h-7 border-orange-500/40 text-orange-400 hover:bg-orange-500/10"
+                            onClick={() => removeFromBoard.mutate({ jobId: job.id })}
+                            disabled={removeFromBoard.isPending}
+                          >
+                            <X className="h-3 w-3" /> Remove from Board
+                          </Button>
+                        ) : (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="text-xs gap-1 h-7 border-primary/40 text-primary hover:bg-primary/10"
+                            onClick={() => postToBoard.mutate({ jobId: job.id })}
+                            disabled={postToBoard.isPending}
+                          >
+                            <Globe className="h-3 w-3" /> Post to Board
+                          </Button>
+                        )
+                      )}
+                    </div>
                   </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
       )}
+
       {replayJob && (
         <RouteReplayDialog
           open={!!replayJob}
