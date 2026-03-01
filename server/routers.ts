@@ -494,6 +494,23 @@ const contractorRouter = router({
     .mutation(async ({ ctx, input }) => {
       const companyId = getEffectiveCompanyId(ctx);
       await db.setContractorTrusted(input.relationshipId, companyId, input.isTrusted);
+      // Send in-app notification to contractor when trust is granted
+      if (input.isTrusted) {
+        try {
+          const rel = await db.getContractorUserIdByRelationship(input.relationshipId);
+          const company = await db.getCompanyById(companyId);
+          if (rel?.userId) {
+            await db.createNotification({
+              userId: rel.userId,
+              type: 'system',
+              title: 'You\'ve been marked as Trusted',
+              body: `${company?.name ?? 'A company'} has marked you as a trusted contractor. You now have access to their private job board.`,
+              linkRoute: '/contractor/jobs',
+              metadata: { companyId },
+            });
+          }
+        } catch { /* non-critical */ }
+      }
       return { success: true };
     }),
 
@@ -624,6 +641,14 @@ const contractorRouter = router({
               }
             }
           }
+        }
+      } catch { /* non-critical */ }
+
+      // Auto-add contractor to company roster on job completion (if not already linked)
+      try {
+        const jobData = await db.getMaintenanceRequestById(input.jobId);
+        if (jobData?.companyId) {
+          await db.ensureContractorCompanyRelation(profile.id, jobData.companyId);
         }
       } catch { /* non-critical */ }
 
@@ -843,6 +868,54 @@ const jobsRouter = router({
       const { id, ...data } = input;
       await db.updateMaintenanceRequest(id, data);
       return { success: true };
+    }),
+
+  // Company: override the AI-assigned priority level and update billing rate accordingly
+  overridePriority: companyAdminProcedure
+    .input(z.object({
+      jobId: z.number(),
+      priority: z.enum(["low", "medium", "high", "emergency"]),
+      reason: z.string().optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const companyId = getEffectiveCompanyId(ctx);
+      // Verify this job belongs to this company
+      const job = await db.getMaintenanceRequestById(input.jobId);
+      if (!job || job.companyId !== companyId) throw new TRPCError({ code: "NOT_FOUND" });
+      // Look up the skill tier that best matches the new priority level
+      // Priority → skill tier name mapping: emergency → Emergency, high → High Priority, medium → General, low → Basic
+      const tiers = await db.getSkillTiers(companyId);
+      const priorityTierMap: Record<string, string[]> = {
+        emergency: ["emergency", "urgent", "after-hours"],
+        high: ["high", "priority", "specialist", "licensed"],
+        medium: ["medium", "general", "standard"],
+        low: ["low", "basic", "entry", "simple"],
+      };
+      const keywords = priorityTierMap[input.priority] ?? [];
+      const matchedTier = tiers.find(t =>
+        keywords.some(kw => t.name.toLowerCase().includes(kw))
+      ) ?? tiers[0];
+      // Apply emergency multiplier if priority is emergency
+      let newHourlyRate: string | null = matchedTier?.hourlyRate ?? null;
+      if (input.priority === "emergency" && matchedTier?.emergencyMultiplier) {
+        const base = parseFloat(matchedTier.hourlyRate);
+        const mult = parseFloat(matchedTier.emergencyMultiplier);
+        if (!isNaN(base) && !isNaN(mult)) {
+          newHourlyRate = (base * mult).toFixed(2);
+        }
+      }
+      await db.updateMaintenanceRequest(input.jobId, {
+        overridePriority: input.priority,
+        overrideHourlyRate: newHourlyRate,
+        overrideReason: input.reason ?? null,
+        overriddenAt: new Date(),
+        overriddenByUserId: ctx.user.id,
+        // Also update the live hourlyRate and isEmergency so billing uses the new rate
+        hourlyRate: newHourlyRate,
+        isEmergency: input.priority === "emergency",
+        skillTierId: matchedTier?.id ?? null,
+      });
+      return { success: true, newHourlyRate, matchedTierName: matchedTier?.name ?? null };
     }),
 
   // Company: get jobs awaiting verification

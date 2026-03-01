@@ -242,6 +242,13 @@ export const maintenanceRequests = mysqlTable("maintenance_requests", {
   stripePaymentIntentId: varchar("stripePaymentIntentId", { length: 128 }),
   paidAt: timestamp("paidAt"),
   escalationNotifiedAt: bigint("escalationNotifiedAt", { mode: "number" }),
+  // Company priority override: when set, overrides the AI-assigned priority.
+  // The overrideHourlyRate reflects the billing rate for the new priority level.
+  overridePriority: mysqlEnum("overridePriority", ["low", "medium", "high", "emergency"]),
+  overrideHourlyRate: decimal("overrideHourlyRate", { precision: 8, scale: 2 }),
+  overrideReason: varchar("overrideReason", { length: 500 }),
+  overriddenAt: timestamp("overriddenAt"),
+  overriddenByUserId: int("overriddenByUserId"),
   // Financials
   skillTierId: int("skillTierId"),
   hourlyRate: decimal("hourlyRate", { precision: 8, scale: 2 }),

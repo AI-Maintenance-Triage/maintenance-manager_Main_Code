@@ -11,7 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { useViewAs } from "@/contexts/ViewAsContext";
-import { Plus, Zap, Clock, CheckCircle, AlertTriangle, Globe, X, Route, DollarSign, FileDown, Star, MessageSquare, ChevronDown, ChevronUp, Lock, Unlock } from "lucide-react";
+import { Plus, Zap, Clock, CheckCircle, AlertTriangle, Globe, X, Route, DollarSign, FileDown, Star, MessageSquare, ChevronDown, ChevronUp, Lock, Unlock, Pencil } from "lucide-react";
 import { useState } from "react";
 import { JobCostBreakdown } from "@/components/JobCostBreakdown";
 import { toast } from "sonner";
@@ -108,6 +108,15 @@ export default function CompanyJobs() {
   const setVisibility = trpc.jobBoard.setVisibility.useMutation({
     onSuccess: (_data: any, vars: any) => {
       toast.success(vars.visibility === "private" ? "Job moved to Private Board (trusted contractors only)." : "Job moved to Public Board.");
+      utils.jobs.list.invalidate();
+      utils.adminViewAs.companyJobs.invalidate();
+    },
+    onError: (err: any) => toast.error(err.message),
+  });
+
+  const overridePriority = trpc.jobs.overridePriority.useMutation({
+    onSuccess: (data: any) => {
+      toast.success(`Priority updated${data.newHourlyRate ? ` — new rate: $${data.newHourlyRate}/hr` : ''}.`);
       utils.jobs.list.invalidate();
       utils.adminViewAs.companyJobs.invalidate();
     },
@@ -238,10 +247,35 @@ export default function CompanyJobs() {
                       </div>
                       <p className="text-sm text-muted-foreground line-clamp-2 mb-2">{job.description}</p>
                       <div className="flex items-center gap-3 text-xs text-muted-foreground flex-wrap">
-                        {job.aiPriority && (
-                          <span className={`px-2 py-0.5 rounded-full border ${priorityColors[job.aiPriority] || ""}`}>
-                            {job.aiPriority} priority
+                        {/* Priority display — shows override if set, otherwise AI priority */}
+                        {((job as any).overridePriority || job.aiPriority) && (
+                          <span className={`px-2 py-0.5 rounded-full border ${priorityColors[(job as any).overridePriority ?? job.aiPriority] || ""}`}>
+                            {(job as any).overridePriority ? (
+                              <span className="flex items-center gap-1">
+                                <Pencil className="h-2.5 w-2.5" />
+                                {(job as any).overridePriority} priority
+                              </span>
+                            ) : (
+                              <>{job.aiPriority} priority</>
+                            )}
                           </span>
+                        )}
+                        {/* Priority override dropdown — only on open/assigned jobs */}
+                        {(job.status === "open" || job.status === "assigned" || job.status === "in_progress") && (
+                          <Select
+                            value={(job as any).overridePriority ?? job.aiPriority ?? ""}
+                            onValueChange={(val) => overridePriority.mutate({ jobId: job.id, priority: val as any })}
+                          >
+                            <SelectTrigger className="h-5 text-xs border-border/50 bg-transparent w-auto px-1.5 gap-1 [&>svg]:h-3 [&>svg]:w-3">
+                              <SelectValue placeholder="Set priority" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="low"><span className="text-green-400">● Low</span></SelectItem>
+                              <SelectItem value="medium"><span className="text-yellow-400">● Medium</span></SelectItem>
+                              <SelectItem value="high"><span className="text-orange-400">● High</span></SelectItem>
+                              <SelectItem value="emergency"><span className="text-red-400">● Emergency</span></SelectItem>
+                            </SelectContent>
+                          </Select>
                         )}
                         {job.aiSkillTier && <span className="text-primary">{job.aiSkillTier}</span>}
                         {job.hourlyRate && <span>${job.hourlyRate}/hr</span>}
@@ -328,6 +362,17 @@ export default function CompanyJobs() {
                       >
                         <MessageSquare className="h-3 w-3" /> Notes
                       </Button>
+                      {/* Visibility badge — shown when job is on the board */}
+                      {job.postedToBoard && (
+                        <span className={`flex items-center gap-1 text-xs px-2 py-0.5 rounded-full border font-medium ${
+                          (job as any).jobBoardVisibility === "private"
+                            ? "border-amber-500/40 text-amber-400 bg-amber-500/10"
+                            : "border-green-500/40 text-green-400 bg-green-500/10"
+                        }`}>
+                          {(job as any).jobBoardVisibility === "private" ? <Lock className="h-3 w-3" /> : <Globe className="h-3 w-3" />}
+                          {(job as any).jobBoardVisibility === "private" ? "Private" : "Public"}
+                        </span>
+                      )}
                       {/* Post/Remove from board for open jobs */}
                       {job.status === "open" && (
                         job.postedToBoard ? (

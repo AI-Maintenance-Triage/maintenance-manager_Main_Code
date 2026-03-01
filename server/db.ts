@@ -307,6 +307,31 @@ export async function listCompaniesByContractor(contractorProfileId: number) {
   return result;
 }
 
+/** Ensures a contractor-company relationship exists (auto-roster on job completion).
+ * If the relationship already exists, does nothing. If not, creates it as approved.
+ */
+export async function ensureContractorCompanyRelation(contractorProfileId: number, companyId: number): Promise<void> {
+  const db = await getDb();
+  if (!db) return;
+  // Check if relationship already exists
+  const [existing] = await db
+    .select({ id: contractorCompanies.id })
+    .from(contractorCompanies)
+    .where(and(
+      eq(contractorCompanies.contractorProfileId, contractorProfileId),
+      eq(contractorCompanies.companyId, companyId)
+    ))
+    .limit(1);
+  if (existing) return; // Already in roster
+  // Auto-create as approved (they already completed a job — no need for pending review)
+  await db.insert(contractorCompanies).values({
+    contractorProfileId,
+    companyId,
+    status: "approved",
+    isTrusted: false, // Company must manually trust them
+    invitedBy: "contractor", // They came via public board
+  });
+}
 export async function createContractorCompanyRelation(data: InsertContractorCompany) {
   const db = await getDb();
   if (!db) throw new Error("DB not available");
@@ -328,6 +353,23 @@ export async function setContractorTrusted(relationshipId: number, companyId: nu
     .where(and(eq(contractorCompanies.id, relationshipId), eq(contractorCompanies.companyId, companyId)));
 }
 
+/** Returns the userId of the contractor for a given contractorCompanies relationship row */
+export async function getContractorUserIdByRelationship(relationshipId: number): Promise<{ userId: number; companyId: number; contractorProfileId: number } | undefined> {
+  const db = await getDb();
+  if (!db) return undefined;
+  const [row] = await db
+    .select({
+      userId: users.id,
+      companyId: contractorCompanies.companyId,
+      contractorProfileId: contractorCompanies.contractorProfileId,
+    })
+    .from(contractorCompanies)
+    .innerJoin(contractorProfiles, eq(contractorCompanies.contractorProfileId, contractorProfiles.id))
+    .innerJoin(users, eq(contractorProfiles.userId, users.id))
+    .where(eq(contractorCompanies.id, relationshipId))
+    .limit(1);
+  return row;
+}
 /** Returns the set of companyIds that have marked this contractor as trusted */
 export async function getTrustedCompanyIdsForContractor(contractorProfileId: number): Promise<number[]> {
   const db = await getDb();
@@ -725,7 +767,7 @@ export async function upsertIntegrationConnector(data: InsertIntegrationConnecto
 // ─── Dashboard Stats ───────────────────────────────────────────────────────
 export async function getCompanyDashboardStats(companyId: number) {
   const db = await getDb();
-  if (!db) return { totalJobs: 0, openJobs: 0, inProgressJobs: 0, completedJobs: 0, totalSpent: "0.00", activeContractors: 0, totalProperties: 0 };
+  if (!db) return { totalJobs: 0, openJobs: 0, inProgressJobs: 0, completedJobs: 0, totalSpent: "0.00", activeContractors: 0, trustedContractors: 0, totalProperties: 0 };
 
   const [jobStats] = await db.select({
     total: sql<number>`COUNT(*)`,
@@ -742,6 +784,14 @@ export async function getCompanyDashboardStats(companyId: number) {
     count: sql<number>`COUNT(*)`,
   }).from(contractorCompanies).where(and(eq(contractorCompanies.companyId, companyId), eq(contractorCompanies.status, "approved")));
 
+  const [trustedCount] = await db.select({
+    count: sql<number>`COUNT(*)`,
+  }).from(contractorCompanies).where(and(
+    eq(contractorCompanies.companyId, companyId),
+    eq(contractorCompanies.status, "approved"),
+    eq(contractorCompanies.isTrusted, true)
+  ));
+
   const [propertyCount] = await db.select({
     count: sql<number>`COUNT(*)`,
   }).from(properties).where(eq(properties.companyId, companyId));
@@ -753,6 +803,7 @@ export async function getCompanyDashboardStats(companyId: number) {
     completedJobs: jobStats?.completed ?? 0,
     totalSpent: spentResult?.total ?? "0.00",
     activeContractors: contractorCount?.count ?? 0,
+    trustedContractors: trustedCount?.count ?? 0,
     totalProperties: propertyCount?.count ?? 0,
   };
 }

@@ -30,7 +30,9 @@ function JobCard({ row, onSelect }: { row: any; onSelect: (row: any) => void }) 
   const company = row.company;
   const distanceMiles: number | undefined = row.distanceMiles;
   const isPrivate: boolean = row.isPrivate ?? false;
-  const priority = PRIORITY_CONFIG[job.aiPriority as keyof typeof PRIORITY_CONFIG] ?? PRIORITY_CONFIG.medium;
+  // Use override priority if set, otherwise fall back to AI priority
+  const effectivePriority = job.overridePriority ?? job.aiPriority;
+  const priority = PRIORITY_CONFIG[effectivePriority as keyof typeof PRIORITY_CONFIG] ?? PRIORITY_CONFIG.medium;
 
   return (
     <Card
@@ -48,10 +50,11 @@ function JobCard({ row, onSelect }: { row: any; onSelect: (row: any) => void }) 
                 <Lock className="h-3 w-3 mr-1" /> Private
               </Badge>
             )}
-            {job.aiPriority && (
+            {effectivePriority && (
               <Badge className={`text-xs border ${priority.color}`}>
                 {job.isEmergency ? <AlertTriangle className="h-3 w-3 mr-1" /> : null}
                 {priority.label}
+                {job.overridePriority && <span className="ml-1 opacity-70">(updated)</span>}
               </Badge>
             )}
           </div>
@@ -110,7 +113,8 @@ function JobDetailDialog({
   row: any; onClose: () => void; onAccept: (jobId: number) => void; isPending: boolean;
 }) {
   const isPrivate: boolean = row.isPrivate ?? false;
-  const priority = PRIORITY_CONFIG[row.job.aiPriority as keyof typeof PRIORITY_CONFIG] ?? PRIORITY_CONFIG.medium;
+  const effectivePriority = row.job.overridePriority ?? row.job.aiPriority;
+  const priority = PRIORITY_CONFIG[effectivePriority as keyof typeof PRIORITY_CONFIG] ?? PRIORITY_CONFIG.medium;
   return (
     <Dialog open={!!row} onOpenChange={onClose}>
       <DialogContent className="bg-card max-w-lg">
@@ -124,10 +128,11 @@ function JobDetailDialog({
                 <Lock className="h-3 w-3 mr-1" /> Private Job
               </Badge>
             )}
-            {row.job.aiPriority && (
+            {effectivePriority && (
               <Badge className={`text-xs border ${priority.color}`}>
                 {row.job.isEmergency && <AlertTriangle className="h-3 w-3 mr-1" />}
                 {priority.label} Priority
+                {row.job.overridePriority && <span className="ml-1 opacity-70">(updated by company)</span>}
               </Badge>
             )}
             {row.job.aiSkillTier && (

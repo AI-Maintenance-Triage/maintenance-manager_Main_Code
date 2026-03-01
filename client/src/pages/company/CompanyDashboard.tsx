@@ -73,6 +73,7 @@ function CompanyDashboardViewAs({ companyId, companyName }: { companyId: number;
     { label: "Open Jobs", value: stats?.openJobs ?? 0, icon: ClipboardList, color: "text-blue-400" },
     { label: "In Progress", value: stats?.inProgressJobs ?? 0, icon: Clock, color: "text-yellow-400" },
     { label: "Active Contractors", value: stats?.activeContractors ?? 0, icon: HardHat, color: "text-green-400" },
+    { label: "Trusted Contractors", value: (stats as any)?.trustedContractors ?? 0, icon: Shield, color: "text-emerald-400", hint: "View trusted list" },
     { label: "Properties", value: stats?.totalProperties ?? 0, icon: MapPin, color: "text-purple-400" },
     { label: "Completed", value: stats?.completedJobs ?? 0, icon: AlertTriangle, color: "text-red-400" },
     { label: "Total Spent", value: stats?.totalSpent ? `$${stats.totalSpent}` : "$0", icon: DollarSign, color: "text-primary" },
@@ -85,7 +86,7 @@ function CompanyDashboardViewAs({ companyId, companyName }: { companyId: number;
         <p className="text-muted-foreground mt-1">Viewing as company admin</p>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {statCards.map((stat) => (
+        {statCards.map((stat: any) => (
           <Card key={stat.label} className="bg-card border-border">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground">{stat.label}</CardTitle>
@@ -93,6 +94,7 @@ function CompanyDashboardViewAs({ companyId, companyName }: { companyId: number;
             </CardHeader>
             <CardContent>
               <div className="text-3xl font-bold text-card-foreground">{stat.value}</div>
+              {stat.hint && <p className="text-xs text-muted-foreground mt-1">{stat.hint} →</p>}
             </CardContent>
           </Card>
         ))}
@@ -274,6 +276,7 @@ function CompanyDashboardContent() {
     { label: "Open Jobs", value: stats?.openJobs ?? 0, icon: ClipboardList, color: "text-blue-400" },
     { label: "In Progress", value: stats?.inProgressJobs ?? 0, icon: Clock, color: "text-yellow-400" },
     { label: "Active Contractors", value: stats?.activeContractors ?? 0, icon: HardHat, color: "text-green-400" },
+    { label: "Trusted Contractors", value: (stats as any)?.trustedContractors ?? 0, icon: Shield, color: "text-emerald-400", hint: "View trusted list" },
     { label: "Properties", value: stats?.totalProperties ?? 0, icon: MapPin, color: "text-purple-400" },
     { label: "Completed", value: stats?.completedJobs ?? 0, icon: AlertTriangle, color: "text-red-400" },
     { label: "Total Spent", value: stats?.totalSpent ? `$${stats.totalSpent}` : "$0", icon: DollarSign, color: "text-primary" },
@@ -287,7 +290,7 @@ function CompanyDashboardContent() {
         <p className="text-muted-foreground mt-1">Overview of your maintenance operations</p>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {statCards.map((stat) => (
+        {statCards.map((stat: any) => (
           <Card key={stat.label} className="bg-card border-border">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground">{stat.label}</CardTitle>
@@ -295,6 +298,7 @@ function CompanyDashboardContent() {
             </CardHeader>
             <CardContent>
               <div className="text-3xl font-bold text-card-foreground">{stat.value}</div>
+              {stat.hint && <p className="text-xs text-muted-foreground mt-1">{stat.hint} →</p>}
             </CardContent>
           </Card>
         ))}

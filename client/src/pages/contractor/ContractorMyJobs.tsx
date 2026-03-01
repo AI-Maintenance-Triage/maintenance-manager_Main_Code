@@ -428,6 +428,21 @@ function JobCard({ row, onUpdate, readOnly = false }: { row: any; onUpdate: () =
                 </p>
               )}
               <div className="flex items-center gap-3 text-xs text-muted-foreground flex-wrap">
+                {/* Priority badge — shows override if set, otherwise AI priority */}
+                {((job as any).overridePriority || job.aiPriority) && (() => {
+                  const PRIORITY_COLORS: Record<string, string> = {
+                    emergency: "bg-red-500/20 text-red-400 border-red-500/30",
+                    high: "bg-orange-500/20 text-orange-400 border-orange-500/30",
+                    medium: "bg-yellow-500/20 text-yellow-400 border-yellow-500/30",
+                    low: "bg-green-500/20 text-green-400 border-green-500/30",
+                  };
+                  const p = (job as any).overridePriority ?? job.aiPriority;
+                  return (
+                    <span className={`px-2 py-0.5 rounded-full border font-medium ${PRIORITY_COLORS[p] ?? ""}`}>
+                      {p} priority{(job as any).overridePriority ? " (updated)" : ""}
+                    </span>
+                  );
+                })()}
                 {job.aiSkillTier && <span className="text-primary font-medium">{job.aiSkillTier}</span>}
                 {job.hourlyRate && <span className="font-medium text-foreground">${job.hourlyRate}/hr</span>}
               </div>

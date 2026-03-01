@@ -1082,3 +1082,54 @@
 - [x] Vitest tests for haversine distance calculation (session-32.test.ts)
 - [x] Vitest tests for admin webhook date-range filter (session-32.test.ts)
 - [x] 320 total tests passing, 0 TypeScript errors
+
+## Session 33: Priority Override + Visibility Badge + Trusted KPI + Trust Notification [COMPLETED]
+
+### Job Card Visibility Badge (Company Jobs List)
+- [x] Show "Public" or "Private" pill badge on each job card in company Jobs list when posted to board
+- [x] Badge is color-coded: green for Public, amber for Private
+
+### Trusted Contractor KPI Card (Company Dashboard)
+- [x] Add "Trusted Contractors" count card to Company Dashboard overview
+- [x] Quick link from card to /company/contractors page
+
+### Trust-Granted Notification
+- [x] When company marks contractor as trusted, send in-app notification to contractor
+- [x] Notification text: "You've been added to [Company Name]'s trusted contractor list..."
+
+### AI Priority Override
+#### Schema & Backend
+- [x] Add `overridePriority` column to maintenanceRequests (nullable enum: low/medium/high/emergency)
+- [x] Add `overrideHourlyRate`, `overrideReason`, `overriddenAt`, `overriddenByUserId` columns
+- [x] Backend: jobs.overridePriority mutation — company admin can set/clear priority override
+- [x] Effective priority = overridePriority ?? aiPriority
+- [x] Effective hourly rate = skill tier rate for effective priority level (with emergency multiplier)
+- [x] hourlyRate column updated on override so billing uses correct rate
+
+#### Company Frontend
+- [x] Job cards in company Jobs list: color-coded priority dropdown (Low/Medium/High/Emergency)
+- [x] Pencil icon triggers override dropdown; shows current priority with color badge
+- [x] After override: show new priority badge + new hourly rate for that tier
+- [x] Show "AI: [original]" footnote when override is active
+
+#### Contractor Frontend
+- [x] Job board cards: show effective priority (post-override) badge with "(updated)" indicator
+- [x] Job detail dialog: show effective priority and "(updated by company)" label
+- [x] Active jobs list (ContractorMyJobs): show effective priority badge and hourly rate
+
+### Tests
+- [x] Vitest tests for effective priority resolution (override ?? aiPriority) — session-33.test.ts
+- [x] Vitest tests for hourly rate lookup by priority level — session-33.test.ts
+- [x] Vitest tests for emergency multiplier application — session-33.test.ts
+- [x] Vitest tests for auto-roster logic — session-33.test.ts
+- [x] Vitest tests for trusted contractor KPI count — session-33.test.ts
+- [x] Vitest tests for visibility badge logic — session-33.test.ts
+- [x] Vitest tests for trust flag per-company isolation — session-33.test.ts
+- [x] 349 total tests passing, 0 TypeScript errors
+
+### Auto-Add Contractor to Company Roster on Job Completion
+- [x] When a contractor completes a job for a company, auto-create a contractorCompanies relationship if one doesn't already exist
+- [x] Status for auto-added contractors: "approved" (they already proved themselves by completing the job)
+- [x] isTrusted defaults to false for auto-added contractors (company must manually trust them)
+- [x] Auto-add happens in the job completion flow (markComplete mutation)
+- [x] Contractor immediately appears in company's /company/contractors tab after job completion
