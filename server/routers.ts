@@ -1389,6 +1389,28 @@ const platformRouter = router({
   }),
 });
 
+// ─── Email Preferences Router ──────────────────────────────────────────────
+const emailPrefsRouter = router({
+  get: protectedProcedure.query(async ({ ctx }) => {
+    return db.getEmailPreferences(ctx.user.id);
+  }),
+
+  update: protectedProcedure
+    .input(z.object({
+      jobAssigned: z.boolean().optional(),
+      jobSubmitted: z.boolean().optional(),
+      jobPaid: z.boolean().optional(),
+      newComment: z.boolean().optional(),
+      jobDisputed: z.boolean().optional(),
+      welcome: z.boolean().optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const current = await db.getEmailPreferences(ctx.user.id);
+      await db.updateEmailPreferences(ctx.user.id, { ...current, ...input });
+      return { success: true };
+    }),
+});
+
 // ─── Main App Router ────────────────────────────────────────────────────────
 export const appRouter = router({
   system: systemRouter,
@@ -1418,6 +1440,7 @@ export const appRouter = router({
   ratings: ratingsRouter,
   comments: commentsRouter,
   notifications: notificationsRouter,
+  emailPrefs: emailPrefsRouter,
   platform: platformRouter,
   stripePayments: stripeRouter,
   adminViewAs: adminViewAsRouter,

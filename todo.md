@@ -440,3 +440,17 @@
 - [ ] Custom domain: purchase domain and brand name for the platform
 - [ ] Email: add verified sending domain to Resend and update EMAIL_FROM from sandbox to real branded address (e.g. noreply@yourdomain.com)
 - [ ] Stripe: connect live Stripe account via Settings → Payment, complete KYC verification, swap test keys for live keys
+
+## Session 16: Email Prefs, Availability Toggle, Billing History
+- [x] Email prefs: add emailPreferences JSON column to users table
+- [x] Email prefs: tRPC procedures (getPrefs, updatePrefs)
+- [x] Email prefs: settings page section for company and contractor (toggle per email type)
+- [ ] Email prefs: respect preferences in email.ts before sending each email type
+- [x] Contractor availability: isAvailable boolean already in contractorProfiles schema
+- [x] Contractor availability: toggle switch on contractor profile page
+- [x] Contractor availability: filter out unavailable contractors from job board results
+- [x] Contractor availability: show unavailable badge on contractor cards (company view)
+- [x] Billing history: /company/billing page listing all transactions
+- [x] Billing history: show date, job #, labor, parts, platform fee, total charged
+- [x] Billing history: PDF invoice download link per transaction
+- [x] Billing history: add Billing nav item to company sidebar

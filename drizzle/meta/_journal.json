@@ -71,6 +71,20 @@
       "when": 1772370346605,
       "tag": "0009_funny_stellaris",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "5",
+      "when": 1772370926724,
+      "tag": "0010_mature_molecule_man",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "5",
+      "when": 1772370943500,
+      "tag": "0011_cool_trish_tilby",
+      "breakpoints": true
     }
   ]
 }

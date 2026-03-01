@@ -763,6 +763,35 @@ export async function updateUserName(userId: number, name: string) {
   await db.update(users).set({ name }).where(eq(users.id, userId));
 }
 
+// ─── Email Preferences ───────────────────────────────────────────────────────
+export type EmailPreferences = {
+  jobAssigned?: boolean;
+  jobSubmitted?: boolean;
+  jobPaid?: boolean;
+  newComment?: boolean;
+  jobDisputed?: boolean;
+  welcome?: boolean;
+};
+
+export async function getEmailPreferences(userId: number): Promise<EmailPreferences> {
+  const db = await getDb();
+  if (!db) return {};
+  const [user] = await db.select({ emailPreferences: users.emailPreferences }).from(users).where(eq(users.id, userId));
+  return (user?.emailPreferences as EmailPreferences) ?? {};
+}
+
+export async function updateEmailPreferences(userId: number, prefs: EmailPreferences) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(users).set({ emailPreferences: prefs }).where(eq(users.id, userId));
+}
+
+// Helper: check if a user has opted out of a specific email type (default = opted IN)
+export async function isEmailEnabled(userId: number, type: keyof EmailPreferences): Promise<boolean> {
+  const prefs = await getEmailPreferences(userId);
+  return prefs[type] !== false; // undefined = enabled, false = disabled
+}
+
 /// ─── Geocoding Helper (server-side via Google Maps API) ────────────────────
 export async function geocodeAddress(address: string): Promise<{ lat: string; lng: string } | null> {
   const { ENV } = await import("./_core/env");
@@ -848,6 +877,9 @@ export async function listJobBoardForContractor(contractorProfileId: number) {
     .limit(1);
 
   if (!contractor) return [];
+
+  // If contractor is unavailable, return empty board
+  if (contractor.isAvailable === false) return [];
 
   const contractorLat = contractor.latitude ? parseFloat(String(contractor.latitude)) : null;
   const contractorLng = contractor.longitude ? parseFloat(String(contractor.longitude)) : null;

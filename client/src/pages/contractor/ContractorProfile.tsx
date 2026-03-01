@@ -56,6 +56,25 @@ export default function ContractorProfile() {
   const [trades, setTrades] = useState<string[]>([]);
   const [isAvailable, setIsAvailable] = useState(true);
 
+  // Email preferences
+  const emailPrefs = trpc.emailPrefs.get.useQuery(undefined, { enabled: !isViewingAsContractor });
+  const updateEmailPrefs = trpc.emailPrefs.update.useMutation({ onSuccess: () => toast.success("Email preferences saved!") });
+  const [emailJobAssigned, setEmailJobAssigned] = useState(true);
+  const [emailJobPaid, setEmailJobPaid] = useState(true);
+  const [emailNewComment, setEmailNewComment] = useState(true);
+  const [emailJobDisputed, setEmailJobDisputed] = useState(true);
+  useEffect(() => {
+    if (emailPrefs.data) {
+      setEmailJobAssigned(emailPrefs.data.jobAssigned !== false);
+      setEmailJobPaid(emailPrefs.data.jobPaid !== false);
+      setEmailNewComment(emailPrefs.data.newComment !== false);
+      setEmailJobDisputed(emailPrefs.data.jobDisputed !== false);
+    }
+  }, [emailPrefs.data]);
+  const toggleEmail = (field: string, value: boolean) => {
+    if (!readOnly) updateEmailPrefs.mutate({ [field]: value } as any);
+  };
+
   useEffect(() => {
     if (profile) {
       setBusinessName(profile.businessName || "");
@@ -175,6 +194,45 @@ export default function ContractorProfile() {
           </div>
         </CardContent>
       </Card>
+
+      {!readOnly && (
+        <Card className="bg-card border-border">
+          <CardHeader>
+            <CardTitle className="text-card-foreground flex items-center gap-2"><span className="text-blue-400">✉</span> Email Notifications</CardTitle>
+            <CardDescription>Choose which events send you an email</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-5">
+            <div className="flex items-center justify-between">
+              <div>
+                <Label className="text-sm font-medium">Job Assigned to Me</Label>
+                <p className="text-xs text-muted-foreground">Email when a company assigns you to a new job</p>
+              </div>
+              <Switch checked={emailJobAssigned} onCheckedChange={(v) => { setEmailJobAssigned(v); toggleEmail("jobAssigned", v); }} />
+            </div>
+            <div className="flex items-center justify-between">
+              <div>
+                <Label className="text-sm font-medium">Job Paid / Verified</Label>
+                <p className="text-xs text-muted-foreground">Email when a job you completed is verified and paid</p>
+              </div>
+              <Switch checked={emailJobPaid} onCheckedChange={(v) => { setEmailJobPaid(v); toggleEmail("jobPaid", v); }} />
+            </div>
+            <div className="flex items-center justify-between">
+              <div>
+                <Label className="text-sm font-medium">New Job Comment</Label>
+                <p className="text-xs text-muted-foreground">Email when a company posts a note on your job</p>
+              </div>
+              <Switch checked={emailNewComment} onCheckedChange={(v) => { setEmailNewComment(v); toggleEmail("newComment", v); }} />
+            </div>
+            <div className="flex items-center justify-between">
+              <div>
+                <Label className="text-sm font-medium">Job Disputed</Label>
+                <p className="text-xs text-muted-foreground">Email when a company disputes a job you submitted</p>
+              </div>
+              <Switch checked={emailJobDisputed} onCheckedChange={(v) => { setEmailJobDisputed(v); toggleEmail("jobDisputed", v); }} />
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {!readOnly && (
         <Button

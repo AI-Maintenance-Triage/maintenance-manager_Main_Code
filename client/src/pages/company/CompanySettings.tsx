@@ -325,6 +325,27 @@ function TrackingSettings({ readOnly, companyId }: { readOnly: boolean; companyI
 }
 
 function NotificationSettings({ readOnly, companyId }: { readOnly: boolean; companyId?: number }) {
+  // Email preferences (per-user, not per-company)
+  const emailPrefs = trpc.emailPrefs.get.useQuery(undefined, { enabled: !readOnly });
+  const updateEmailPrefs = trpc.emailPrefs.update.useMutation({ onSuccess: () => toast.success("Email preferences saved!") });
+  const [emailJobAssigned, setEmailJobAssigned] = useState(true);
+  const [emailJobSubmitted, setEmailJobSubmitted] = useState(true);
+  const [emailJobPaid, setEmailJobPaid] = useState(true);
+  const [emailNewComment, setEmailNewComment] = useState(true);
+  const [emailJobDisputed, setEmailJobDisputed] = useState(true);
+  useEffect(() => {
+    if (emailPrefs.data) {
+      setEmailJobAssigned(emailPrefs.data.jobAssigned !== false);
+      setEmailJobSubmitted(emailPrefs.data.jobSubmitted !== false);
+      setEmailJobPaid(emailPrefs.data.jobPaid !== false);
+      setEmailNewComment(emailPrefs.data.newComment !== false);
+      setEmailJobDisputed(emailPrefs.data.jobDisputed !== false);
+    }
+  }, [emailPrefs.data]);
+  const toggleEmail = (field: string, value: boolean) => {
+    if (!readOnly) updateEmailPrefs.mutate({ [field]: value } as any);
+  };
+
   const regularSettings = trpc.settings.get.useQuery(undefined, { enabled: !readOnly });
   const viewAsSettings = trpc.adminViewAs.companySettings.useQuery({ companyId: companyId! }, { enabled: readOnly && !!companyId });
   const settings = readOnly ? viewAsSettings.data : regularSettings.data;
@@ -389,6 +410,46 @@ function NotificationSettings({ readOnly, companyId }: { readOnly: boolean; comp
           </div>
         </CardContent>
       </Card>
+
+      {/* Email notification preferences */}
+      {!readOnly && (
+        <Card className="bg-card border-border">
+          <CardHeader>
+            <CardTitle className="text-card-foreground flex items-center gap-2"><Bell className="h-5 w-5 text-blue-400" /> Email Notifications</CardTitle>
+            <CardDescription>Choose which events send you an email. You will always receive critical security emails regardless of these settings.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-5">
+            <div className="flex items-center justify-between">
+              <div>
+                <Label className="text-sm font-medium">Job Submitted for Verification</Label>
+                <p className="text-xs text-muted-foreground">Email when a contractor submits a job for your review</p>
+              </div>
+              <Switch checked={emailJobSubmitted} onCheckedChange={(v) => { setEmailJobSubmitted(v); toggleEmail("jobSubmitted", v); }} />
+            </div>
+            <div className="flex items-center justify-between">
+              <div>
+                <Label className="text-sm font-medium">Job Paid / Verified</Label>
+                <p className="text-xs text-muted-foreground">Email when a job payment is confirmed</p>
+              </div>
+              <Switch checked={emailJobPaid} onCheckedChange={(v) => { setEmailJobPaid(v); toggleEmail("jobPaid", v); }} />
+            </div>
+            <div className="flex items-center justify-between">
+              <div>
+                <Label className="text-sm font-medium">New Job Comment</Label>
+                <p className="text-xs text-muted-foreground">Email when a contractor posts a note on a job</p>
+              </div>
+              <Switch checked={emailNewComment} onCheckedChange={(v) => { setEmailNewComment(v); toggleEmail("newComment", v); }} />
+            </div>
+            <div className="flex items-center justify-between">
+              <div>
+                <Label className="text-sm font-medium">Job Disputed</Label>
+                <p className="text-xs text-muted-foreground">Email when a job is disputed by your team</p>
+              </div>
+              <Switch checked={emailJobDisputed} onCheckedChange={(v) => { setEmailJobDisputed(v); toggleEmail("jobDisputed", v); }} />
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

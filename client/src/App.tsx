@@ -19,6 +19,7 @@ import CompanySettings from "./pages/company/CompanySettings";
 import CompanyVerification from "./pages/company/CompanyVerification";
 import LiveTracking from "./pages/company/LiveTracking";
 import CompanyExpenseReport from "./pages/company/CompanyExpenseReport";
+import CompanyBilling from "./pages/company/CompanyBilling";
 import ContractorDashboard from "./pages/contractor/ContractorDashboard";
 import ContractorJobBoard from "./pages/contractor/ContractorJobBoard";
 import ContractorMyJobs from "./pages/contractor/ContractorMyJobs";
@@ -61,6 +62,9 @@ function Router() {
       </Route>
       <Route path="/company/reports">
         <DashboardLayout><CompanyExpenseReport /></DashboardLayout>
+      </Route>
+      <Route path="/company/billing">
+        <DashboardLayout><CompanyBilling /></DashboardLayout>
       </Route>
       {/* Contractor Routes */}
       <Route path="/contractor">

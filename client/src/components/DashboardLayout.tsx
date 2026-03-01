@@ -25,7 +25,7 @@ import { trpc } from "@/lib/trpc";
 import {
   LayoutDashboard, LogOut, PanelLeft, Building2, Wrench,
   ClipboardList, MapPin, Settings, Briefcase,
-  UserCircle, Shield, HardHat, ChevronDown, ArrowLeft, CheckSquare, Navigation2, DollarSign, BarChart2,
+  UserCircle, Shield, HardHat, ChevronDown, ArrowLeft, CheckSquare, Navigation2, DollarSign, BarChart2, CreditCard,
 } from "lucide-react";
 import { CSSProperties, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "wouter";
@@ -60,6 +60,7 @@ const companySections: MenuSection[] = [
       { icon: Navigation2, label: "Live Tracking", path: "/company/live-tracking" },
       { icon: Settings, label: "Settings", path: "/company/settings" },
       { icon: BarChart2, label: "Reports", path: "/company/reports" },
+      { icon: CreditCard, label: "Billing", path: "/company/billing" },
     ],
   },
 ];
