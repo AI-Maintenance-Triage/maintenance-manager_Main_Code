@@ -532,6 +532,9 @@ export async function listAllContractors() {
 export async function deleteCompany(id: number) {
   const db = await getDb();
   if (!db) return;
+  // Delete all users associated with this company (wipes their credentials)
+  await db.delete(users).where(eq(users.companyId, id));
+  // Delete the company record itself
   await db.delete(companies).where(eq(companies.id, id));
 }
 
@@ -539,6 +542,9 @@ export async function deleteCompany(id: number) {
 export async function deleteContractorProfile(id: number) {
   const db = await getDb();
   if (!db) return;
+  // Delete the user account linked to this contractor profile (wipes their credentials)
+  await db.delete(users).where(eq(users.contractorProfileId, id));
+  // Delete the contractor profile itself
   await db.delete(contractorProfiles).where(eq(contractorProfiles.id, id));
 }
 

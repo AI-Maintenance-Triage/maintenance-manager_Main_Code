@@ -161,3 +161,8 @@
 - [x] All contractor pages work with full functionality when admin impersonates
 - [x] Fix property add button missing in company view
 - [x] Remove dual-query pattern (adminViewAs vs regular) — use a single transparent impersonation layer
+
+## Admin Delete Cascade Fix
+- [x] Fix deleteCompany to also delete all users associated with that company
+- [x] Fix deleteContractorProfile to also delete the contractor's user account
+- [x] Verify re-registration with the same email works after deletion
