@@ -1,4 +1,4 @@
-import { eq, and, desc, sql, inArray, or, isNull, isNotNull, count, gte, lte } from "drizzle-orm";
+import { eq, and, desc, sql, inArray, or, isNull, isNotNull, count, gte, lte, avg, sum, ne, lt, gt } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import {
   InsertUser, users,
@@ -3166,4 +3166,413 @@ export async function getJobChangeHistory(jobId: number, companyId: number) {
     )
     .orderBy(desc(jobChangeHistory.createdAt));
   return rows;
+}
+
+// ─── Contractor Performance Scorecard ─────────────────────────────────────────
+/**
+ * Returns aggregated performance metrics for a single contractor within a company.
+ * Metrics: jobs completed, average rating, on-time rate (completed within 48h of assignment),
+ * average response time (hours from assignment to first clock-in).
+ */
+export async function getContractorScorecard(contractorProfileId: number, companyId: number) {
+  const db = await getDb();
+  if (!db) return null;
+
+  // Jobs completed (status = completed, verified, paid, payment_pending_ach)
+  const completedStatuses = ["completed", "verified", "paid", "payment_pending_ach"] as const;
+  const [jobStats] = await db
+    .select({
+      totalCompleted: count(maintenanceRequests.id),
+      avgLaborMinutes: avg(maintenanceRequests.totalLaborMinutes),
+    })
+    .from(maintenanceRequests)
+    .where(
+      and(
+        eq(maintenanceRequests.assignedContractorId, contractorProfileId),
+        eq(maintenanceRequests.companyId, companyId),
+        inArray(maintenanceRequests.status, completedStatuses as unknown as readonly ["completed", "verified", "paid", "payment_pending_ach"])
+      )
+    );
+
+  // Average rating from this company
+  const [ratingStats] = await db
+    .select({
+      avgRating: avg(contractorRatings.stars),
+      ratingCount: count(contractorRatings.id),
+    })
+    .from(contractorRatings)
+    .where(
+      and(
+        eq(contractorRatings.contractorProfileId, contractorProfileId),
+        eq(contractorRatings.companyId, companyId)
+      )
+    );
+
+  // On-time rate: jobs completed where completedAt - assignedAt <= 48 hours
+  // We compute this via SQL: count where TIMESTAMPDIFF(HOUR, assignedAt, completedAt) <= 48
+  const [onTimeStats] = await db
+    .select({
+      onTimeCount: count(maintenanceRequests.id),
+    })
+    .from(maintenanceRequests)
+    .where(
+      and(
+        eq(maintenanceRequests.assignedContractorId, contractorProfileId),
+        eq(maintenanceRequests.companyId, companyId),
+        inArray(maintenanceRequests.status, completedStatuses as unknown as readonly ["completed", "verified", "paid", "payment_pending_ach"]),
+        isNotNull(maintenanceRequests.assignedAt),
+        isNotNull(maintenanceRequests.completedAt),
+        sql`TIMESTAMPDIFF(HOUR, ${maintenanceRequests.assignedAt}, ${maintenanceRequests.completedAt}) <= 48`
+      )
+    );
+
+  // Average response time: hours from assignedAt to first clock-in (clockInTime is a bigint ms timestamp)
+  const [responseStats] = await db
+    .select({
+      avgResponseHours: sql<number>`AVG((${timeSessions.clockInTime} / 1000 - UNIX_TIMESTAMP(${maintenanceRequests.assignedAt})) / 3600)`,
+    })
+    .from(timeSessions)
+    .innerJoin(maintenanceRequests, eq(timeSessions.maintenanceRequestId, maintenanceRequests.id))
+    .where(
+      and(
+        eq(timeSessions.contractorProfileId, contractorProfileId),
+        eq(maintenanceRequests.companyId, companyId),
+        isNotNull(maintenanceRequests.assignedAt),
+        isNotNull(timeSessions.clockInTime)
+      )
+    );
+
+  const totalCompleted = Number(jobStats?.totalCompleted ?? 0);
+  const onTimeCount = Number(onTimeStats?.onTimeCount ?? 0);
+
+  return {
+    totalCompleted,
+    avgRating: ratingStats?.avgRating ? parseFloat(String(ratingStats.avgRating)) : null,
+    ratingCount: Number(ratingStats?.ratingCount ?? 0),
+    onTimeRate: totalCompleted > 0 ? Math.round((onTimeCount / totalCompleted) * 100) : null,
+    avgResponseHours: responseStats?.avgResponseHours ? Math.round(parseFloat(String(responseStats.avgResponseHours)) * 10) / 10 : null,
+  };
+}
+
+/**
+ * Returns scorecards for all contractors connected to a company in a single batch.
+ * Returns a map of contractorProfileId → scorecard.
+ */
+export async function getContractorScorecardsByCompany(companyId: number): Promise<Record<number, {
+  totalCompleted: number;
+  avgRating: number | null;
+  ratingCount: number;
+  onTimeRate: number | null;
+  avgResponseHours: number | null;
+}>> {
+  const db = await getDb();
+  if (!db) return {};
+
+  const completedStatuses = ["completed", "verified", "paid", "payment_pending_ach"] as const;
+
+  // Job stats per contractor
+  const jobRows = await db
+    .select({
+      contractorProfileId: maintenanceRequests.assignedContractorId,
+      totalCompleted: count(maintenanceRequests.id),
+    })
+    .from(maintenanceRequests)
+    .where(
+      and(
+        eq(maintenanceRequests.companyId, companyId),
+        inArray(maintenanceRequests.status, completedStatuses),
+        isNotNull(maintenanceRequests.assignedContractorId)
+      )
+    )
+    .groupBy(maintenanceRequests.assignedContractorId);
+
+  // On-time counts per contractor
+  const onTimeRows = await db
+    .select({
+      contractorProfileId: maintenanceRequests.assignedContractorId,
+      onTimeCount: count(maintenanceRequests.id),
+    })
+    .from(maintenanceRequests)
+    .where(
+      and(
+        eq(maintenanceRequests.companyId, companyId),
+        inArray(maintenanceRequests.status, completedStatuses),
+        isNotNull(maintenanceRequests.assignedContractorId),
+        isNotNull(maintenanceRequests.assignedAt),
+        isNotNull(maintenanceRequests.completedAt),
+        sql`TIMESTAMPDIFF(HOUR, ${maintenanceRequests.assignedAt}, ${maintenanceRequests.completedAt}) <= 48`
+      )
+    )
+    .groupBy(maintenanceRequests.assignedContractorId);
+
+  // Rating stats per contractor
+  const ratingRows = await db
+    .select({
+      contractorProfileId: contractorRatings.contractorProfileId,
+      avgRating: avg(contractorRatings.stars),
+      ratingCount: count(contractorRatings.id),
+    })
+    .from(contractorRatings)
+    .where(eq(contractorRatings.companyId, companyId))
+    .groupBy(contractorRatings.contractorProfileId);
+
+  // Response time per contractor
+  const responseRows = await db
+    .select({
+      contractorProfileId: timeSessions.contractorProfileId,
+      avgResponseHours: sql<number>`AVG((${timeSessions.clockInTime} / 1000 - UNIX_TIMESTAMP(${maintenanceRequests.assignedAt})) / 3600)`,
+    })
+    .from(timeSessions)
+    .innerJoin(maintenanceRequests, eq(timeSessions.maintenanceRequestId, maintenanceRequests.id))
+    .where(
+      and(
+        eq(maintenanceRequests.companyId, companyId),
+        isNotNull(maintenanceRequests.assignedAt),
+        isNotNull(timeSessions.clockInTime)
+      )
+    )
+    .groupBy(timeSessions.contractorProfileId);
+
+  // Build maps
+  const jobMap = new Map(jobRows.map((r) => [r.contractorProfileId, Number(r.totalCompleted)]));
+  const onTimeMap = new Map(onTimeRows.map((r) => [r.contractorProfileId, Number(r.onTimeCount)]));
+  const ratingMap = new Map(ratingRows.map((r) => [r.contractorProfileId, { avg: r.avgRating ? parseFloat(String(r.avgRating)) : null, count: Number(r.ratingCount) }]));
+  const responseMap = new Map(responseRows.map((r) => [r.contractorProfileId, r.avgResponseHours ? Math.round(parseFloat(String(r.avgResponseHours)) * 10) / 10 : null]));
+
+  // Collect all contractor IDs
+  const allIds = new Set([
+    ...Array.from(jobMap.keys()),
+    ...Array.from(ratingMap.keys()),
+    ...Array.from(responseMap.keys()),
+  ]);
+  const result: Record<number, { totalCompleted: number; avgRating: number | null; ratingCount: number; onTimeRate: number | null; avgResponseHours: number | null }> = {};
+
+  for (const id of Array.from(allIds)) {
+    if (id === null || id === undefined) continue;
+    const total = jobMap.get(id) ?? 0;
+    const onTime = onTimeMap.get(id) ?? 0;
+    const rating = ratingMap.get(id);
+    result[id] = {
+      totalCompleted: total,
+      avgRating: rating?.avg ?? null,
+      ratingCount: rating?.count ?? 0,
+      onTimeRate: total > 0 ? Math.round((onTime / total) * 100) : null,
+      avgResponseHours: responseMap.get(id) ?? null,
+    };
+  }
+
+  return result;
+}
+
+// ─── Job Re-assignment (Reopen) ───────────────────────────────────────────────
+/**
+ * Re-opens an assigned/in_progress job: clears the contractor assignment,
+ * sets status back to "open", and optionally posts back to the board.
+ */
+export async function reopenJob(jobId: number, companyId: number): Promise<{ contractorProfileId: number | null; contractorUserId: number | null }> {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+
+  // Get current assignment info before clearing
+  const [job] = await db
+    .select({
+      assignedContractorId: maintenanceRequests.assignedContractorId,
+      status: maintenanceRequests.status,
+    })
+    .from(maintenanceRequests)
+    .where(and(eq(maintenanceRequests.id, jobId), eq(maintenanceRequests.companyId, companyId)))
+    .limit(1);
+
+  if (!job) throw new Error("Job not found");
+  if (!["assigned", "in_progress"].includes(job.status)) {
+    throw new Error("Job can only be re-opened when assigned or in progress");
+  }
+
+  const contractorProfileId = job.assignedContractorId;
+
+  // Look up contractor user id for notification
+  let contractorUserId: number | null = null;
+  if (contractorProfileId) {
+    const [cp] = await db
+      .select({ userId: contractorProfiles.userId })
+      .from(contractorProfiles)
+      .where(eq(contractorProfiles.id, contractorProfileId))
+      .limit(1);
+    contractorUserId = cp?.userId ?? null;
+  }
+
+  // Clear assignment and set status back to open
+  await db
+    .update(maintenanceRequests)
+    .set({
+      status: "open",
+      assignedContractorId: null,
+      assignedAt: null,
+    })
+    .where(and(eq(maintenanceRequests.id, jobId), eq(maintenanceRequests.companyId, companyId)));
+
+  return { contractorProfileId, contractorUserId };
+}
+
+// ─── Company Reporting Queries ────────────────────────────────────────────────
+
+/** Summary KPIs for a company within a date range */
+export async function getCompanyReportSummary(companyId: number, fromMs: number, toMs: number) {
+  const db = await getDb();
+  if (!db) return null;
+
+  const fromDate = new Date(fromMs);
+  const toDate = new Date(toMs);
+
+  const [stats] = await db
+    .select({
+      totalJobs: count(maintenanceRequests.id),
+      totalLaborCost: sum(maintenanceRequests.totalLaborCost),
+      totalPartsCost: sum(maintenanceRequests.totalPartsCost),
+      totalLaborMinutes: sum(maintenanceRequests.totalLaborMinutes),
+    })
+    .from(maintenanceRequests)
+    .where(
+      and(
+        eq(maintenanceRequests.companyId, companyId),
+        inArray(maintenanceRequests.status, ["completed", "verified", "paid", "payment_pending_ach"] as const),
+        gte(maintenanceRequests.createdAt, fromDate),
+        lte(maintenanceRequests.createdAt, toDate)
+      )
+    );
+
+  const laborCost = parseFloat(String(stats?.totalLaborCost ?? "0")) || 0;
+  const partsCost = parseFloat(String(stats?.totalPartsCost ?? "0")) || 0;
+  const totalSpend = laborCost + partsCost;
+  const totalJobs = Number(stats?.totalJobs ?? 0);
+  const totalHours = Math.round((Number(stats?.totalLaborMinutes ?? 0) / 60) * 10) / 10;
+
+  return {
+    totalSpend,
+    totalJobs,
+    avgCostPerJob: totalJobs > 0 ? Math.round((totalSpend / totalJobs) * 100) / 100 : 0,
+    totalLaborHours: totalHours,
+  };
+}
+
+/** Per-property cost breakdown within a date range */
+export async function getCompanyReportByProperty(companyId: number, fromMs: number, toMs: number) {
+  const db = await getDb();
+  if (!db) return [];
+
+  const fromDate = new Date(fromMs);
+  const toDate = new Date(toMs);
+
+  const rows = await db
+    .select({
+      propertyId: maintenanceRequests.propertyId,
+      propertyName: properties.name,
+      propertyAddress: properties.address,
+      jobCount: count(maintenanceRequests.id),
+      totalLaborCost: sum(maintenanceRequests.totalLaborCost),
+      totalPartsCost: sum(maintenanceRequests.totalPartsCost),
+    })
+    .from(maintenanceRequests)
+    .innerJoin(properties, eq(maintenanceRequests.propertyId, properties.id))
+    .where(
+      and(
+        eq(maintenanceRequests.companyId, companyId),
+        inArray(maintenanceRequests.status, ["completed", "verified", "paid", "payment_pending_ach"] as const),
+        gte(maintenanceRequests.createdAt, fromDate),
+        lte(maintenanceRequests.createdAt, toDate)
+      )
+    )
+    .groupBy(maintenanceRequests.propertyId, properties.name, properties.address)
+    .orderBy(desc(sum(maintenanceRequests.totalLaborCost)));
+
+  return rows.map((r) => {
+    const labor = parseFloat(String(r.totalLaborCost ?? "0")) || 0;
+    const parts = parseFloat(String(r.totalPartsCost ?? "0")) || 0;
+    return {
+      propertyId: r.propertyId,
+      propertyName: r.propertyName,
+      propertyAddress: r.propertyAddress,
+      jobCount: Number(r.jobCount),
+      totalSpend: Math.round((labor + parts) * 100) / 100,
+      avgCostPerJob: Number(r.jobCount) > 0 ? Math.round(((labor + parts) / Number(r.jobCount)) * 100) / 100 : 0,
+    };
+  });
+}
+
+/** Monthly spend trend for the last N months */
+export async function getCompanyReportByMonth(companyId: number, months = 6) {
+  const db = await getDb();
+  if (!db) return [];
+
+  const fromDate = new Date();
+  fromDate.setMonth(fromDate.getMonth() - months + 1);
+  fromDate.setDate(1);
+  fromDate.setHours(0, 0, 0, 0);
+
+  const rows = await db
+    .select({
+      yearMonth: sql<string>`DATE_FORMAT(${maintenanceRequests.createdAt}, '%Y-%m')`,
+      jobCount: count(maintenanceRequests.id),
+      totalLaborCost: sum(maintenanceRequests.totalLaborCost),
+      totalPartsCost: sum(maintenanceRequests.totalPartsCost),
+    })
+    .from(maintenanceRequests)
+    .where(
+      and(
+        eq(maintenanceRequests.companyId, companyId),
+        inArray(maintenanceRequests.status, ["completed", "verified", "paid", "payment_pending_ach"] as const),
+        gte(maintenanceRequests.createdAt, fromDate)
+      )
+    )
+    .groupBy(sql`DATE_FORMAT(${maintenanceRequests.createdAt}, '%Y-%m')`)
+    .orderBy(sql`DATE_FORMAT(${maintenanceRequests.createdAt}, '%Y-%m')`);
+
+  return rows.map((r) => {
+    const labor = parseFloat(String(r.totalLaborCost ?? "0")) || 0;
+    const parts = parseFloat(String(r.totalPartsCost ?? "0")) || 0;
+    return {
+      yearMonth: r.yearMonth,
+      jobCount: Number(r.jobCount),
+      totalSpend: Math.round((labor + parts) * 100) / 100,
+    };
+  });
+}
+
+/** Spend breakdown by skill tier within a date range */
+export async function getCompanyReportBySkillTier(companyId: number, fromMs: number, toMs: number) {
+  const db = await getDb();
+  if (!db) return [];
+
+  const fromDate = new Date(fromMs);
+  const toDate = new Date(toMs);
+
+  const rows = await db
+    .select({
+      tierName: sql<string>`COALESCE(${skillTiers.name}, ${maintenanceRequests.aiSkillTier}, 'Unclassified')`,
+      jobCount: count(maintenanceRequests.id),
+      totalLaborCost: sum(maintenanceRequests.totalLaborCost),
+      totalPartsCost: sum(maintenanceRequests.totalPartsCost),
+    })
+    .from(maintenanceRequests)
+    .leftJoin(skillTiers, eq(maintenanceRequests.skillTierId, skillTiers.id))
+    .where(
+      and(
+        eq(maintenanceRequests.companyId, companyId),
+        inArray(maintenanceRequests.status, ["completed", "verified", "paid", "payment_pending_ach"] as const),
+        gte(maintenanceRequests.createdAt, fromDate),
+        lte(maintenanceRequests.createdAt, toDate)
+      )
+    )
+    .groupBy(sql`COALESCE(${skillTiers.name}, ${maintenanceRequests.aiSkillTier}, 'Unclassified')`)
+    .orderBy(desc(sum(maintenanceRequests.totalLaborCost)));
+
+  return rows.map((r) => {
+    const labor = parseFloat(String(r.totalLaborCost ?? "0")) || 0;
+    const parts = parseFloat(String(r.totalPartsCost ?? "0")) || 0;
+    return {
+      tierName: r.tierName,
+      jobCount: Number(r.jobCount),
+      totalSpend: Math.round((labor + parts) * 100) / 100,
+    };
+  });
 }

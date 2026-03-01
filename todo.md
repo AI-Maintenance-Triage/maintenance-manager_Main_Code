@@ -1231,3 +1231,49 @@
 - [x] Vitest tests for change history logging logic
 - [x] Vitest tests for priority filter chip count logic
 - [x] Vitest tests for trust email trigger condition
+
+## Session 36: Contractor Scorecard + Job Re-assignment + Company Reports
+
+### Contractor Performance Scorecard
+- [x] Backend: getContractorScorecardsByCompany(companyId) — batch query returning a map of contractorProfileId → scorecard
+- [x] Scorecard fields: totalCompleted, avgRating, ratingCount, onTimeRate (% completed within 48h), avgResponseHours
+- [x] tRPC procedure: contractor.scorecards — returns batch scorecard for all contractors connected to the company
+- [x] adminViewAs.companyScorecards — same but for admin impersonation
+- [x] Contractor card: collapsible "Performance Scorecard" section with 4 metric tiles
+- [x] Metric tiles: Jobs Completed, Avg Rating (with count), On-Time Rate %, Avg Response Hours
+- [x] Show "—" for metrics with no data (null values)
+- [x] Only show scorecard toggle when scorecard data exists for that contractor
+
+### Job Re-assignment Flow
+- [x] Backend: db.reopenJob(jobId, companyId) — clears assignedContractorId, sets status back to open
+- [x] Returns { contractorProfileId, contractorUserId } for notification purposes
+- [x] tRPC procedure: jobs.reopen — validates job belongs to company and is in assigned/in_progress status
+- [x] Sends in-app notification to contractor when job is re-opened
+- [x] Sends email to contractor via sendJobReopenedEmail
+- [x] Company job card: RefreshCcw icon button visible on assigned/in_progress jobs
+- [x] Clicking opens a confirmation dialog with optional reason textarea
+- [x] Dialog explains the action: un-assigns contractor, returns job to board
+- [x] On confirm: calls jobs.reopen mutation, shows success toast, invalidates job list
+
+### Company Reporting Dashboard
+- [x] Backend: getCompanyReportSummary(companyId, fromMs, toMs) — totalSpend, totalJobs, avgCostPerJob, totalLaborHours
+- [x] Backend: getCompanyReportByProperty(companyId, fromMs, toMs) — per-property breakdown
+- [x] Backend: getCompanyReportByMonth(companyId, months) — monthly spend trend
+- [x] Backend: getCompanyReportBySkillTier(companyId, fromMs, toMs) — spend by skill tier
+- [x] tRPC procedures: companyReports.summary, .byProperty, .byMonth, .bySkillTier
+- [x] New page: /company/analytics — CompanyAnalytics.tsx
+- [x] KPI cards: Total Spend, Jobs Completed, Labor Hours, Avg Cost/Job
+- [x] Date range selector: Last 30 / 90 / 180 / 365 days (default 90)
+- [x] Monthly spend trend line chart (recharts)
+- [x] Skill tier spend distribution pie chart
+- [x] Per-property spend bar chart (top 8 properties)
+- [x] Property breakdown table with jobs, total spend, avg per job
+- [x] CSV export buttons: summary, by-month, by-property
+- [x] Analytics nav item added to company sidebar
+
+### Tests
+- [x] Vitest: scorecard shape and edge cases (null fields, empty map)
+- [x] Vitest: re-open state transition logic (which statuses are eligible)
+- [x] Vitest: report summary, monthly, property, tier shapes
+- [x] Vitest: CSV export helper (quoting, null handling, row count)
+- [x] Vitest: date range preset logic

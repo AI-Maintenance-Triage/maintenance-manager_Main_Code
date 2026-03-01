@@ -8,7 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useViewAs } from "@/contexts/ViewAsContext";
-import { HardHat, CheckCircle, XCircle, Star, UserPlus, Mail, Clock, Ban, RefreshCw, Copy, AlertTriangle, ShieldCheck, ShieldOff } from "lucide-react";
+import { HardHat, CheckCircle, XCircle, Star, UserPlus, Mail, Clock, Ban, RefreshCw, Copy, AlertTriangle, ShieldCheck, ShieldOff, TrendingUp, Timer, Award, ChevronDown, ChevronUp } from "lucide-react";
 import { toast } from "sonner";
 import { useState } from "react";
 
@@ -39,6 +39,17 @@ export default function CompanyContractors() {
   const [inviteName, setInviteName] = useState("");
   // Fallback invite link shown when email delivery fails
   const [fallbackLink, setFallbackLink] = useState<string | null>(null);
+
+  // Scorecard data
+  const { data: scorecards } = trpc.contractor.scorecards.useQuery(undefined, { enabled: !isViewingAsCompany });
+  const { data: viewAsScorecards } = trpc.adminViewAs.companyScorecards.useQuery(
+    { companyId: viewAs.companyId! },
+    { enabled: !!isViewingAsCompany }
+  );
+  const allScorecards = isViewingAsCompany ? viewAsScorecards : scorecards;
+
+  // Expanded scorecard state
+  const [expandedScorecard, setExpandedScorecard] = useState<number | null>(null);
 
   // Mutations
   const updateRelationship = trpc.contractor.updateRelationship.useMutation({
@@ -226,6 +237,60 @@ export default function CompanyContractors() {
                         </span>
                       )}
                     </div>
+                    {/* Scorecard toggle */}
+                    {allScorecards && allScorecards[c.contractorProfileId] && (
+                      <button
+                        className="flex items-center gap-1 text-xs text-primary/70 hover:text-primary mt-1.5 transition-colors"
+                        onClick={() => setExpandedScorecard(expandedScorecard === c.contractorProfileId ? null : c.contractorProfileId)}
+                      >
+                        <TrendingUp className="h-3 w-3" />
+                        Performance scorecard
+                        {expandedScorecard === c.contractorProfileId ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+                      </button>
+                    )}
+                    {expandedScorecard === c.contractorProfileId && allScorecards?.[c.contractorProfileId] && (() => {
+                      const sc = allScorecards[c.contractorProfileId];
+                      return (
+                        <div className="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-3 p-3 bg-muted/30 rounded-lg border border-border/50">
+                          <div className="text-center">
+                            <div className="flex items-center justify-center gap-1 text-emerald-400 mb-0.5">
+                              <Award className="h-3.5 w-3.5" />
+                              <span className="text-lg font-bold">{sc.totalCompleted}</span>
+                            </div>
+                            <p className="text-xs text-muted-foreground">Jobs Completed</p>
+                          </div>
+                          <div className="text-center">
+                            <div className="flex items-center justify-center gap-1 text-yellow-400 mb-0.5">
+                              <Star className="h-3.5 w-3.5 fill-yellow-400" />
+                              <span className="text-lg font-bold">
+                                {sc.avgRating != null ? sc.avgRating.toFixed(1) : "—"}
+                              </span>
+                            </div>
+                            <p className="text-xs text-muted-foreground">
+                              Avg Rating{sc.ratingCount > 0 ? ` (${sc.ratingCount})` : ""}
+                            </p>
+                          </div>
+                          <div className="text-center">
+                            <div className="flex items-center justify-center gap-1 text-blue-400 mb-0.5">
+                              <CheckCircle className="h-3.5 w-3.5" />
+                              <span className="text-lg font-bold">
+                                {sc.onTimeRate != null ? `${sc.onTimeRate}%` : "—"}
+                              </span>
+                            </div>
+                            <p className="text-xs text-muted-foreground">On-Time Rate</p>
+                          </div>
+                          <div className="text-center">
+                            <div className="flex items-center justify-center gap-1 text-purple-400 mb-0.5">
+                              <Timer className="h-3.5 w-3.5" />
+                              <span className="text-lg font-bold">
+                                {sc.avgResponseHours != null ? `${sc.avgResponseHours}h` : "—"}
+                              </span>
+                            </div>
+                            <p className="text-xs text-muted-foreground">Avg Response</p>
+                          </div>
+                        </div>
+                      );
+                    })()}
                   </div>
                   <div className="flex gap-2 shrink-0">
                     {c.status === "pending" && (

@@ -12,7 +12,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useViewAs } from "@/contexts/ViewAsContext";
-import { Plus, Zap, Clock, CheckCircle, AlertTriangle, Globe, X, Route, DollarSign, FileDown, Star, MessageSquare, ChevronDown, ChevronUp, Lock, Unlock, Pencil, MoreVertical, Trash2, Edit, History } from "lucide-react";
+import { Plus, Zap, Clock, CheckCircle, AlertTriangle, Globe, X, Route, DollarSign, FileDown, Star, MessageSquare, ChevronDown, ChevronUp, Lock, Unlock, Pencil, MoreVertical, Trash2, Edit, History, RefreshCcw } from "lucide-react";
 import { useState } from "react";
 import { JobCostBreakdown } from "@/components/JobCostBreakdown";
 import { toast } from "sonner";
@@ -138,10 +138,12 @@ export default function CompanyJobs() {
   const [expandedBreakdown, setExpandedBreakdown] = useState<number | null>(null);
   const [expandedHistory, setExpandedHistory] = useState<number | null>(null);
 
-  // Edit / delete state
+  // Edit / delete / reopen state
   const [editJob, setEditJob] = useState<any | null>(null);
   const [editForm, setEditForm] = useState<any>({});
   const [deleteConfirmJob, setDeleteConfirmJob] = useState<any | null>(null);
+  const [reopenJob, setReopenJob] = useState<any | null>(null);
+  const [reopenNote, setReopenNote] = useState("");
 
   const utils = trpc.useUtils();
 
@@ -239,6 +241,16 @@ export default function CompanyJobs() {
       setDeleteConfirmJob(null);
       invalidateJobs();
       utils.company.dashboardStats.invalidate();
+    },
+    onError: (err: any) => toast.error(err.message),
+  });
+
+  const reopenJobMutation = trpc.jobs.reopen.useMutation({
+    onSuccess: () => {
+      toast.success("Job re-opened and returned to the board.");
+      setReopenJob(null);
+      setReopenNote("");
+      invalidateJobs();
     },
     onError: (err: any) => toast.error(err.message),
   });
@@ -512,6 +524,18 @@ export default function CompanyJobs() {
                           {statusIcons[job.status]}
                           <span className="capitalize">{job.status.replace(/_/g, " ")}</span>
                         </span>
+                        {/* Re-open button — only for assigned/in_progress jobs */}
+                        {(job.status === "assigned" || job.status === "in_progress") && (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-6 w-6 p-0 text-muted-foreground hover:text-amber-400"
+                            title="Re-open job (return to board)"
+                            onClick={() => { setReopenJob(job); setReopenNote(""); }}
+                          >
+                            <RefreshCcw className="h-3.5 w-3.5" />
+                          </Button>
+                        )}
                         {/* 3-dot menu — only for open jobs */}
                         {isEditable && (
                           <DropdownMenu>
@@ -738,6 +762,43 @@ export default function CompanyJobs() {
                   {updateJob.isPending ? "Saving..." : "Save Changes"}
                 </Button>
                 <Button variant="outline" onClick={() => setEditJob(null)}>Cancel</Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Re-open Confirmation Dialog */}
+      <Dialog open={!!reopenJob} onOpenChange={(o) => { if (!o) { setReopenJob(null); setReopenNote(""); } }}>
+        <DialogContent className="max-w-sm bg-card">
+          <DialogHeader>
+            <DialogTitle className="text-card-foreground">Re-open Job?</DialogTitle>
+          </DialogHeader>
+          {reopenJob && (
+            <div className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                This will un-assign <span className="font-medium text-foreground">"{reopenJob.title}"</span> from the current contractor and return it to the open job board. The contractor will be notified.
+              </p>
+              <div className="space-y-2">
+                <Label>Reason (optional)</Label>
+                <Textarea
+                  placeholder="e.g. Contractor became unavailable..."
+                  value={reopenNote}
+                  onChange={(e) => setReopenNote(e.target.value)}
+                  rows={2}
+                />
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  variant="default"
+                  className="flex-1 gap-2"
+                  onClick={() => reopenJobMutation.mutate({ jobId: reopenJob.id, note: reopenNote || undefined })}
+                  disabled={reopenJobMutation.isPending}
+                >
+                  <RefreshCcw className="h-3.5 w-3.5" />
+                  {reopenJobMutation.isPending ? "Re-opening..." : "Re-open Job"}
+                </Button>
+                <Button variant="outline" onClick={() => { setReopenJob(null); setReopenNote(""); }}>Cancel</Button>
               </div>
             </div>
           )}

@@ -450,3 +450,30 @@ export async function sendTrustedContractorEmail(opts: {
     html,
   });
 }
+
+// ─── Job Re-opened Notification ───────────────────────────────────────────────
+export async function sendJobReopenedEmail(opts: {
+  to: string;
+  contractorName: string;
+  jobTitle: string;
+  companyName: string;
+  appUrl: string;
+}) {
+  const html = layout("Job Re-opened — Returned to Board", `
+    <h1>Job Returned to the Board</h1>
+    <p>Hi ${opts.contractorName},</p>
+    <p><strong>${opts.companyName}</strong> has re-opened the following job and returned it to the job board:</p>
+    <div style="background:#1c1c1c;border:1px solid #2a2a2a;border-radius:10px;padding:18px;margin:16px 0;">
+      <p style="font-size:17px;font-weight:700;color:#ffffff;margin:0;">${opts.jobTitle}</p>
+    </div>
+    <p style="color:#a3a3a3;">This job is no longer assigned to you. If you're still interested, you can re-accept it from the job board — but act quickly as other contractors can now claim it.</p>
+    <a href="${opts.appUrl}/contractor/jobs" class="btn">View Job Board →</a>
+    <hr class="divider" />
+    <p style="font-size:13px;color:#737373;">You received this email because you were previously assigned to this job on Maintenance Manager.</p>
+  `);
+  return sendEmail({
+    to: opts.to,
+    subject: `Job Re-opened: ${opts.jobTitle}`,
+    html,
+  });
+}

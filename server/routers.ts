@@ -428,6 +428,12 @@ const contractorRouter = router({
     return db.listContractorsByCompany(getEffectiveCompanyId(ctx));
   }),
 
+  // Company-side: get performance scorecards for all contractors
+  scorecards: companyAdminProcedure.query(async ({ ctx }) => {
+    const companyId = getEffectiveCompanyId(ctx);
+    return db.getContractorScorecardsByCompany(companyId);
+  }),
+
   // Contractor-side: list companies they're connected to
   myCompanies: contractorProcedure.query(async ({ ctx }) => {
     const profile = await getEffectiveContractorProfile(ctx);
@@ -1031,6 +1037,42 @@ const jobsRouter = router({
       const job = await db.getMaintenanceRequestById(input.jobId);
       if (!job || job.companyId !== companyId) throw new TRPCError({ code: "NOT_FOUND" });
       return db.getJobChangeHistory(input.jobId, companyId);
+    }),
+
+  // Company: re-open an assigned/in_progress job (removes contractor assignment)
+  reopen: companyAdminProcedure
+    .input(z.object({ jobId: z.number(), note: z.string().optional() }))
+    .mutation(async ({ ctx, input }) => {
+      const companyId = getEffectiveCompanyId(ctx);
+      const { contractorProfileId, contractorUserId } = await db.reopenJob(input.jobId, companyId);
+      // Notify the contractor that the job was re-opened
+      if (contractorUserId) {
+        try {
+          const job = await db.getMaintenanceRequestById(input.jobId);
+          const company = await db.getCompanyById(companyId);
+          await db.createNotification({
+            userId: contractorUserId,
+            type: 'system',
+            title: 'Job Re-opened',
+            body: `${company?.name ?? 'A company'} has re-opened the job "${job?.title ?? 'Unknown'}" and returned it to the job board.`,
+            linkRoute: '/contractor/jobs',
+            metadata: { jobId: input.jobId },
+          });
+          // Also send email
+          const contractorUser = await db.getUserById(contractorUserId);
+          if (contractorUser?.email) {
+            const appUrl = ctx.req.headers.origin as string ?? '';
+            await email.sendJobReopenedEmail({
+              to: contractorUser.email,
+              contractorName: contractorUser.name ?? 'Contractor',
+              jobTitle: job?.title ?? 'Unknown',
+              companyName: company?.name ?? 'A company',
+              appUrl,
+            });
+          }
+        } catch { /* non-critical */ }
+      }
+      return { success: true };
     }),
 
   // Company: get jobs awaiting verification
@@ -2884,6 +2926,35 @@ const companyReportsRouter = router({
         redeemedAt: r.redeemedAt,
       }));
   }),
+
+  // ─── New reporting endpoints ────────────────────────────────────────────────
+  summary: companyAdminProcedure
+    .input(z.object({ fromMs: z.number(), toMs: z.number() }))
+    .query(async ({ ctx, input }) => {
+      const companyId = getEffectiveCompanyId(ctx);
+      return db.getCompanyReportSummary(companyId, input.fromMs, input.toMs);
+    }),
+
+  byProperty: companyAdminProcedure
+    .input(z.object({ fromMs: z.number(), toMs: z.number() }))
+    .query(async ({ ctx, input }) => {
+      const companyId = getEffectiveCompanyId(ctx);
+      return db.getCompanyReportByProperty(companyId, input.fromMs, input.toMs);
+    }),
+
+  byMonth: companyAdminProcedure
+    .input(z.object({ months: z.number().optional() }))
+    .query(async ({ ctx, input }) => {
+      const companyId = getEffectiveCompanyId(ctx);
+      return db.getCompanyReportByMonth(companyId, input.months ?? 6);
+    }),
+
+  bySkillTier: companyAdminProcedure
+    .input(z.object({ fromMs: z.number(), toMs: z.number() }))
+    .query(async ({ ctx, input }) => {
+      const companyId = getEffectiveCompanyId(ctx);
+      return db.getCompanyReportBySkillTier(companyId, input.fromMs, input.toMs);
+    }),
 });
 
 // ─── PMS Integration Router ────────────────────────────────────────────────

@@ -47,6 +47,7 @@ import AdminChurnRisk from "./pages/admin/AdminChurnRisk";
 import AdminEmailBlast from "./pages/admin/AdminEmailBlast";
 import AdminJobFeeOverride from "./pages/admin/AdminJobFeeOverride";
 import CompanyPropertyReports from "./pages/company/CompanyPropertyReports";
+import CompanyAnalytics from "./pages/company/CompanyAnalytics";
 import ResetPassword from "./pages/ResetPassword";
 import ForgotPassword from "./pages/ForgotPassword";
 import InviteAccept from "./pages/InviteAccept";
@@ -91,6 +92,9 @@ function Router() {
       </Route>
       <Route path="/company/property-reports">
         <DashboardLayout><CompanyPropertyReports /></DashboardLayout>
+      </Route>
+      <Route path="/company/analytics">
+        <DashboardLayout><CompanyAnalytics /></DashboardLayout>
       </Route>
       <Route path="/company/billing">
         <DashboardLayout><CompanyBilling /></DashboardLayout>

@@ -217,6 +217,12 @@ export const adminViewAsRouter = router({
       return db.listContractorsByCompany(input.companyId);
     }),
 
+  companyScorecards: adminProcedure
+    .input(z.object({ companyId: z.number() }))
+    .query(async ({ input }) => {
+      return db.getContractorScorecardsByCompany(input.companyId);
+    }),
+
   companySettings: adminProcedure
     .input(z.object({ companyId: z.number() }))
     .query(async ({ input }) => {
