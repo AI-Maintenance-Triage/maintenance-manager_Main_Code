@@ -1900,6 +1900,12 @@ const platformRouter = router({
       source: "global" as const,
     };
   }),
+
+  webhookEvents: adminProcedure
+    .input(z.object({ companyId: z.number().optional(), limit: z.number().default(50), offset: z.number().default(0) }))
+    .query(async ({ input }) => {
+      return db.getPmsWebhookEvents(input);
+    }),
 });
 
 // ─── Email Preferences Router ──────────────────────────────────────────────

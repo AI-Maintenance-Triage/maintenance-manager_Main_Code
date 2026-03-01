@@ -475,3 +475,18 @@ export const contractorInvites = mysqlTable("contractor_invites", {
 });
 export type ContractorInvite = typeof contractorInvites.$inferSelect;
 export type InsertContractorInvite = typeof contractorInvites.$inferInsert;
+
+// ─── PMS Webhook Events ────────────────────────────────────────────────────
+// Audit log of inbound webhook payloads from property management software.
+export const pmsWebhookEvents = mysqlTable("pms_webhook_events", {
+  id: int("id").autoincrement().primaryKey(),
+  provider: varchar("provider", { length: 64 }).notNull(), // e.g. "buildium", "appfolio"
+  companyId: int("companyId"),                             // resolved from API key, nullable if unknown
+  rawPayload: json("rawPayload"),                          // full inbound payload for debugging
+  status: mysqlEnum("status", ["received", "processed", "failed", "ignored"]).default("received").notNull(),
+  errorMessage: text("errorMessage"),                      // set on failure
+  createdJobId: int("createdJobId"),                       // maintenanceRequest.id if a job was created
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type PmsWebhookEvent = typeof pmsWebhookEvents.$inferSelect;
+export type InsertPmsWebhookEvent = typeof pmsWebhookEvents.$inferInsert;

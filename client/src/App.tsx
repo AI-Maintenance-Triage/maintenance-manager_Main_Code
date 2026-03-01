@@ -31,6 +31,7 @@ import PlatformDashboard from "./pages/admin/PlatformDashboard";
 import AdminCompanies from "./pages/admin/AdminCompanies";
 import AdminSubscriptionPlans from "./pages/admin/AdminSubscriptionPlans";
 import AdminRevenue from "./pages/admin/AdminRevenue";
+import AdminWebhookEvents from "./pages/AdminWebhookEvents";
 import ResetPassword from "./pages/ResetPassword";
 import InviteAccept from "./pages/InviteAccept";
 import { PWAInstallBanner } from "./components/PWAInstallBanner";
@@ -105,6 +106,9 @@ function Router() {
       </Route>
       <Route path="/admin/revenue">
         <DashboardLayout><AdminRevenue /></DashboardLayout>
+      </Route>
+      <Route path="/admin/webhooks">
+        <DashboardLayout><AdminWebhookEvents /></DashboardLayout>
       </Route>
       <Route path="/admin">
         <DashboardLayout><PlatformDashboard /></DashboardLayout>

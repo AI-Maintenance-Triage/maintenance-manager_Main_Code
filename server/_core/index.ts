@@ -10,6 +10,7 @@ import { registerStripeWebhookRoute } from "../stripe-webhook";
 import { registerInvoiceRoute } from "../invoice";
 import { registerInvoiceBulkRoute } from "../invoice-bulk";
 import { registerReceiptRoute } from "../receipt";
+import { registerPmsWebhookRoute } from "../pms-webhook";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
@@ -54,6 +55,8 @@ async function startServer() {
   registerInvoiceBulkRoute(app);
   // Contractor payment receipt PDF endpoint
   registerReceiptRoute(app);
+  // PMS inbound webhook receiver (automated maintenance request ingestion)
+  registerPmsWebhookRoute(app);
   // tRPC API
   app.use(
     "/api/trpc",

@@ -7,9 +7,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
   MapPin, Wrench, AlertTriangle, CheckCircle2, Briefcase,
-  Building2, Calendar, DollarSign, Loader2, RefreshCw, Bug
+  Building2, Calendar, DollarSign, Loader2, RefreshCw, Bug, Zap
 } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { toast } from "sonner";
 
 const PRIORITY_CONFIG = {
@@ -19,10 +19,15 @@ const PRIORITY_CONFIG = {
   emergency: { label: "Emergency", color: "bg-red-500/20 text-red-300 border-red-500/30" },
 };
 
+const POLL_INTERVAL_MS = 30_000; // 30 seconds
+
 export default function ContractorJobBoard() {
   const { user } = useAuth({ redirectOnUnauthenticated: true });
   const utils = trpc.useUtils();
-  const { data: jobs, isLoading, refetch } = trpc.jobBoard.list.useQuery();
+  const { data: jobs, isLoading, refetch, dataUpdatedAt } = trpc.jobBoard.list.useQuery(undefined, {
+    refetchInterval: POLL_INTERVAL_MS,
+    refetchIntervalInBackground: false,
+  });
   const { data: debugData, refetch: refetchDebug } = trpc.jobBoard.debug.useQuery();
   const refreshGeocode = trpc.contractor.refreshGeocode.useMutation({
     onSuccess: (result) => {
@@ -47,6 +52,58 @@ export default function ContractorJobBoard() {
 
   const [selectedJob, setSelectedJob] = useState<any | null>(null);
   const [showDebug, setShowDebug] = useState(false);
+  const [lastRefreshed, setLastRefreshed] = useState<Date | null>(null);
+  const prevJobCountRef = useRef<number | null>(null);
+  const newJobsToastRef = useRef<string | number | null>(null);
+
+  // Update last-refreshed timestamp whenever data changes
+  useEffect(() => {
+    if (dataUpdatedAt) {
+      setLastRefreshed(new Date(dataUpdatedAt));
+    }
+  }, [dataUpdatedAt]);
+
+  // Detect new jobs and show toast
+  useEffect(() => {
+    if (!jobs) return;
+    const currentCount = jobs.length;
+    if (prevJobCountRef.current !== null && currentCount > prevJobCountRef.current) {
+      const newCount = currentCount - prevJobCountRef.current;
+      // Dismiss any existing new-jobs toast first
+      if (newJobsToastRef.current) toast.dismiss(newJobsToastRef.current);
+      newJobsToastRef.current = toast(
+        `${newCount} new job${newCount > 1 ? "s" : ""} available!`,
+        {
+          description: "New jobs were posted in your service area.",
+          icon: <Zap className="h-4 w-4 text-orange-400" />,
+          duration: 8000,
+          action: {
+            label: "View",
+            onClick: () => window.scrollTo({ top: 0, behavior: "smooth" }),
+          },
+        }
+      );
+    }
+    prevJobCountRef.current = currentCount;
+  }, [jobs]);
+
+  // Refresh when tab becomes visible again
+  const handleVisibilityChange = useCallback(() => {
+    if (document.visibilityState === "visible") {
+      refetch();
+      refetchDebug();
+    }
+  }, [refetch, refetchDebug]);
+
+  useEffect(() => {
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
+  }, [handleVisibilityChange]);
+
+  const handleManualRefresh = () => {
+    refetch();
+    refetchDebug();
+  };
 
   if (!user) return null;
 
@@ -57,11 +114,16 @@ export default function ContractorJobBoard() {
         <div>
           <h1 className="text-2xl font-bold text-foreground">Job Board</h1>
           <p className="text-muted-foreground mt-1">
-            Open jobs in your service area — accept one to get started
+            Open jobs in your service area — first to accept wins
           </p>
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={() => { refetch(); refetchDebug(); }} className="gap-2">
+        <div className="flex items-center gap-2">
+          {lastRefreshed && (
+            <span className="text-xs text-muted-foreground hidden sm:block">
+              Updated {lastRefreshed.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
+            </span>
+          )}
+          <Button variant="outline" size="sm" onClick={handleManualRefresh} className="gap-2">
             <RefreshCw className="h-4 w-4" />
             Refresh
           </Button>
@@ -126,6 +188,9 @@ export default function ContractorJobBoard() {
               <AlertTriangle className="h-3 w-3 mr-1" /> Emergency jobs available
             </Badge>
           )}
+          <span className="ml-auto text-xs text-muted-foreground/60 hidden sm:block">
+            Auto-refreshes every 30s
+          </span>
         </div>
       )}
 

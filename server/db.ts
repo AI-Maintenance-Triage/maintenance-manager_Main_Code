@@ -19,6 +19,8 @@ import {
   jobComments, InsertJobComment,
   notifications, InsertNotification,
   subscriptionPlans, InsertSubscriptionPlan,
+  pmsWebhookEvents,
+  contractorInvites, InsertContractorInvite,
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
@@ -2027,8 +2029,6 @@ export async function getPlanDistributionStats() {
   return { companyStats: companyPlanRows, contractorStats: contractorPlanRows, summary };
 }
 
-// ─── Contractor Invites ────────────────────────────────────────────────────
-import { contractorInvites, InsertContractorInvite } from "../drizzle/schema";
 
 export async function createContractorInvite(data: InsertContractorInvite) {
   const db = await getDb();
@@ -2163,4 +2163,15 @@ export async function getContractorsInServiceArea(
   }
 
   return results;
+}
+
+// ─── PMS Webhook Events ────────────────────────────────────────────────────
+export async function getPmsWebhookEvents(options: { companyId?: number; limit?: number; offset?: number } = {}) {
+  const db = await getDb();
+  if (!db) return [];
+  const { companyId, limit = 50, offset = 0 } = options;
+  if (companyId) {
+    return db.select().from(pmsWebhookEvents).where(eq(pmsWebhookEvents.companyId, companyId)).orderBy(desc(pmsWebhookEvents.createdAt)).limit(limit).offset(offset);
+  }
+  return db.select().from(pmsWebhookEvents).orderBy(desc(pmsWebhookEvents.createdAt)).limit(limit).offset(offset);
 }

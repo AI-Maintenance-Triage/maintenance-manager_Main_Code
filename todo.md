@@ -709,3 +709,42 @@
 - [x] Frontend: /admin/revenue page — monthly gross volume line chart
 - [x] Frontend: /admin/revenue page — top 10 companies by spend table
 - [x] Frontend: admin sidebar — Revenue nav item
+
+## Job Board Real-Time Refresh (Current Session)
+- [ ] Frontend: poll jobBoard.list every 30s in background
+- [ ] Frontend: compare new result count vs cached count — show "X new jobs available" toast with Refresh button
+- [ ] Frontend: auto-refresh job list when contractor returns to the tab (visibilitychange event)
+- [ ] Frontend: show last-refreshed timestamp on job board header
+
+## Contractor Rating System (Current Session)
+- [ ] Schema: contractor_ratings table (id, jobId, companyId, contractorProfileId, stars, comment, createdAt)
+- [ ] Schema: push migration
+- [ ] Backend: ratings.create procedure — company submits rating after job is completed/paid
+- [ ] Backend: ratings.getForContractor procedure — list ratings for a contractor profile
+- [ ] Backend: contractor.getProfile — include avgRating and ratingCount in response
+- [ ] Frontend: company Jobs page — "Rate Contractor" button on completed/paid jobs
+- [ ] Frontend: rate contractor dialog — 1–5 star picker + optional comment
+- [ ] Frontend: contractor profile page — show star rating badge and recent reviews
+- [ ] Frontend: job board cards — show contractor's avg rating if they have one (after accepting)
+
+## PMS Inbound Webhook Receiver (Current Session)
+- [ ] Backend: POST /api/webhooks/pms/:provider — generic inbound webhook endpoint
+- [ ] Backend: validate webhook secret per provider (stored in integration connector settings)
+- [ ] Backend: parse payload and create maintenanceRequest + auto-classify with AI
+- [ ] Backend: map provider-specific fields to internal schema (unit, description, priority, tenant name)
+- [ ] Backend: log webhook events to a pms_webhook_events table for audit/debugging
+- [ ] Schema: pms_webhook_events table (id, provider, companyId, rawPayload, status, createdAt)
+- [ ] Schema: push migration
+- [ ] Frontend: company Settings integrations page — show webhook URL + secret for each connected provider
+- [ ] Frontend: admin platform dashboard — webhook events log viewer (recent events, status, provider)
+
+## Admin Webhook Events UI (Session 18)
+- [x] Backend: db.getPmsWebhookEvents helper (paginated, optional companyId filter)
+- [x] Backend: platform.webhookEvents tRPC procedure (admin-only, paginated)
+- [x] Frontend: /admin/webhooks page — event log table (timestamp, provider, companyId, status, job created, error)
+- [x] Frontend: /admin/webhooks page — payload preview dialog (raw JSON)
+- [x] Frontend: /admin/webhooks page — provider + status filters, company ID search
+- [x] Frontend: /admin/webhooks page — pagination controls
+- [x] Frontend: admin sidebar — Webhooks nav item
+- [x] Fix: db.ts duplicate mid-file import of contractorInvites (moved to top-level import block)
+- [x] 115 tests passing, 0 TypeScript errors
