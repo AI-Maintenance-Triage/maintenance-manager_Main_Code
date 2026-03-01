@@ -210,7 +210,7 @@ export const maintenanceRequests = mysqlTable("maintenance_requests", {
   // Job board
   postedToBoard: boolean("postedToBoard").default(false).notNull(),
   // Job status
-  status: mysqlEnum("status", ["open", "assigned", "in_progress", "pending_verification", "completed", "verified", "disputed", "paid", "canceled"]).default("open").notNull(),
+  status: mysqlEnum("status", ["open", "assigned", "in_progress", "pending_verification", "completed", "verified", "disputed", "paid", "payment_pending_ach", "canceled"]).default("open").notNull(),
   assignedContractorId: int("assignedContractorId"),
   assignedAt: timestamp("assignedAt"),
   // Completion (contractor side)

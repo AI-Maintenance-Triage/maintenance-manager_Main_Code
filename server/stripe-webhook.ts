@@ -42,19 +42,29 @@ export function registerStripeWebhookRoute(app: Express) {
           if (jobId) {
             const db = await getDb();
             if (db) {
-              // Update transaction status to captured
+              // Update transaction status to captured and set paidAt
               await db
                 .update(transactions)
-                .set({ status: "captured" })
+                .set({ status: "captured", paidAt: new Date() })
                 .where(eq(transactions.stripePaymentIntentId, pi.id));
 
-              // Update job to paid
-              await db
-                .update(maintenanceRequests)
-                .set({ status: "paid", paidAt: new Date() })
-                .where(eq(maintenanceRequests.id, jobId));
-
-              console.log(`[Stripe Webhook] Job ${jobId} marked as paid`);
+              // Only promote job to 'paid' if it is currently 'payment_pending_ach'.
+              // Card payments are already set to 'paid' synchronously in the payment procedure;
+              // ACH payments are set to 'payment_pending_ach' and confirmed here once Stripe settles.
+              const [job] = await db
+                .select({ id: maintenanceRequests.id, status: maintenanceRequests.status })
+                .from(maintenanceRequests)
+                .where(eq(maintenanceRequests.id, jobId))
+                .limit(1);
+              if (job?.status === "payment_pending_ach") {
+                await db
+                  .update(maintenanceRequests)
+                  .set({ status: "paid", paidAt: new Date() })
+                  .where(eq(maintenanceRequests.id, jobId));
+                console.log(`[Stripe Webhook] ACH payment confirmed — Job ${jobId} promoted to paid`);
+              } else {
+                console.log(`[Stripe Webhook] payment_intent.succeeded for job ${jobId} (status: ${job?.status ?? 'unknown'}) — no status change needed`);
+              }
             }
           }
           break;
@@ -70,7 +80,21 @@ export function registerStripeWebhookRoute(app: Express) {
                 .update(transactions)
                 .set({ status: "failed" })
                 .where(eq(transactions.stripePaymentIntentId, pi.id));
-              console.log(`[Stripe Webhook] Payment failed for job ${jobId}`);
+              // If the job was waiting on ACH, revert it back to 'verified' so the company can retry
+              const [job] = await db
+                .select({ id: maintenanceRequests.id, status: maintenanceRequests.status })
+                .from(maintenanceRequests)
+                .where(eq(maintenanceRequests.id, jobId))
+                .limit(1);
+              if (job?.status === "payment_pending_ach") {
+                await db
+                  .update(maintenanceRequests)
+                  .set({ status: "verified" })
+                  .where(eq(maintenanceRequests.id, jobId));
+                console.log(`[Stripe Webhook] ACH payment failed — Job ${jobId} reverted to verified`);
+              } else {
+                console.log(`[Stripe Webhook] Payment failed for job ${jobId}`);
+              }
             }
           }
           break;

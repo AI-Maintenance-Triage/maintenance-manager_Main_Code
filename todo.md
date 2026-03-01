@@ -653,3 +653,25 @@
 - [x] Frontend: company Contractors page — Pending Invites table with revoke action
 - [x] Frontend: /invite/:token page — landing page that validates token and redirects to registration
 - [x] Frontend: registration flow — pre-fill company association from invite token
+
+## Follow-up Improvements (Current Session)
+
+### Resend Invite
+- [x] Backend: invites.resend procedure — regenerate token, update expiresAt, re-send email
+- [x] Frontend: company Contractors page — "Resend" button on each pending invite row
+
+### ACH Payment Pending Flow
+- [x] Schema: add payment_pending_ach status to job status enum
+- [x] Schema: push migration
+- [x] Backend: when paying with us_bank_account, set job status to "payment_pending_ach" instead of "paid"
+- [x] Backend: Stripe webhook payment_intent.succeeded — promote payment_pending_ach → paid when ACH clears; revert to verified on failure
+- [x] Frontend: job payment dialog — show ACH settlement notice (1–3 business days)
+- [x] Frontend: job status display — show "Payment Pending (ACH)" badge for payment_pending_ach status
+
+### Stripe Connect Real-Time Status Refresh
+- [x] Backend: Stripe webhook account.updated — update contractor stripeConnectStatus in DB
+- [x] Frontend: contractor billing page — auto-poll Connect status every 5s while status is "pending" (stop after active or on page leave)
+- [x] Frontend: show toast when Connect status transitions to "active"
+
+## Bug Fixes (Current Session)
+- [x] Bug: Invite Contractor button not visible when logged in as a company user (non-admin) — stale viewAs localStorage from admin session; fixed by resetting viewAs in DashboardLayout for non-admin users

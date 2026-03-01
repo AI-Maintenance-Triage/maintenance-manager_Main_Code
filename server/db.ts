@@ -2053,3 +2053,12 @@ export async function getContractorInviteByEmailAndCompany(email: string, compan
     .limit(1);
   return result[0];
 }
+
+export async function refreshContractorInviteToken(id: number, newToken: string, newExpiresAt: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db
+    .update(contractorInvites)
+    .set({ token: newToken, expiresAt: newExpiresAt, status: "pending" })
+    .where(eq(contractorInvites.id, id));
+}

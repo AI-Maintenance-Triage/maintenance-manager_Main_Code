@@ -148,6 +148,13 @@
       "when": 1772378690661,
       "tag": "0020_plain_eternity",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "5",
+      "when": 1772379547269,
+      "tag": "0021_sticky_proemial_gods",
+      "breakpoints": true
     }
   ]
 }

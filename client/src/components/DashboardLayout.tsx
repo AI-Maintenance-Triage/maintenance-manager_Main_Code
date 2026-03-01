@@ -121,6 +121,14 @@ function DashboardLayoutContent({ children, setSidebarWidth }: { children: React
   const viewAs = useViewAs();
   const isAdmin = user?.role === "admin";
 
+  // If a non-admin user has a stale viewAs state (e.g., from a previous admin session),
+  // clear it immediately so it never incorrectly activates impersonation mode.
+  useEffect(() => {
+    if (user && !isAdmin && viewAs.mode !== "admin") {
+      viewAs.resetViewAs();
+    }
+  }, [user, isAdmin, viewAs.mode]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // When admin is impersonating, show ONLY the impersonated role's sections
   // When not impersonating, show the user's own sections
   const isImpersonating = isAdmin && viewAs.mode !== "admin";

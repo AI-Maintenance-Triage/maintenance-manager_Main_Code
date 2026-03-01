@@ -1,0 +1,1 @@
+ALTER TABLE `maintenance_requests` MODIFY COLUMN `status` enum('open','assigned','in_progress','pending_verification','completed','verified','disputed','paid','payment_pending_ach','canceled') NOT NULL DEFAULT 'open';

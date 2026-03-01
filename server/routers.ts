@@ -763,7 +763,7 @@ const jobsRouter = router({
   update: companyAdminProcedure
     .input(z.object({
       id: z.number(),
-      status: z.enum(["open", "assigned", "in_progress", "pending_verification", "completed", "verified", "disputed", "paid", "canceled"]).optional(),
+      status: z.enum(["open", "assigned", "in_progress", "pending_verification", "completed", "verified", "disputed", "paid", "payment_pending_ach", "canceled"]).optional(),
       skillTierId: z.number().optional(),
       hourlyRate: z.string().optional(),
       isEmergency: z.boolean().optional(),
@@ -876,6 +876,20 @@ const jobsRouter = router({
             description: `Maintenance job #${input.jobId}: ${job.title}`,
           });
 
+          // Detect whether the payment was made with ACH (bank account) — ACH takes 1-3 business days to settle
+          let isAchPayment = false;
+          try {
+            const pi = await stripe.paymentIntents.retrieve(result.paymentIntentId);
+            const pmId = pi.payment_method as string | undefined;
+            if (pmId) {
+              const pm = await stripe.paymentMethods.retrieve(pmId);
+              isAchPayment = pm.type === "us_bank_account";
+            }
+          } catch { /* non-critical — default to card flow */ }
+
+          const jobStatus = isAchPayment ? "payment_pending_ach" : "paid";
+          const txStatus = isAchPayment ? "escrow" : "captured";
+
           // Record transaction
           await db.createTransaction({
             maintenanceRequestId: input.jobId,
@@ -888,15 +902,14 @@ const jobsRouter = router({
             contractorPayout: (result.jobCostCents / 100).toFixed(2),
             stripePaymentIntentId: result.paymentIntentId,
             stripeTransferId: result.transferId,
-            status: "captured",
-            paidAt: new Date(),
+            status: txStatus,
+            paidAt: isAchPayment ? undefined : new Date(),
           });
-
           // Update job with payment info
           await db.updateMaintenanceRequest(input.jobId, {
             stripePaymentIntentId: result.paymentIntentId,
-            status: "paid",
-            paidAt: new Date(),
+            status: jobStatus,
+            paidAt: isAchPayment ? undefined : new Date(),
             platformFee: (result.platformFeeCents / 100).toFixed(2),
             totalCost: (result.totalChargeCents / 100).toFixed(2),
           });
@@ -1906,8 +1919,40 @@ const invitesRouter = router({
         token: invite.token,
       };
     }),
-});
 
+  // Company: resend a pending invite (regenerates token + expiry, fires new email)
+  resend: companyAdminProcedure
+    .input(z.object({ inviteId: z.number(), origin: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const companyId = getEffectiveCompanyId(ctx);
+      const invites = await db.listContractorInvitesByCompany(companyId);
+      const invite = invites.find((i) => i.id === input.inviteId);
+      if (!invite) throw new TRPCError({ code: "NOT_FOUND" });
+      if (invite.status === "accepted") throw new TRPCError({ code: "BAD_REQUEST", message: "This invite has already been accepted." });
+
+      const company = await db.getCompanyById(companyId);
+      if (!company) throw new TRPCError({ code: "NOT_FOUND" });
+
+      // Regenerate token and extend expiry
+      const { randomBytes } = await import("crypto");
+      const newToken = randomBytes(48).toString("hex");
+      const EXPIRES_IN_DAYS = 7;
+      const newExpiresAt = Date.now() + EXPIRES_IN_DAYS * 24 * 60 * 60 * 1000;
+
+      await db.refreshContractorInviteToken(invite.id, newToken, newExpiresAt);
+
+      const inviteUrl = `${input.origin}/invite/${newToken}`;
+      await email.sendContractorInviteEmail({
+        to: invite.email,
+        name: invite.name ?? "",
+        companyName: company.name,
+        inviteUrl,
+        expiresInDays: EXPIRES_IN_DAYS,
+      });
+
+      return { success: true };
+    }),
+});
 const publicRouter = router({
   /** Returns all active company-type plans sorted by sortOrder — used on the landing page pricing section */
   listCompanyPlans: publicProcedure.query(async () => {

@@ -8,7 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useViewAs } from "@/contexts/ViewAsContext";
-import { HardHat, CheckCircle, XCircle, Star, UserPlus, Mail, Clock, Ban } from "lucide-react";
+import { HardHat, CheckCircle, XCircle, Star, UserPlus, Mail, Clock, Ban, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { useState } from "react";
 
@@ -53,6 +53,11 @@ export default function CompanyContractors() {
 
   const revokeInvite = trpc.invites.revoke.useMutation({
     onSuccess: () => { toast.success("Invite revoked."); utils.invites.list.invalidate(); },
+    onError: (err) => toast.error(err.message),
+  });
+
+  const resendInvite = trpc.invites.resend.useMutation({
+    onSuccess: () => { toast.success("Invite resent! A new email has been sent with a fresh 7-day link."); utils.invites.list.invalidate(); },
     onError: (err) => toast.error(err.message),
   });
 
@@ -120,15 +125,27 @@ export default function CompanyContractors() {
                     Expires {new Date(inv.expiresAt).toLocaleDateString()}
                   </p>
                 </div>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  className="text-muted-foreground hover:text-red-400 gap-1 shrink-0"
-                  onClick={() => revokeInvite.mutate({ inviteId: inv.id })}
-                  disabled={revokeInvite.isPending}
-                >
-                  <Ban className="h-3.5 w-3.5" /> Revoke
-                </Button>
+                <div className="flex gap-1 shrink-0">
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="text-muted-foreground hover:text-primary gap-1"
+                    onClick={() => resendInvite.mutate({ inviteId: inv.id, origin: window.location.origin })}
+                    disabled={resendInvite.isPending}
+                    title="Resend invite with a fresh 7-day link"
+                  >
+                    <RefreshCw className="h-3.5 w-3.5" /> Resend
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="text-muted-foreground hover:text-red-400 gap-1"
+                    onClick={() => revokeInvite.mutate({ inviteId: inv.id })}
+                    disabled={revokeInvite.isPending}
+                  >
+                    <Ban className="h-3.5 w-3.5" /> Revoke
+                  </Button>
+                </div>
               </div>
             ))}
           </CardContent>

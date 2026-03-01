@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -59,16 +59,29 @@ function planStatusBadge(status: string) {
 function StripeConnectCard() {
   const utils = trpc.useUtils();
   const [onboardingLoading, setOnboardingLoading] = useState(false);
+  const prevIsComplete = useRef<boolean | null>(null);
 
   const { data: connectStatus, isLoading: connectLoading, refetch } =
-    trpc.stripePayments.contractorOnboardingStatus.useQuery();
+    trpc.stripePayments.contractorOnboardingStatus.useQuery(
+      undefined,
+      {
+        // Poll every 5 seconds while an account exists but onboarding is not yet complete
+        // so the UI updates automatically once the contractor finishes in the Stripe-hosted tab
+        refetchInterval: (query) => {
+          const d = query.state.data as { onboardingComplete?: boolean; stripeAccountId?: string | null } | undefined;
+          if (!d) return false;
+          if (d.onboardingComplete) return false;
+          return d.stripeAccountId ? 5000 : false;
+        },
+      }
+    );
 
   const startOnboarding = trpc.stripePayments.contractorOnboardingLink.useMutation({
     onSuccess: (data) => {
       setOnboardingLoading(false);
       window.open(data.url, "_blank");
       toast.success("Stripe onboarding opened", {
-        description: "Complete the form in the new tab, then return here and refresh.",
+        description: "Complete the form in the new tab — this page will update automatically once your account is verified.",
       });
     },
     onError: (err) => {
@@ -96,6 +109,16 @@ function StripeConnectCard() {
 
   const isComplete = connectStatus?.onboardingComplete ?? false;
   const hasAccount = !!connectStatus?.stripeAccountId;
+
+  // Show a success toast when the status transitions to active via polling
+  useEffect(() => {
+    if (prevIsComplete.current === false && isComplete) {
+      toast.success("Stripe account activated!", {
+        description: "Your payout account is now active. You will receive automatic transfers for completed jobs.",
+      });
+    }
+    prevIsComplete.current = isComplete;
+  }, [isComplete]);
 
   return (
     <Card className={`border ${isComplete ? "border-green-500/30 bg-green-500/5" : "border-amber-500/30 bg-amber-500/5"}`}>

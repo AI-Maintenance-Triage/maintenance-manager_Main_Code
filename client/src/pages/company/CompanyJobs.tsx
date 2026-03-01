@@ -32,6 +32,7 @@ const statusIcons: Record<string, React.ReactNode> = {
   pending_verification: <Clock className="h-3.5 w-3.5 text-orange-400" />,
   completed: <CheckCircle className="h-3.5 w-3.5" />,
   verified: <CheckCircle className="h-3.5 w-3.5 text-blue-400" />,
+  payment_pending_ach: <Clock className="h-3.5 w-3.5 text-yellow-400" />,
   paid: <CheckCircle className="h-3.5 w-3.5 text-green-400" />,
 };
 
@@ -43,7 +44,7 @@ const FILTER_TABS: { label: string; value: string; queryStatus: string | string[
   { label: "In Progress", value: "in_progress", queryStatus: "in_progress" },
   { label: "Pending Review", value: "pending_verification", queryStatus: "pending_verification" },
   { label: "Completed", value: "completed", queryStatus: "completed" },
-  { label: "Paid", value: "paid", queryStatus: ["verified", "paid"] },
+  { label: "Paid", value: "paid", queryStatus: ["verified", "paid", "payment_pending_ach"] },
 ];
 
 export default function CompanyJobs() {
@@ -213,7 +214,7 @@ export default function CompanyJobs() {
             const laborCost = parseFloat(job.totalLaborCost ?? "0");
             const partsCost = parseFloat(job.totalPartsCost ?? "0");
             const totalCost = laborCost + partsCost;
-            const isPaid = job.status === "paid" || job.status === "verified";
+            const isPaid = job.status === "paid" || job.status === "verified" || job.status === "payment_pending_ach";
 
             return (
               <Card key={job.id} className="bg-card border-border hover:border-primary/30 transition-colors">
@@ -261,8 +262,15 @@ export default function CompanyJobs() {
                           <Route className="h-3 w-3" /> View Route
                         </Button>
                       )}
+                      {/* ACH pending notice */}
+                      {job.status === "payment_pending_ach" && (
+                        <span className="flex items-center gap-1 text-xs text-yellow-400 bg-yellow-500/10 border border-yellow-500/20 rounded px-2 py-1 max-w-[180px] text-center">
+                          <Clock className="h-3 w-3 shrink-0" />
+                          ACH settling (1–3 days)
+                        </span>
+                      )}
                       {/* Download Invoice button for verified/paid jobs */}
-                      {(job.status === "verified" || job.status === "paid") && (
+                      {(job.status === "verified" || job.status === "paid" || job.status === "payment_pending_ach") && (
                         <Button
                           size="sm"
                           variant="outline"
