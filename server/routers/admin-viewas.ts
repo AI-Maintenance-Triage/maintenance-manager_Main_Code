@@ -289,6 +289,13 @@ export const adminViewAsRouter = router({
       priceAnnual: z.number().min(0),
       isActive: z.boolean().default(true),
       sortOrder: z.number().default(0),
+      // Fee settings
+      platformFeePercent: z.number().min(0).max(100).nullable().optional(),
+      perListingFeeEnabled: z.boolean().default(false),
+      perListingFeeAmount: z.number().min(0).default(0),
+      // Stripe Price IDs
+      stripePriceIdMonthly: z.string().nullable().optional(),
+      stripePriceIdAnnual: z.string().nullable().optional(),
       features: z.object({
         maxProperties: z.number().nullable().optional(),
         maxContractors: z.number().nullable().optional(),
@@ -314,6 +321,11 @@ export const adminViewAsRouter = router({
         isActive: input.isActive,
         sortOrder: input.sortOrder,
         features: input.features ?? {},
+        platformFeePercent: input.platformFeePercent != null ? String(input.platformFeePercent) : null,
+        perListingFeeEnabled: input.perListingFeeEnabled,
+        perListingFeeAmount: String(input.perListingFeeAmount),
+        stripePriceIdMonthly: input.stripePriceIdMonthly ?? null,
+        stripePriceIdAnnual: input.stripePriceIdAnnual ?? null,
       });
       return { id };
     }),
@@ -327,6 +339,13 @@ export const adminViewAsRouter = router({
       priceAnnual: z.number().min(0).optional(),
       isActive: z.boolean().optional(),
       sortOrder: z.number().optional(),
+      // Fee settings
+      platformFeePercent: z.number().min(0).max(100).nullable().optional(),
+      perListingFeeEnabled: z.boolean().optional(),
+      perListingFeeAmount: z.number().min(0).optional(),
+      // Stripe Price IDs
+      stripePriceIdMonthly: z.string().nullable().optional(),
+      stripePriceIdAnnual: z.string().nullable().optional(),
       features: z.object({
         maxProperties: z.number().nullable().optional(),
         maxContractors: z.number().nullable().optional(),
@@ -344,11 +363,15 @@ export const adminViewAsRouter = router({
       }).optional(),
     }))
     .mutation(async ({ input }) => {
-      const { id, priceMonthly, priceAnnual, ...rest } = input;
+      const { id, priceMonthly, priceAnnual, platformFeePercent, perListingFeeAmount, stripePriceIdMonthly, stripePriceIdAnnual, ...rest } = input;
       await db.updateSubscriptionPlan(id, {
         ...rest,
         ...(priceMonthly !== undefined ? { priceMonthly: String(priceMonthly) } : {}),
         ...(priceAnnual !== undefined ? { priceAnnual: String(priceAnnual) } : {}),
+        ...(platformFeePercent !== undefined ? { platformFeePercent: platformFeePercent != null ? String(platformFeePercent) : null } : {}),
+        ...(perListingFeeAmount !== undefined ? { perListingFeeAmount: String(perListingFeeAmount) } : {}),
+        ...(stripePriceIdMonthly !== undefined ? { stripePriceIdMonthly: stripePriceIdMonthly ?? null } : {}),
+        ...(stripePriceIdAnnual !== undefined ? { stripePriceIdAnnual: stripePriceIdAnnual ?? null } : {}),
       });
       return { success: true };
     }),
@@ -393,4 +416,41 @@ export const adminViewAsRouter = router({
   companiesWithPlans: adminProcedure.query(async () => {
     return db.listCompaniesWithPlans();
   }),
+
+  // ─── Filtered plan lists by type ─────────────────────────────────────────
+  listCompanyPlans: adminProcedure.query(async () => {
+    return db.listSubscriptionPlansByType("company");
+  }),
+  listContractorPlans: adminProcedure.query(async () => {
+    return db.listSubscriptionPlansByType("contractor");
+  }),
+
+  // ─── Assign Plan to Contractor ────────────────────────────────────────────
+  assignContractorPlan: adminProcedure
+    .input(z.object({
+      contractorProfileId: z.number(),
+      planId: z.number().nullable(),
+      planPriceOverride: z.number().nullable().optional(),
+      planNotes: z.string().optional(),
+    }))
+    .mutation(async ({ input }) => {
+      const priceOverride = input.planPriceOverride != null ? String(input.planPriceOverride) : null;
+      await db.assignContractorPlan(
+        input.contractorProfileId,
+        input.planId,
+        priceOverride,
+        input.planNotes ?? null
+      );
+      return { success: true };
+    }),
+
+  // Get contractor with plan info
+  contractorWithPlan: adminProcedure
+    .input(z.object({ contractorProfileId: z.number() }))
+    .query(async ({ input }) => {
+      const profile = await db.getContractorProfileById(input.contractorProfileId);
+      if (!profile) return null;
+      const plan = await db.getEffectivePlanForContractor(input.contractorProfileId);
+      return { profile, plan };
+    }),
 });

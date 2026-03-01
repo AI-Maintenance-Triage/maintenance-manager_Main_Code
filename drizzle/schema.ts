@@ -150,6 +150,10 @@ export const contractorProfiles = mysqlTable("contractor_profiles", {
   isAvailable: boolean("isAvailable").default(true).notNull(),
   rating: decimal("rating", { precision: 3, scale: 2 }).default("0.00"),
   completedJobs: int("completedJobs").default(0).notNull(),
+  // Subscription plan assignment (contractor-type plans)
+  planId: int("planId"),                                     // FK to subscription_plans (planType='contractor')
+  planPriceOverride: decimal("planPriceOverride", { precision: 10, scale: 2 }), // null = use plan default
+  planNotes: text("planNotes"),                              // internal admin notes
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
@@ -408,10 +412,19 @@ export type InsertNotification = typeof notifications.$inferInsert;
 // All companies on a plan see changes immediately — no per-company copies.
 export const subscriptionPlans = mysqlTable("subscription_plans", {
   id: int("id").autoincrement().primaryKey(),
+  // Determines whether this plan is for companies or contractors
+  planType: mysqlEnum("planType", ["company", "contractor"]).default("company").notNull(),
   name: varchar("name", { length: 128 }).notNull(),          // e.g. "Starter", "Pro"
   description: text("description"),
   priceMonthly: decimal("priceMonthly", { precision: 10, scale: 2 }).notNull().default("0.00"),
   priceAnnual: decimal("priceAnnual", { precision: 10, scale: 2 }).notNull().default("0.00"),
+  // Per-plan fee settings (override global platform settings)
+  platformFeePercent: decimal("platformFeePercent", { precision: 5, scale: 2 }),  // null = use global default
+  perListingFeeEnabled: boolean("perListingFeeEnabled").default(false).notNull(),
+  perListingFeeAmount: decimal("perListingFeeAmount", { precision: 8, scale: 2 }).default("0.00").notNull(),
+  // Stripe Price IDs for automated subscription billing
+  stripePriceIdMonthly: varchar("stripePriceIdMonthly", { length: 255 }),
+  stripePriceIdAnnual: varchar("stripePriceIdAnnual", { length: 255 }),
   // Feature flags — stored as JSON so admin can add new features without migrations
   features: json("features").$type<{
     maxProperties?: number | null;       // null = unlimited

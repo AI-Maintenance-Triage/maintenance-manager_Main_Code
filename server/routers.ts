@@ -88,6 +88,25 @@ const companyRouter = router({
     if (!getEffectiveCompanyId(ctx)) throw new TRPCError({ code: "NOT_FOUND" });
     return db.getCompanyDashboardStats(getEffectiveCompanyId(ctx));
   }),
+
+  // Returns the company's effective plan (plan-level or company-override)
+  getMyPlan: companyAdminProcedure.query(async ({ ctx }) => {
+    if (!getEffectiveCompanyId(ctx)) return null;
+    const companyId = getEffectiveCompanyId(ctx);
+    const company = await db.getCompanyById(companyId);
+    const plan = await db.getEffectivePlanForCompany(companyId);
+    const [propCount, contractorCount, jobsThisMonth] = await Promise.all([
+      db.countPropertiesForCompany(companyId),
+      db.countApprovedContractorsForCompany(companyId),
+      db.countJobsThisMonthForCompany(companyId),
+    ]);
+    return {
+      plan,
+      planPriceOverride: company?.planPriceOverride ?? null,
+      planNotes: company?.planNotes ?? null,
+      usage: { properties: propCount, contractors: contractorCount, jobsThisMonth },
+    };
+  }),
 });
 
 // ─── Settings Router ────────────────────────────────────────────────────────
@@ -175,8 +194,23 @@ const propertiesRouter = router({
     .input(z.object({ name: z.string().optional(), address: z.string().min(1), city: z.string().optional(), state: z.string().optional(), zipCode: z.string().optional(), latitude: z.string().optional(), longitude: z.string().optional(), units: z.number().optional() }))
     .mutation(async ({ ctx, input }) => {
       if (!getEffectiveCompanyId(ctx)) throw new TRPCError({ code: "NOT_FOUND" });
+      const companyId = getEffectiveCompanyId(ctx);
+      // ─── Plan limit check ───────────────────────────────────────────────────
+      const plan = await db.getEffectivePlanForCompany(companyId);
+      if (plan) {
+        const maxProps = (plan.features as any)?.maxProperties;
+        if (maxProps != null) {
+          const currentCount = await db.countPropertiesForCompany(companyId);
+          if (currentCount >= maxProps) {
+            throw new TRPCError({
+              code: "FORBIDDEN",
+              message: `Your ${plan.name} plan allows a maximum of ${maxProps} ${maxProps === 1 ? "property" : "properties"}. Please upgrade to add more.`,
+            });
+          }
+        }
+      }
       const name = input.name?.trim() || input.address.trim();
-      const id = await db.createProperty({ companyId: getEffectiveCompanyId(ctx), ...input, name });
+      const id = await db.createProperty({ companyId, ...input, name });
       // Auto-geocode if no coords provided
       if (!input.latitude || !input.longitude) {
         const fullAddress = [input.address, input.city, input.state, input.zipCode].filter(Boolean).join(", ");
@@ -254,6 +288,21 @@ const contractorRouter = router({
 
   getProfile: protectedProcedure.query(async ({ ctx }) => {
     return getEffectiveContractorProfile(ctx);
+  }),
+
+  getMyPlan: contractorProcedure.query(async ({ ctx }) => {
+    const profile = await db.getContractorProfile(ctx.user.id);
+    if (!profile) return null;
+    const plan = await db.getEffectivePlanForContractor(profile.id);
+    const activeJobs = await db.countActiveJobsForContractor(profile.id);
+    const approvedCompanies = await db.countApprovedCompaniesForContractor(profile.id);
+    return {
+      plan,
+      usage: {
+        activeJobs,
+        approvedCompanies,
+      },
+    };
   }),
 
   updateProfile: contractorProcedure
@@ -335,11 +384,26 @@ const contractorRouter = router({
     .input(z.object({ contractorProfileId: z.number() }))
     .mutation(async ({ ctx, input }) => {
       if (!getEffectiveCompanyId(ctx)) throw new TRPCError({ code: "NOT_FOUND" });
-      const settings = await db.getCompanySettings(getEffectiveCompanyId(ctx));
+      const companyId = getEffectiveCompanyId(ctx);
+      // ─── Plan limit check ───────────────────────────────────────────────────
+      const plan = await db.getEffectivePlanForCompany(companyId);
+      if (plan) {
+        const maxContractors = (plan.features as any)?.maxContractors;
+        if (maxContractors != null) {
+          const currentCount = await db.countApprovedContractorsForCompany(companyId);
+          if (currentCount >= maxContractors) {
+            throw new TRPCError({
+              code: "FORBIDDEN",
+              message: `Your ${plan.name} plan allows a maximum of ${maxContractors} approved ${maxContractors === 1 ? "contractor" : "contractors"}. Please upgrade to add more.`,
+            });
+          }
+        }
+      }
+      const settings = await db.getCompanySettings(companyId);
       const status = settings?.autoApproveContractors ? "approved" : "pending";
       const id = await db.createContractorCompanyRelation({
         contractorProfileId: input.contractorProfileId,
-        companyId: getEffectiveCompanyId(ctx),
+        companyId,
         invitedBy: "company",
         status: status as any,
       });
@@ -374,6 +438,20 @@ const contractorRouter = router({
     .mutation(async ({ ctx, input }) => {
       const profile = await getEffectiveContractorProfile(ctx);
       if (!profile) throw new TRPCError({ code: "NOT_FOUND" });
+      // Enforce contractor plan active job limit
+      const contractorPlan = await db.getEffectivePlanForContractor(profile.id);
+      if (contractorPlan?.features) {
+        const maxActiveJobs = (contractorPlan.features as any).maxActiveJobs;
+        if (maxActiveJobs != null) {
+          const currentActive = await db.countActiveJobsForContractor(profile.id);
+          if (currentActive >= maxActiveJobs) {
+            throw new TRPCError({
+              code: "FORBIDDEN",
+              message: `Your current plan (${contractorPlan.name}) allows a maximum of ${maxActiveJobs} active job${maxActiveJobs === 1 ? '' : 's'} at a time. Complete or close existing jobs to accept new ones.`,
+            });
+          }
+        }
+      }
       const job = await db.getMaintenanceRequestById(input.jobId);
       if (!job || job.status !== "open") throw new TRPCError({ code: "BAD_REQUEST", message: "Job is not available" });
       await db.updateMaintenanceRequest(input.jobId, {
@@ -578,10 +656,25 @@ const jobsRouter = router({
     }))
     .mutation(async ({ ctx, input }) => {
       if (!getEffectiveCompanyId(ctx)) throw new TRPCError({ code: "NOT_FOUND" });
+      const companyId = getEffectiveCompanyId(ctx);
+      // ─── Plan limit check ───────────────────────────────────────────────────
+      const plan = await db.getEffectivePlanForCompany(companyId);
+      if (plan) {
+        const maxJobsPerMonth = (plan.features as any)?.maxJobsPerMonth;
+        if (maxJobsPerMonth != null) {
+          const currentCount = await db.countJobsThisMonthForCompany(companyId);
+          if (currentCount >= maxJobsPerMonth) {
+            throw new TRPCError({
+              code: "FORBIDDEN",
+              message: `Your ${plan.name} plan allows a maximum of ${maxJobsPerMonth} jobs per month. You have reached your limit for this month. Please upgrade to create more jobs.`,
+            });
+          }
+        }
+      }
 
       // Create the request
       const id = await db.createMaintenanceRequest({
-        companyId: getEffectiveCompanyId(ctx),
+        companyId,
         ...input,
       });
 
@@ -688,11 +781,18 @@ const jobsRouter = router({
             return { success: true, paymentSkipped: true, reason: "contractor_no_stripe" };
           }
 
-          // Get platform fee settings
-          const settings = await getPlatformSettings();
-          const feePercent = parseFloat(settings.platformFeePercent ?? "5");
-          const perListingEnabled = settings.perListingFeeEnabled;
-          const perListingAmount = parseFloat(settings.perListingFeeAmount ?? "0");
+          // Get platform fee settings — plan takes priority over global settings
+          const companyPlan = await db.getEffectivePlanForCompany(companyId);
+          const globalSettings = await getPlatformSettings();
+          const feePercent = companyPlan?.platformFeePercent != null
+            ? parseFloat(String(companyPlan.platformFeePercent))
+            : parseFloat(globalSettings.platformFeePercent ?? "5");
+          const perListingEnabled = companyPlan != null
+            ? companyPlan.perListingFeeEnabled
+            : globalSettings.perListingFeeEnabled;
+          const perListingAmount = companyPlan != null
+            ? parseFloat(String(companyPlan.perListingFeeAmount ?? "0"))
+            : parseFloat(globalSettings.perListingFeeAmount ?? "0");
 
           // Calculate costs in cents
           const laborCost = parseFloat(job.totalLaborCost ?? "0");
@@ -1395,11 +1495,26 @@ const platformRouter = router({
   companies: adminProcedure.query(async () => {
     return db.listCompanies();
   }),
-  // Public: returns only the platform fee percentage (safe to expose to companies/contractors)
-  getFee: publicProcedure.query(async () => {
+  // Company-aware: returns plan-specific fee if company is on a plan, otherwise global default
+  getFee: protectedProcedure.query(async ({ ctx }) => {
+    const companyId = ctx.user.companyId ?? ctx.impersonatedCompanyId;
+    if (companyId) {
+      const plan = await db.getEffectivePlanForCompany(companyId);
+      if (plan?.platformFeePercent != null) {
+        return {
+          platformFeePercent: parseFloat(String(plan.platformFeePercent)),
+          perListingFeeEnabled: plan.perListingFeeEnabled,
+          perListingFeeAmount: parseFloat(String(plan.perListingFeeAmount ?? "0")),
+          source: "plan" as const,
+        };
+      }
+    }
     const settings = await getPlatformSettings();
     return {
       platformFeePercent: parseFloat(settings.platformFeePercent ?? "5"),
+      perListingFeeEnabled: settings.perListingFeeEnabled,
+      perListingFeeAmount: parseFloat(settings.perListingFeeAmount ?? "0"),
+      source: "global" as const,
     };
   }),
 });

@@ -119,6 +119,17 @@ export default function PlatformDashboard() {
   const [editContractorOpen, setEditContractorOpen] = useState(false);
   const [editContractor, setEditContractor] = useState<any>(null);
   const [editContractorTrades, setEditContractorTrades] = useState<string[]>([]);
+  // Contractor plan assignment state
+  const [editContractorPlanId, setEditContractorPlanId] = useState<string>("none");
+  const [editContractorPriceOverride, setEditContractorPriceOverride] = useState("");
+  const [editContractorPlanNotes, setEditContractorPlanNotes] = useState("");
+
+  const { data: contractorPlans } = trpc.adminViewAs.listContractorPlans.useQuery();
+
+  const assignContractorPlan = trpc.adminViewAs.assignContractorPlan.useMutation({
+    onSuccess: () => { utils.adminViewAs.allContractors.invalidate(); },
+    onError: (err) => toast.error(err.message),
+  });
 
   const updateContractor = trpc.adminViewAs.updateContractor.useMutation({
     onSuccess: () => {
@@ -193,6 +204,9 @@ export default function PlatformDashboard() {
   const openEditContractor = (c: any) => {
     setEditContractor({ ...c.profile, userName: c.user.name, userEmail: c.user.email });
     setEditContractorTrades(c.profile.trades || []);
+    setEditContractorPlanId(c.profile.planId ? String(c.profile.planId) : "none");
+    setEditContractorPriceOverride(c.profile.planPriceOverride ? String(parseFloat(c.profile.planPriceOverride)) : "");
+    setEditContractorPlanNotes(c.profile.planNotes ?? "");
     setEditContractorOpen(true);
   };
 
@@ -219,8 +233,35 @@ export default function PlatformDashboard() {
     utils.adminViewAs.companiesWithPlans.invalidate();
   };
 
-  // Find the currently selected plan object
+  // Find the currently selected plan object (company)
   const selectedPlan = plans?.find((p: any) => String(p.id) === editCompanyPlanId);
+
+  const handleSaveContractor = async () => {
+    if (!editContractor) return;
+    // Save basic profile info
+    await updateContractor.mutateAsync({
+      id: editContractor.id,
+      businessName: editContractor.businessName || undefined,
+      phone: editContractor.phone || undefined,
+      trades: editContractorTrades,
+      serviceAreaZips: editContractor.serviceAreaZips || undefined,
+      serviceRadiusMiles: editContractor.serviceRadiusMiles || undefined,
+      licenseNumber: editContractor.licenseNumber || undefined,
+    });
+    // Save plan assignment
+    await assignContractorPlan.mutateAsync({
+      contractorProfileId: editContractor.id,
+      planId: editContractorPlanId !== "none" ? parseInt(editContractorPlanId) : null,
+      planPriceOverride: editContractorPriceOverride !== "" ? parseFloat(editContractorPriceOverride) : null,
+      planNotes: editContractorPlanNotes || undefined,
+    });
+    toast.success("Contractor and plan saved!");
+    setEditContractorOpen(false);
+    utils.adminViewAs.allContractors.invalidate();
+  };
+
+  // Find the currently selected contractor plan object
+  const selectedContractorPlan = contractorPlans?.find((p: any) => String(p.id) === editContractorPlanId);
 
   return (
     <div className="space-y-6">
@@ -563,25 +604,30 @@ export default function PlatformDashboard() {
         </CardContent>
       </Card>
 
-      {/* Platform Fee Settings */}
+      {/* Platform Settings — fees are now per-plan */}
       <Card className="bg-card border-border">
         <CardHeader>
           <CardTitle className="text-card-foreground flex items-center gap-2">
-            <Settings className="h-5 w-5 text-primary" /> Platform Fee Settings
+            <Settings className="h-5 w-5 text-primary" /> Platform Settings
           </CardTitle>
-          <CardDescription>Configure fees charged to companies. Changes take effect immediately on the next job verification.</CardDescription>
+          <CardDescription>
+            Auto clock-out and GPS settings. Platform fees and per-listing fees are now configured
+            per subscription plan — go to <strong>Plans</strong> in the sidebar to set them.
+          </CardDescription>
         </CardHeader>
         <CardContent>
           {settingsLoading ? (
             <Skeleton className="h-32 w-full" />
           ) : (
             <div className="space-y-6">
-              <div className="space-y-3">
+              {/* Global fallback fee — shown as read-only reference */}
+              <div className="p-3 rounded-lg bg-secondary/40 border border-border space-y-1">
                 <div className="flex items-center gap-2">
-                  <DollarSign className="h-4 w-4 text-primary" />
-                  <h3 className="font-medium text-foreground">Transaction Fee</h3>
+                  <DollarSign className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm font-medium text-foreground">Global Fallback Fee</span>
+                  <span className="text-xs text-muted-foreground">(used when a company has no plan assigned)</span>
                 </div>
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-3 pl-6">
                   <div className="flex-1 space-y-1">
                     <Label className="text-sm text-muted-foreground">Platform Fee %</Label>
                     <p className="text-xs text-muted-foreground">Charged ON TOP of job cost. Contractor receives full job cost.</p>
@@ -591,26 +637,6 @@ export default function PlatformDashboard() {
                     <span className="text-muted-foreground">%</span>
                   </div>
                 </div>
-              </div>
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <ClipboardList className="h-4 w-4 text-primary" />
-                    <h3 className="font-medium text-foreground">Per-Listing Fee</h3>
-                  </div>
-                  <Switch checked={perListingEnabled} onCheckedChange={setPerListingEnabled} />
-                </div>
-                {perListingEnabled && (
-                  <div className="flex items-center gap-3 pl-6">
-                    <div className="flex-1 space-y-1">
-                      <Label className="text-sm text-muted-foreground">Fee per job posted</Label>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-muted-foreground">$</span>
-                      <Input type="number" min="0" step="0.01" value={perListingAmount} onChange={(e) => setPerListingAmount(e.target.value)} className="w-24 bg-secondary border-border" />
-                    </div>
-                  </div>
-                )}
               </div>
               <div className="space-y-3">
                 <div className="flex items-center gap-2">
@@ -633,8 +659,8 @@ export default function PlatformDashboard() {
               <Button
                 onClick={() => updateSettings.mutate({
                   platformFeePercent: parseFloat(feePercent) || 5,
-                  perListingFeeEnabled: perListingEnabled,
-                  perListingFeeAmount: parseFloat(perListingAmount) || 0,
+                  perListingFeeEnabled: false,
+                  perListingFeeAmount: 0,
                   autoClockOutMinutes: parseInt(autoClockOutMinutes) || 15,
                   autoClockOutRadiusMeters: parseInt(autoClockOutRadius) || 200,
                 })}
@@ -831,31 +857,114 @@ export default function PlatformDashboard() {
 
               <Separator />
 
-              {/* Contractor info note about plans */}
-              <div className="rounded-lg bg-secondary/50 p-3 space-y-1">
-                <p className="text-xs font-medium text-foreground flex items-center gap-1.5">
-                  <CreditCard className="h-3.5 w-3.5 text-primary" /> Subscription Plans
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  Contractors are not directly assigned to subscription plans — plans are assigned to companies.
-                  Contractor feature access is determined by the companies they work with.
-                </p>
+              {/* Contractor Plan Assignment */}
+              <div className="space-y-4">
+                <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                  <CreditCard className="h-4 w-4 text-primary" /> Contractor Plan
+                </h3>
+
+                {/* Plan selector */}
+                <div className="space-y-2">
+                  <Label className="text-foreground">Assigned Plan</Label>
+                  <Select value={editContractorPlanId} onValueChange={setEditContractorPlanId}>
+                    <SelectTrigger className="bg-secondary border-border">
+                      <SelectValue placeholder="No plan assigned" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-card border-border">
+                      <SelectItem value="none">No plan assigned</SelectItem>
+                      {(contractorPlans ?? []).map((p: any) => (
+                        <SelectItem key={p.id} value={String(p.id)}>
+                          {p.name} — ${parseFloat(p.priceMonthly ?? "0").toFixed(0)}/mo
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {!contractorPlans?.length && (
+                    <p className="text-xs text-muted-foreground">
+                      No contractor plans exist yet. Create them in the{" "}
+                      <a href="/admin/plans" className="text-primary underline">Plans page</a>.
+                    </p>
+                  )}
+                </div>
+
+                {/* Feature preview */}
+                {selectedContractorPlan && (
+                  <div className="rounded-lg bg-secondary/50 p-3 space-y-2">
+                    <p className="text-xs font-medium text-muted-foreground">Included features</p>
+                    <div className="grid grid-cols-2 gap-1">
+                      {Object.entries(selectedContractorPlan.features ?? {}).filter(([k]) =>
+                        !["maxActiveJobs", "maxCompanies"].includes(k)
+                      ).map(([key, val]) => (
+                        <div key={key} className="flex items-center gap-1.5 text-xs">
+                          {val ? <Check className="h-3 w-3 text-green-400" /> : <X className="h-3 w-3 text-muted-foreground/40" />}
+                          <span className={val ? "text-foreground" : "text-muted-foreground/60"}>
+                            {key.replace(/([A-Z])/g, " $1").replace(/^./, s => s.toUpperCase())}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                    {((selectedContractorPlan.features as any)?.maxActiveJobs != null || (selectedContractorPlan.features as any)?.maxCompanies != null) && (
+                      <div className="flex gap-3 text-xs text-muted-foreground pt-1 border-t border-border">
+                        {(selectedContractorPlan.features as any)?.maxActiveJobs != null && (
+                          <span>Max {(selectedContractorPlan.features as any).maxActiveJobs} active jobs</span>
+                        )}
+                        {(selectedContractorPlan.features as any)?.maxCompanies != null && (
+                          <span>Max {(selectedContractorPlan.features as any).maxCompanies} companies</span>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Price override */}
+                {editContractorPlanId !== "none" && (
+                  <div className="space-y-2">
+                    <Label className="text-foreground text-sm">
+                      Custom Price Override
+                      <span className="text-muted-foreground font-normal ml-1">(optional)</span>
+                    </Label>
+                    <div className="flex items-center gap-2">
+                      <span className="text-muted-foreground text-sm">$</span>
+                      <Input
+                        type="number" min="0" step="0.01"
+                        value={editContractorPriceOverride}
+                        onChange={e => setEditContractorPriceOverride(e.target.value)}
+                        placeholder={selectedContractorPlan ? `Default: $${parseFloat(selectedContractorPlan.priceMonthly ?? "0").toFixed(2)}/mo` : ""}
+                        className="bg-secondary border-border"
+                      />
+                      <span className="text-muted-foreground text-sm">/mo</span>
+                      {editContractorPriceOverride !== "" && (
+                        <Button variant="ghost" size="sm" className="text-xs text-muted-foreground h-8 px-2"
+                          onClick={() => setEditContractorPriceOverride("")}>Clear</Button>
+                      )}
+                    </div>
+                    {editContractorPriceOverride !== "" && selectedContractorPlan && (
+                      <p className="text-xs text-amber-400">
+                        Override: ${parseFloat(editContractorPriceOverride).toFixed(2)}/mo
+                        (plan default: ${parseFloat(selectedContractorPlan.priceMonthly ?? "0").toFixed(2)}/mo)
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                {/* Internal notes */}
+                <div className="space-y-2">
+                  <Label className="text-foreground text-sm">Internal Notes</Label>
+                  <Input
+                    value={editContractorPlanNotes}
+                    onChange={e => setEditContractorPlanNotes(e.target.value)}
+                    placeholder="e.g. Early adopter, grandfathered rate"
+                    className="bg-secondary border-border"
+                  />
+                </div>
               </div>
 
               <Button
                 className="w-full"
-                disabled={updateContractor.isPending}
-                onClick={() => updateContractor.mutate({
-                  id: editContractor.id,
-                  businessName: editContractor.businessName || undefined,
-                  phone: editContractor.phone || undefined,
-                  trades: editContractorTrades,
-                  serviceAreaZips: editContractor.serviceAreaZips || undefined,
-                  serviceRadiusMiles: editContractor.serviceRadiusMiles || undefined,
-                  licenseNumber: editContractor.licenseNumber || undefined,
-                })}
+                disabled={updateContractor.isPending || assignContractorPlan.isPending}
+                onClick={handleSaveContractor}
               >
-                {updateContractor.isPending ? "Saving..." : "Save Changes"}
+                {(updateContractor.isPending || assignContractorPlan.isPending) ? "Saving..." : "Save Changes"}
               </Button>
             </div>
           </DialogContent>

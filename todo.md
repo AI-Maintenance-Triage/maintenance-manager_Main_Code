@@ -499,3 +499,37 @@
 - [x] Plans page shows list of companies without any plan assigned
 - [x] Build /reset-password page for email/password password reset flow
 - [x] Wire /reset-password route in App.tsx
+
+## Plan Limit Enforcement + Billing + Stripe (Session N+1)
+- [x] Backend: enforce maxProperties limit in properties.create procedure
+- [x] Backend: enforce maxContractors limit in contractor invite/link procedure
+- [x] Backend: enforce maxJobsPerMonth limit in maintenance request creation
+- [x] Backend: helper getPlanForCompany() that resolves plan (with price override) for a company
+- [x] Company billing page: show current plan name, features, price, and usage vs limits
+- [x] Company billing page: show "Contact us to upgrade" CTA or upgrade flow
+- [x] Add stripePriceIdMonthly and stripePriceIdAnnual columns to subscription_plans table
+- [x] Admin plan form: add Stripe Price ID fields
+- [ ] Stripe webhook: handle checkout.session.completed to assign plan to company
+- [ ] Stripe checkout: create session tied to a plan (company can subscribe from billing page)
+- [ ] Handle subscription cancellation/expiry via webhook
+
+## Fee-Per-Plan Migration (Session N+1 addendum)
+- [x] Add platformFeePercent and perListingFeeEnabled/perListingFeeAmount to subscription_plans features JSON
+- [x] Migrate DB (pnpm db:push)
+- [x] Update job verification fee calculation to read from company's plan (fallback to global setting)
+- [x] Update per-listing fee check to read from company's plan
+- [x] Remove platformFeePercent and perListingFee fields from global platform settings admin UI
+- [x] Add platformFeePercent and perListingFee fields to admin plan create/edit form
+- [x] Keep global settings as a fallback for companies with no plan assigned
+
+## Contractor Plans System (Session N+2)
+- [x] Add planType enum (company/contractor) to subscription_plans schema
+- [x] Add planId, planPriceOverride, planNotes to contractor_profiles schema
+- [x] Push migration (pnpm db:push)
+- [x] Add contractor plan db helpers (getEffectivePlanForContractor, countActiveJobsForContractor, countCompaniesForContractor)
+- [x] Update admin-viewas router: filter listPlans by type, add assignContractorPlan procedure
+- [x] Update AdminSubscriptionPlans page: tabs for Company Plans / Contractor Plans
+- [x] Contractor edit dialog in PlatformDashboard: plan selector + price override + notes
+- [x] Add contractor.getMyPlan query
+- [x] Enforce contractor plan limits in backend (max active jobs, max companies)
+- [x] Build company billing page plan display with usage gauges and upgrade CTA

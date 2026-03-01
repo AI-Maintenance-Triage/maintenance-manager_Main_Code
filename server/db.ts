@@ -1,4 +1,4 @@
-import { eq, and, desc, sql, inArray, or, isNull } from "drizzle-orm";
+import { eq, and, desc, sql, inArray, or, isNull, count, gte } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import {
   InsertUser, users,
@@ -1542,4 +1542,163 @@ export async function listCompaniesWithPlans() {
     .from(companies)
     .leftJoin(subscriptionPlans, eq(companies.planId, subscriptionPlans.id))
     .orderBy(desc(companies.createdAt));
+}
+
+// ─── Plan Limit Helpers ──────────────────────────────────────────────────────
+
+/**
+ * Resolve the effective plan for a company, including any price override.
+ * Returns null if no plan is assigned.
+ */
+export async function getEffectivePlanForCompany(companyId: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db
+    .select({ company: companies, plan: subscriptionPlans })
+    .from(companies)
+    .leftJoin(subscriptionPlans, eq(companies.planId, subscriptionPlans.id))
+    .where(eq(companies.id, companyId))
+    .limit(1);
+  if (!result.length || !result[0].plan) return null;
+  const { company, plan } = result[0];
+  return {
+    ...plan,
+    // Apply per-company price override if set
+    effectiveMonthlyPrice: company.planPriceOverride
+      ? parseFloat(company.planPriceOverride)
+      : parseFloat(plan.priceMonthly ?? "0"),
+    planNotes: company.planNotes ?? null,
+  };
+}
+
+/** Count how many properties a company currently has */
+export async function countPropertiesForCompany(companyId: number): Promise<number> {
+  const db = await getDb();
+  if (!db) return 0;
+  const result = await db
+    .select({ cnt: count() })
+    .from(properties)
+    .where(eq(properties.companyId, companyId));
+  return result[0]?.cnt ?? 0;
+}
+
+/** Count how many approved contractors a company has linked */
+export async function countApprovedContractorsForCompany(companyId: number): Promise<number> {
+  const db = await getDb();
+  if (!db) return 0;
+  const result = await db
+    .select({ cnt: count() })
+    .from(contractorCompanies)
+    .where(
+      and(
+        eq(contractorCompanies.companyId, companyId),
+        eq(contractorCompanies.status, "approved")
+      )
+    );
+  return result[0]?.cnt ?? 0;
+}
+
+/** Count how many maintenance requests a company has created this calendar month */
+export async function countJobsThisMonthForCompany(companyId: number): Promise<number> {
+  const db = await getDb();
+  if (!db) return 0;
+  const now = new Date();
+  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+  const result = await db
+    .select({ cnt: count() })
+    .from(maintenanceRequests)
+    .where(
+      and(
+        eq(maintenanceRequests.companyId, companyId),
+        gte(maintenanceRequests.createdAt, startOfMonth)
+      )
+    );
+  return result[0]?.cnt ?? 0;
+}
+
+// ─── Contractor Plan Helpers ─────────────────────────────────────────────────
+
+/** Get the effective plan for a contractor (resolves planId → plan record) */
+export async function getEffectivePlanForContractor(contractorProfileId: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const profiles = await db
+    .select()
+    .from(contractorProfiles)
+    .where(eq(contractorProfiles.id, contractorProfileId))
+    .limit(1);
+  const profile = profiles[0];
+  if (!profile || !profile.planId) return null;
+  const plans = await db
+    .select()
+    .from(subscriptionPlans)
+    .where(eq(subscriptionPlans.id, profile.planId))
+    .limit(1);
+  const plan = plans[0];
+  if (!plan) return null;
+  return {
+    ...plan,
+    effectivePrice: profile.planPriceOverride != null
+      ? parseFloat(profile.planPriceOverride)
+      : parseFloat(plan.priceMonthly ?? "0"),
+    planNotes: profile.planNotes ?? null,
+  };
+}
+
+/** Count how many active (non-completed) jobs a contractor currently has */
+export async function countActiveJobsForContractor(contractorProfileId: number): Promise<number> {
+  const db = await getDb();
+  if (!db) return 0;
+  const result = await db
+    .select({ cnt: count() })
+    .from(maintenanceRequests)
+    .where(
+      and(
+        eq(maintenanceRequests.assignedContractorId, contractorProfileId),
+        inArray(maintenanceRequests.status, ["assigned", "in_progress", "pending_verification"])
+      )
+    );
+  return result[0]?.cnt ?? 0;
+}
+
+/** Count how many distinct companies a contractor is approved with */
+export async function countApprovedCompaniesForContractor(contractorProfileId: number): Promise<number> {
+  const db = await getDb();
+  if (!db) return 0;
+  const result = await db
+    .select({ cnt: count() })
+    .from(contractorCompanies)
+    .where(
+      and(
+        eq(contractorCompanies.contractorProfileId, contractorProfileId),
+        eq(contractorCompanies.status, "approved")
+      )
+    );
+  return result[0]?.cnt ?? 0;
+}
+
+/** Assign a contractor-type plan to a contractor profile */
+export async function assignContractorPlan(
+  contractorProfileId: number,
+  planId: number | null,
+  planPriceOverride: string | null,
+  planNotes: string | null
+) {
+  const db = await getDb();
+  if (!db) return;
+  await db
+    .update(contractorProfiles)
+    .set({ planId, planPriceOverride, planNotes })
+    .where(eq(contractorProfiles.id, contractorProfileId));
+}
+
+/** List all subscription plans filtered by planType */
+export async function listSubscriptionPlansByType(planType: "company" | "contractor") {
+  const db = await getDb();
+  if (!db) return [];
+  return db
+    .select()
+    .from(subscriptionPlans)
+    .where(eq(subscriptionPlans.planType, planType))
+    .orderBy(subscriptionPlans.sortOrder, subscriptionPlans.name);
 }

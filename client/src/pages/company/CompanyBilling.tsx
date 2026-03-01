@@ -3,7 +3,21 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { CreditCard, FileText, DollarSign, TrendingUp, Calendar, Download } from "lucide-react";
+import { Progress } from "@/components/ui/progress";
+import { CreditCard, FileText, DollarSign, TrendingUp, Calendar, Download, Check, X, Building2, Users, ClipboardList, ArrowUpRight } from "lucide-react";
+
+const COMPANY_FEATURE_LABELS: Record<string, string> = {
+  gpsTimeTracking: "GPS Time Tracking",
+  aiJobClassification: "AI Job Classification",
+  expenseReports: "Expense Reports",
+  contractorRatings: "Contractor Ratings",
+  jobComments: "Job Comments",
+  emailNotifications: "Email Notifications",
+  billingHistory: "Billing History",
+  apiAccess: "API Access",
+  customBranding: "Custom Branding",
+  prioritySupport: "Priority Support",
+};
 
 function fmt(val: string | number | null | undefined) {
   const n = parseFloat(String(val ?? "0"));
@@ -40,14 +54,153 @@ export default function CompanyBilling() {
     </div>
   );
 
+  const { data: planData } = trpc.company.getMyPlan.useQuery();
+  const plan = planData?.plan;
+  const usage = planData?.usage;
+
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
-          <CreditCard className="h-6 w-6 text-primary" /> Billing History
+          <CreditCard className="h-6 w-6 text-primary" /> Billing
         </h1>
-        <p className="text-muted-foreground mt-1">All charges and payments processed through the platform</p>
+        <p className="text-muted-foreground mt-1">Your subscription plan and payment history</p>
       </div>
+
+      {/* Current Plan Card */}
+      <Card className="bg-card border-border">
+        <CardHeader className="pb-3">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <CardTitle className="text-card-foreground flex items-center gap-2">
+                Current Plan
+                {plan ? (
+                  <Badge className="bg-primary/20 text-primary border-primary/30">{plan.name}</Badge>
+                ) : (
+                  <Badge variant="secondary">No Plan Assigned</Badge>
+                )}
+              </CardTitle>
+              <CardDescription className="mt-1">
+                {plan?.description ?? (plan ? "" : "Contact your account manager to get started with a subscription plan.")}
+              </CardDescription>
+            </div>
+            {plan && (
+              <div className="text-right shrink-0">
+                <p className="text-2xl font-bold text-foreground">${parseFloat(plan.priceMonthly ?? "0").toFixed(0)}<span className="text-sm font-normal text-muted-foreground">/mo</span></p>
+                {parseFloat(plan.priceAnnual ?? "0") > 0 && (
+                  <p className="text-xs text-muted-foreground">${parseFloat(plan.priceAnnual ?? "0").toFixed(0)}/yr</p>
+                )}
+              </div>
+            )}
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-5">
+          {plan ? (
+            <>
+              {/* Usage gauges */}
+              {usage && (
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  {/* Properties */}
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="flex items-center gap-1 text-muted-foreground"><Building2 className="h-3 w-3" /> Properties</span>
+                      <span className="text-foreground font-medium">
+                        {usage.properties}
+                        {plan.features?.maxProperties != null ? ` / ${plan.features.maxProperties}` : " / ∞"}
+                      </span>
+                    </div>
+                    {plan.features?.maxProperties != null ? (
+                      <Progress value={Math.min(100, (usage.properties / plan.features.maxProperties) * 100)}
+                        className="h-1.5" />
+                    ) : (
+                      <div className="h-1.5 rounded-full bg-secondary flex items-center justify-end pr-1">
+                        <span className="text-[9px] text-muted-foreground">∞</span>
+                      </div>
+                    )}
+                  </div>
+                  {/* Contractors */}
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="flex items-center gap-1 text-muted-foreground"><Users className="h-3 w-3" /> Contractors</span>
+                      <span className="text-foreground font-medium">
+                        {usage.contractors}
+                        {plan.features?.maxContractors != null ? ` / ${plan.features.maxContractors}` : " / ∞"}
+                      </span>
+                    </div>
+                    {plan.features?.maxContractors != null ? (
+                      <Progress value={Math.min(100, (usage.contractors / plan.features.maxContractors) * 100)}
+                        className="h-1.5" />
+                    ) : (
+                      <div className="h-1.5 rounded-full bg-secondary flex items-center justify-end pr-1">
+                        <span className="text-[9px] text-muted-foreground">∞</span>
+                      </div>
+                    )}
+                  </div>
+                  {/* Jobs this month */}
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="flex items-center gap-1 text-muted-foreground"><ClipboardList className="h-3 w-3" /> Jobs This Month</span>
+                      <span className="text-foreground font-medium">
+                        {usage.jobsThisMonth}
+                        {plan.features?.maxJobsPerMonth != null ? ` / ${plan.features.maxJobsPerMonth}` : " / ∞"}
+                      </span>
+                    </div>
+                    {plan.features?.maxJobsPerMonth != null ? (
+                      <Progress value={Math.min(100, (usage.jobsThisMonth / plan.features.maxJobsPerMonth) * 100)}
+                        className="h-1.5" />
+                    ) : (
+                      <div className="h-1.5 rounded-full bg-secondary flex items-center justify-end pr-1">
+                        <span className="text-[9px] text-muted-foreground">∞</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Feature list */}
+              <div>
+                <p className="text-xs font-medium text-muted-foreground mb-2">Included features</p>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
+                  {Object.entries(COMPANY_FEATURE_LABELS).map(([key, label]) => {
+                    const enabled = (plan.features as any)?.[key] ?? false;
+                    return (
+                      <div key={key} className="flex items-center gap-1.5 text-xs">
+                        {enabled ? (
+                          <Check className="h-3 w-3 text-green-400 shrink-0" />
+                        ) : (
+                          <X className="h-3 w-3 text-muted-foreground/40 shrink-0" />
+                        )}
+                        <span className={enabled ? "text-foreground" : "text-muted-foreground/60"}>{label}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Upgrade CTA */}
+              <div className="rounded-lg bg-primary/5 border border-primary/20 p-4 flex items-center justify-between gap-4">
+                <div>
+                  <p className="text-sm font-medium text-foreground">Need more capacity or features?</p>
+                  <p className="text-xs text-muted-foreground">Contact your account manager to upgrade your plan.</p>
+                </div>
+                <Button variant="outline" size="sm" className="gap-2 border-primary/30 text-primary hover:bg-primary/10 shrink-0"
+                  onClick={() => window.open("mailto:support@example.com?subject=Plan Upgrade Request", "_blank")}>
+                  <ArrowUpRight className="h-4 w-4" /> Contact Us
+                </Button>
+              </div>
+            </>
+          ) : (
+            <div className="text-center py-6">
+              <CreditCard className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
+              <p className="text-sm text-muted-foreground mb-4">No subscription plan is currently assigned to your account.</p>
+              <Button variant="outline" className="gap-2 border-primary/30 text-primary hover:bg-primary/10"
+                onClick={() => window.open("mailto:support@example.com?subject=Subscription Plan Inquiry", "_blank")}>
+                <ArrowUpRight className="h-4 w-4" /> Contact Us to Get Started
+              </Button>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Summary cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
