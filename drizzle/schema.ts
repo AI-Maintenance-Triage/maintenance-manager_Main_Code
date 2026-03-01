@@ -195,6 +195,7 @@ export const maintenanceRequests = mysqlTable("maintenance_requests", {
   verifiedByUserId: int("verifiedByUserId"),
   verificationNotes: text("verificationNotes"),
   disputeNotes: text("disputeNotes"),
+  disputedAt: timestamp("disputedAt"),
   stripePaymentIntentId: varchar("stripePaymentIntentId", { length: 128 }),
   paidAt: timestamp("paidAt"),
   // Financials

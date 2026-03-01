@@ -447,6 +447,8 @@ export async function getActiveSessionsByCompany(companyId: number) {
   .where(and(
     eq(timeSessions.companyId, companyId),
     eq(timeSessions.status, "active"),
+    // Only show sessions where the job is still actively in-progress (not verified/paid/done)
+    inArray(maintenanceRequests.status, ["assigned", "in_progress", "pending_verification"]),
   ));
   return sessions;
 }
@@ -989,6 +991,7 @@ export async function verifyJob(
         status: "disputed",
         verifiedByUserId,
         disputeNotes: notes,
+        disputedAt: new Date(),
       })
       .where(eq(maintenanceRequests.id, jobId));
   }

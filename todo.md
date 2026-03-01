@@ -337,3 +337,27 @@
 - [x] Company notification preferences: toggle clock-in/clock-out notifications in settings
 - [x] notifyOnClockIn, notifyOnClockOut, notifyOnJobSubmitted, notifyOnNewContractor fields in DB
 - [x] Backend respects notification preferences before sending alerts
+
+## Session 10: Photos, Earnings Dashboard, Dispute Workflow
+- [ ] Schema: add completionPhotos (JSON array of S3 URLs) to maintenance_requests
+- [ ] Schema: add disputeNotes, disputedAt fields to maintenance_requests
+- [ ] Schema: extend status enum to include "disputed"
+- [ ] Backend: jobs.uploadPhoto mutation — accepts file upload, stores in S3, appends URL to completionPhotos
+- [ ] Backend: jobs.getCompletionPhotos query — returns photo URLs for a job
+- [ ] Backend: jobs.dispute mutation — sets status=disputed, stores disputeNotes, notifies contractor
+- [ ] Frontend: contractor clock-out dialog — photo upload UI (before/after, multiple files)
+- [ ] Frontend: company verification card — show completion photos with lightbox viewer
+- [ ] Frontend: company verification card — "Dispute" button with notes dialog
+- [ ] Frontend: contractor My Jobs — show disputed badge and dispute notes on disputed jobs
+- [ ] Frontend: /contractor/earnings page — total earnings, pending payouts, per-job breakdown
+- [ ] Frontend: /contractor/earnings — monthly earnings chart
+- [ ] Frontend: contractor sidebar — Earnings nav item
+
+## Session 10 Bug Fixes
+- [x] Bug: Live Tracking "Live Jobs" tab shows verified/paid jobs that are already completed
+- [x] Bug: Contractor My Jobs does not show payout amount on completed/paid jobs
+- [x] Contractor earnings dashboard: /contractor/earnings page
+- [x] Contractor earnings dashboard: total earned, pending payout, total jobs stats
+- [x] Contractor earnings dashboard: monthly earnings bar chart (last 12 months)
+- [x] Contractor earnings dashboard: per-job transaction history table
+- [x] Contractor sidebar: Earnings nav item

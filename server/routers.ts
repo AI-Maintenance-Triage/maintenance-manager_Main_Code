@@ -402,6 +402,42 @@ const contractorRouter = router({
       await db.markJobComplete(input.jobId, profile.id, input.completionNotes, input.completionPhotoUrls);
       return { success: true };
     }),
+
+  // Contractor: earnings summary and transaction history
+  getEarnings: contractorProcedure
+    .query(async ({ ctx }) => {
+      const profile = await getEffectiveContractorProfile(ctx);
+      if (!profile) throw new TRPCError({ code: "NOT_FOUND" });
+      const txns = await db.getTransactionsByContractor(profile.id);
+
+      const totalEarned = txns
+        .filter((t: any) => ["captured", "paid_out"].includes(t.status))
+        .reduce((sum: number, t: any) => sum + parseFloat(t.contractorPayout ?? "0"), 0);
+      const pendingPayout = txns
+        .filter((t: any) => ["pending", "escrow"].includes(t.status))
+        .reduce((sum: number, t: any) => sum + parseFloat(t.contractorPayout ?? "0"), 0);
+
+      // Monthly breakdown (last 12 months)
+      const monthlyMap: Record<string, number> = {};
+      for (const t of txns) {
+        if (!["captured", "paid_out"].includes(t.status)) continue;
+        const d = new Date(t.createdAt);
+        const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+        monthlyMap[key] = (monthlyMap[key] ?? 0) + parseFloat(t.contractorPayout ?? "0");
+      }
+      const monthly = Object.entries(monthlyMap)
+        .sort(([a], [b]) => a.localeCompare(b))
+        .slice(-12)
+        .map(([month, amount]) => ({ month, amount: parseFloat(amount.toFixed(2)) }));
+
+      return {
+        totalEarned: parseFloat(totalEarned.toFixed(2)),
+        pendingPayout: parseFloat(pendingPayout.toFixed(2)),
+        totalJobs: txns.length,
+        transactions: txns,
+        monthly,
+      };
+    }),
 });
 
 // ─── Maintenance Requests Router ────────────────────────────────────────────

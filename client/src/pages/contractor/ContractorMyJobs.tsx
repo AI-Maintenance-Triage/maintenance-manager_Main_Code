@@ -441,10 +441,31 @@ function JobCard({ row, onUpdate, readOnly = false }: { row: any; onUpdate: () =
                   <p className="text-xs text-orange-300">Submitted for verification. The company will review your work shortly.</p>
                 </div>
               )}
-              {job.status === "verified" && job.verificationNotes && (
-                <div className="mt-2 p-3 rounded-lg bg-green-500/10 border border-green-500/20">
-                  <p className="text-xs font-medium text-green-400 mb-1 flex items-center gap-1"><CheckCircle className="h-3 w-3" /> Verified</p>
-                  <p className="text-xs text-green-300">{job.verificationNotes}</p>
+              {job.status === "verified" && (
+                <div className="mt-2 p-3 rounded-lg bg-green-500/10 border border-green-500/20 space-y-1">
+                  <p className="text-xs font-medium text-green-400 flex items-center gap-1"><CheckCircle className="h-3 w-3" /> Verified — Payment Processing</p>
+                  {job.totalCost && (
+                    <p className="text-sm font-bold text-green-300">Your payout: ${parseFloat(job.totalCost ?? "0").toFixed(2)}</p>
+                  )}
+                  {job.totalLaborMinutes && (
+                    <p className="text-xs text-green-300/70">
+                      {Math.floor((job.totalLaborMinutes ?? 0) / 60)}h {(job.totalLaborMinutes ?? 0) % 60}m @ ${parseFloat(job.hourlyRate ?? "0").toFixed(2)}/hr
+                    </p>
+                  )}
+                  {job.verificationNotes && <p className="text-xs text-green-300/70 mt-1">{job.verificationNotes}</p>}
+                </div>
+              )}
+              {job.status === "paid" && (
+                <div className="mt-2 p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/20 space-y-1">
+                  <p className="text-xs font-medium text-emerald-400 flex items-center gap-1"><CheckCircle className="h-3 w-3" /> Paid</p>
+                  {job.totalCost && (
+                    <p className="text-sm font-bold text-emerald-300">Payout: ${parseFloat(job.totalCost ?? "0").toFixed(2)}</p>
+                  )}
+                  {job.totalLaborMinutes && (
+                    <p className="text-xs text-emerald-300/70">
+                      {Math.floor((job.totalLaborMinutes ?? 0) / 60)}h {(job.totalLaborMinutes ?? 0) % 60}m @ ${parseFloat(job.hourlyRate ?? "0").toFixed(2)}/hr
+                    </p>
+                  )}
                 </div>
               )}
             </div>
