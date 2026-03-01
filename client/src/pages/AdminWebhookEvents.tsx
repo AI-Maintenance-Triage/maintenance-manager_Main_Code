@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { trpc } from "@/lib/trpc";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -6,9 +6,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Webhook, ChevronLeft, ChevronRight, RefreshCw, Eye } from "lucide-react";
+import { Webhook, ChevronLeft, ChevronRight, RefreshCw, Eye, Calendar, X } from "lucide-react";
 
-const PROVIDERS = ["all", "buildium", "appfolio", "yardi", "realpage", "propertyware", "doorloop"] as const;
+const PROVIDERS = ["all", "buildium", "appfolio", "yardi", "realpage", "propertyware", "doorloop", "rentmanager"] as const;
+type QuickRange = "all" | "24h" | "7d" | "30d" | "custom";
+function toDateInputValue(d: Date): string { return d.toISOString().slice(0, 10); }
 const STATUSES = ["all", "received", "processed", "failed", "ignored"] as const;
 
 type WebhookEvent = {
@@ -50,13 +52,33 @@ export default function AdminWebhookEvents() {
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [searchCompany, setSearchCompany] = useState("");
   const [selectedEvent, setSelectedEvent] = useState<WebhookEvent | null>(null);
+  const [quickRange, setQuickRange] = useState<QuickRange>("all");
+  const [customFrom, setCustomFrom] = useState("");
+  const [customTo, setCustomTo] = useState("");
 
   const PAGE_SIZE = 25;
+
+  const { dateFrom, dateTo } = useMemo(() => {
+    const now = new Date();
+    if (quickRange === "24h") return { dateFrom: new Date(now.getTime() - 24 * 60 * 60 * 1000), dateTo: undefined };
+    if (quickRange === "7d") return { dateFrom: new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000), dateTo: undefined };
+    if (quickRange === "30d") return { dateFrom: new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000), dateTo: undefined };
+    if (quickRange === "custom") return {
+      dateFrom: customFrom ? new Date(customFrom + "T00:00:00") : undefined,
+      dateTo: customTo ? new Date(customTo + "T23:59:59") : undefined,
+    };
+    return { dateFrom: undefined, dateTo: undefined };
+  }, [quickRange, customFrom, customTo]);
 
   const { data: events = [], isLoading, refetch, isFetching } = trpc.platform.webhookEvents.useQuery({
     limit: PAGE_SIZE,
     offset: page * PAGE_SIZE,
+    dateFrom,
+    dateTo,
   });
+
+  const hasDateFilter = quickRange !== "all";
+  function clearDateFilter() { setQuickRange("all"); setCustomFrom(""); setCustomTo(""); setPage(0); }
 
   // Client-side filter by provider, status, and company search
   const filtered = events.filter((e) => {
@@ -123,10 +145,37 @@ export default function AdminWebhookEvents() {
               <Input
                 placeholder="Filter by company ID..."
                 value={searchCompany}
-                onChange={(e) => setSearchCompany(e.target.value)}
+                onChange={(e) => { setSearchCompany(e.target.value); setPage(0); }}
               />
             </div>
-            <div className="text-sm text-muted-foreground whitespace-nowrap">
+          </div>
+          {/* Date range row */}
+          <div className="flex flex-wrap gap-2 items-center pt-1">
+            <Calendar className="h-4 w-4 text-muted-foreground shrink-0" />
+            <span className="text-sm text-muted-foreground">Date range:</span>
+            {(["all", "24h", "7d", "30d", "custom"] as QuickRange[]).map((r) => (
+              <Button key={r} variant={quickRange === r ? "default" : "outline"} size="sm" className="h-7 text-xs"
+                onClick={() => { setQuickRange(r); setPage(0); }}>
+                {r === "all" ? "All Time" : r === "24h" ? "Last 24h" : r === "7d" ? "Last 7 days" : r === "30d" ? "Last 30 days" : "Custom"}
+              </Button>
+            ))}
+            {quickRange === "custom" && (
+              <div className="flex items-center gap-2 ml-1">
+                <Input type="date" className="h-7 text-xs w-36" value={customFrom}
+                  max={customTo || toDateInputValue(new Date())}
+                  onChange={(e) => { setCustomFrom(e.target.value); setPage(0); }} />
+                <span className="text-muted-foreground text-xs">to</span>
+                <Input type="date" className="h-7 text-xs w-36" value={customTo}
+                  min={customFrom} max={toDateInputValue(new Date())}
+                  onChange={(e) => { setCustomTo(e.target.value); setPage(0); }} />
+              </div>
+            )}
+            {hasDateFilter && (
+              <Button variant="ghost" size="sm" className="h-7 px-2 text-xs text-muted-foreground" onClick={clearDateFilter}>
+                <X className="h-3 w-3 mr-1" />Clear
+              </Button>
+            )}
+            <div className="text-sm text-muted-foreground whitespace-nowrap ml-auto">
               {filtered.length} of {events.length} events
             </div>
           </div>

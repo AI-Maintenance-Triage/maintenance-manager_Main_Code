@@ -97,6 +97,10 @@ export const companySettings = mysqlTable("company_settings", {
   notifyOnClockOut: boolean("notifyOnClockOut").default(true).notNull(),
   notifyOnJobSubmitted: boolean("notifyOnJobSubmitted").default(true).notNull(),
   notifyOnNewContractor: boolean("notifyOnNewContractor").default(true).notNull(),
+  // Job Board Visibility Default
+  // "public" = posted to the public job board visible to all contractors
+  // "private" = posted only to contractors this company has marked as trusted
+  defaultJobBoardVisibility: mysqlEnum("defaultJobBoardVisibility", ["public", "private"]).default("public").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
@@ -180,6 +184,9 @@ export const contractorCompanies = mysqlTable("contractor_companies", {
   companyId: int("companyId").notNull(),
   status: mysqlEnum("status", ["pending", "approved", "rejected", "suspended"]).default("pending").notNull(),
   isPreferred: boolean("isPreferred").default(false).notNull(),
+  // isTrusted: when true, this contractor can see this company's private job board.
+  // Automatically set to true when company invites contractor; can be manually toggled by company.
+  isTrusted: boolean("isTrusted").default(false).notNull(),
   invitedBy: mysqlEnum("invitedBy", ["company", "contractor"]).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
@@ -213,6 +220,9 @@ export const maintenanceRequests = mysqlTable("maintenance_requests", {
   aiClassifiedAt: timestamp("aiClassifiedAt"),
   // Job board
   postedToBoard: boolean("postedToBoard").default(false).notNull(),
+  // jobBoardVisibility: "public" = visible to all contractors on the public board
+  // "private" = visible only to contractors this company has marked as trusted
+  jobBoardVisibility: mysqlEnum("jobBoardVisibility", ["public", "private"]).default("public").notNull(),
   // Job status
   status: mysqlEnum("status", ["open", "assigned", "in_progress", "pending_verification", "completed", "verified", "disputed", "paid", "payment_pending_ach", "canceled"]).default("open").notNull(),
   assignedContractorId: int("assignedContractorId"),

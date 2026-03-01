@@ -11,7 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { useViewAs } from "@/contexts/ViewAsContext";
-import { Plus, Zap, Clock, CheckCircle, AlertTriangle, Globe, X, Route, DollarSign, FileDown, Star, MessageSquare, ChevronDown, ChevronUp } from "lucide-react";
+import { Plus, Zap, Clock, CheckCircle, AlertTriangle, Globe, X, Route, DollarSign, FileDown, Star, MessageSquare, ChevronDown, ChevronUp, Lock, Unlock } from "lucide-react";
 import { useState } from "react";
 import { JobCostBreakdown } from "@/components/JobCostBreakdown";
 import { toast } from "sonner";
@@ -100,6 +100,14 @@ export default function CompanyJobs() {
   const removeFromBoard = trpc.jobBoard.remove.useMutation({
     onSuccess: () => {
       toast.success("Job removed from the board.");
+      utils.jobs.list.invalidate();
+      utils.adminViewAs.companyJobs.invalidate();
+    },
+    onError: (err: any) => toast.error(err.message),
+  });
+  const setVisibility = trpc.jobBoard.setVisibility.useMutation({
+    onSuccess: (_data: any, vars: any) => {
+      toast.success(vars.visibility === "private" ? "Job moved to Private Board (trusted contractors only)." : "Job moved to Public Board.");
       utils.jobs.list.invalidate();
       utils.adminViewAs.companyJobs.invalidate();
     },
@@ -323,15 +331,41 @@ export default function CompanyJobs() {
                       {/* Post/Remove from board for open jobs */}
                       {job.status === "open" && (
                         job.postedToBoard ? (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="text-xs gap-1 h-7 border-orange-500/40 text-orange-400 hover:bg-orange-500/10"
-                            onClick={() => removeFromBoard.mutate({ jobId: job.id })}
-                            disabled={removeFromBoard.isPending}
-                          >
-                            <X className="h-3 w-3" /> Remove from Board
-                          </Button>
+                          <>
+                            {/* Visibility toggle — only shown when on the board */}
+                            {(job as any).jobBoardVisibility === "private" ? (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="text-xs gap-1 h-7 border-purple-500/40 text-purple-400 hover:bg-purple-500/10"
+                                onClick={() => setVisibility.mutate({ jobId: job.id, visibility: "public" })}
+                                disabled={setVisibility.isPending}
+                                title="Move to public board"
+                              >
+                                <Unlock className="h-3 w-3" /> Make Public
+                              </Button>
+                            ) : (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="text-xs gap-1 h-7 border-indigo-500/40 text-indigo-400 hover:bg-indigo-500/10"
+                                onClick={() => setVisibility.mutate({ jobId: job.id, visibility: "private" })}
+                                disabled={setVisibility.isPending}
+                                title="Move to private board (trusted contractors only)"
+                              >
+                                <Lock className="h-3 w-3" /> Make Private
+                              </Button>
+                            )}
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="text-xs gap-1 h-7 border-orange-500/40 text-orange-400 hover:bg-orange-500/10"
+                              onClick={() => removeFromBoard.mutate({ jobId: job.id })}
+                              disabled={removeFromBoard.isPending}
+                            >
+                              <X className="h-3 w-3" /> Remove from Board
+                            </Button>
+                          </>
                         ) : (
                           <Button
                             size="sm"

@@ -8,7 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useViewAs } from "@/contexts/ViewAsContext";
-import { HardHat, CheckCircle, XCircle, Star, UserPlus, Mail, Clock, Ban, RefreshCw, Copy, AlertTriangle } from "lucide-react";
+import { HardHat, CheckCircle, XCircle, Star, UserPlus, Mail, Clock, Ban, RefreshCw, Copy, AlertTriangle, ShieldCheck, ShieldOff } from "lucide-react";
 import { toast } from "sonner";
 import { useState } from "react";
 
@@ -43,6 +43,13 @@ export default function CompanyContractors() {
   // Mutations
   const updateRelationship = trpc.contractor.updateRelationship.useMutation({
     onSuccess: () => { toast.success("Updated!"); utils.contractor.listByCompany.invalidate(); },
+  });
+  const setTrusted = trpc.contractor.setTrusted.useMutation({
+    onSuccess: (_data: any, vars: any) => {
+      toast.success(vars.isTrusted ? "Contractor marked as trusted. They can now see your private job board." : "Trust removed. Contractor can no longer see your private jobs.");
+      utils.contractor.listByCompany.invalidate();
+    },
+    onError: (err: any) => toast.error(err.message),
   });
 
   const createInvite = trpc.invites.create.useMutation({
@@ -198,6 +205,11 @@ export default function CompanyContractors() {
                     <div className="flex items-center gap-2 mb-1">
                       <h3 className="font-medium text-card-foreground">{c.businessName || c.userName || "Unnamed Contractor"}</h3>
                       {statusBadge(c.status)}
+                      {c.isTrusted && (
+                        <Badge className="bg-emerald-500/20 text-emerald-400 border-emerald-500/30 gap-1">
+                          <ShieldCheck className="h-3 w-3" /> Trusted
+                        </Badge>
+                      )}
                     </div>
                     <div className="flex items-center gap-4 text-sm text-muted-foreground flex-wrap">
                       {c.trades && c.trades.length > 0 && <span>Trades: {c.trades.join(", ")}</span>}
@@ -229,10 +241,35 @@ export default function CompanyContractors() {
                       </>
                     )}
                     {c.status === "approved" && (
-                      <Button size="sm" variant="outline" className="text-muted-foreground"
-                        onClick={() => updateRelationship.mutate({ relationshipId: c.relationshipId, status: "suspended" })}>
-                        Suspend
-                      </Button>
+                      <>
+                        {c.isTrusted ? (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="gap-1 text-orange-400 border-orange-500/30 hover:bg-orange-500/10"
+                            onClick={() => setTrusted.mutate({ relationshipId: c.relationshipId, isTrusted: false })}
+                            disabled={setTrusted.isPending}
+                            title="Remove trust — contractor will no longer see your private jobs"
+                          >
+                            <ShieldOff className="h-3.5 w-3.5" /> Remove Trust
+                          </Button>
+                        ) : (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="gap-1 text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/10"
+                            onClick={() => setTrusted.mutate({ relationshipId: c.relationshipId, isTrusted: true })}
+                            disabled={setTrusted.isPending}
+                            title="Mark as trusted — grants access to your private job board"
+                          >
+                            <ShieldCheck className="h-3.5 w-3.5" /> Mark Trusted
+                          </Button>
+                        )}
+                        <Button size="sm" variant="outline" className="text-muted-foreground"
+                          onClick={() => updateRelationship.mutate({ relationshipId: c.relationshipId, status: "suspended" })}>
+                          Suspend
+                        </Button>
+                      </>
                     )}
                   </div>
                 </div>

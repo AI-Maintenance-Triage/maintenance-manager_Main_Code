@@ -1035,3 +1035,50 @@
 ### Bug Fix: Contractor Free Plan Display
 - [x] ContractorDashboard PlanWidget shows "Free Plan" when no paid plan assigned
 - [x] Free badge shown instead of "No Plan" when contractor has no paid subscription
+
+## Session 32: Earnings Dashboard + Webhook Date Filter + Private Job Board
+
+### Contractor Earnings Dashboard
+- [x] Replace "$0 / Payment tracking coming soon" with real earnings data from transactions table
+- [x] Show per-job payout entries (job title, date, amount, transfer status)
+- [x] Monthly earnings bar chart (last 6 months)
+- [x] KPI cards: total earned, this month, pending payouts, completed jobs paid
+
+### Admin Webhook Log Date-Range Filter
+- [x] Add date-from / date-to pickers to /admin/webhooks filter bar
+- [x] Backend: extend platform.webhookEvents to accept dateFrom/dateTo params
+- [x] Quick-select presets: Last 24h, Last 7 days, Last 30 days
+
+### Private Job Board System
+#### Schema & Backend
+- [x] Add `defaultJobBoardVisibility` column to companySettings table (enum: 'public' | 'private', default 'public')
+- [x] Add `jobBoardVisibility` column to maintenanceRequests table (enum: 'public' | 'private', default 'public')
+- [x] Add `isTrusted` boolean column to contractorCompanies join table (default false)
+- [x] Auto-set isTrusted=true when company invites a contractor
+- [x] Backend: jobBoard.setVisibility mutation — company can toggle a job between public/private
+- [x] Backend: jobBoard.listPrivate query — return all private jobs from trusted companies within service area
+- [x] Backend: contractor.setTrusted mutation — mark/unmark contractor as trusted (per-company)
+- [x] Backend: company settings update to include defaultJobBoardVisibility
+- [x] Private board uses identical haversine service-area filter as public board
+
+#### Company Frontend
+- [x] Company Settings: "Default Job Board Visibility" toggle (Public / Private)
+- [x] Company Jobs list: "Make Private" / "Make Public" action on board-posted open jobs
+- [x] Company Contractors page: "Mark Trusted" / "Remove Trust" button per approved contractor
+- [x] Trusted badge (emerald shield) on contractor cards in company's contractor list
+
+#### Contractor Frontend
+- [x] Job Board: "Public Jobs" tab + "Private Jobs" tab with job counts
+- [x] Private Jobs tab: emerald info banner explaining trusted contractor access
+- [x] Private Jobs tab: shows all private jobs from all trusted companies within service area
+- [x] Same accept-job flow as public board (first come first served)
+- [x] "Private" badge on job cards in private board
+
+### Tests
+- [x] Vitest tests for earnings aggregation logic (session-32.test.ts)
+- [x] Vitest tests for job visibility toggle logic (session-32.test.ts)
+- [x] Vitest tests for trusted contractor flag logic (session-32.test.ts)
+- [x] Vitest tests for private job board service-area filter (session-32.test.ts)
+- [x] Vitest tests for haversine distance calculation (session-32.test.ts)
+- [x] Vitest tests for admin webhook date-range filter (session-32.test.ts)
+- [x] 320 total tests passing, 0 TypeScript errors

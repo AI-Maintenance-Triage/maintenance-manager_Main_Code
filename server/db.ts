@@ -1,4 +1,4 @@
-import { eq, and, desc, sql, inArray, or, isNull, isNotNull, count, gte } from "drizzle-orm";
+import { eq, and, desc, sql, inArray, or, isNull, isNotNull, count, gte, lte } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import {
   InsertUser, users,
@@ -275,6 +275,7 @@ export async function listContractorsByCompany(companyId: number) {
     .select({
       relationshipId: contractorCompanies.id,
       status: contractorCompanies.status,
+      isTrusted: contractorCompanies.isTrusted,
       contractorProfileId: contractorProfiles.id,
       businessName: contractorProfiles.businessName,
       phone: contractorProfiles.phone,
@@ -317,6 +318,28 @@ export async function updateContractorCompanyStatus(id: number, status: "pending
   const db = await getDb();
   if (!db) return;
   await db.update(contractorCompanies).set({ status }).where(eq(contractorCompanies.id, id));
+}
+
+export async function setContractorTrusted(relationshipId: number, companyId: number, isTrusted: boolean) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(contractorCompanies)
+    .set({ isTrusted })
+    .where(and(eq(contractorCompanies.id, relationshipId), eq(contractorCompanies.companyId, companyId)));
+}
+
+/** Returns the set of companyIds that have marked this contractor as trusted */
+export async function getTrustedCompanyIdsForContractor(contractorProfileId: number): Promise<number[]> {
+  const db = await getDb();
+  if (!db) return [];
+  const rows = await db
+    .select({ companyId: contractorCompanies.companyId })
+    .from(contractorCompanies)
+    .where(and(
+      eq(contractorCompanies.contractorProfileId, contractorProfileId),
+      eq(contractorCompanies.isTrusted, true)
+    ));
+  return rows.map((r) => r.companyId);
 }
 
 // ─── Maintenance Requests ──────────────────────────────────────────────────
@@ -1010,7 +1033,8 @@ export async function listJobBoardForContractor(contractorProfileId: number) {
     .where(
       and(
         eq(maintenanceRequests.postedToBoard, true),
-        eq(maintenanceRequests.status, "open")
+        eq(maintenanceRequests.status, "open"),
+        eq(maintenanceRequests.jobBoardVisibility, "public")
       )
     )
     .orderBy(desc(maintenanceRequests.createdAt));
@@ -1042,6 +1066,79 @@ export async function listJobBoardForContractor(contractorProfileId: number) {
   }
   // Contractor has no geocoded coordinates — return empty list so the UI
   // can prompt them to complete their service area setup.
+  return [];
+}
+
+/** Lists private board jobs from all companies that have marked this contractor as trusted */
+export async function listPrivateJobBoardForContractor(contractorProfileId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  // Get contractor's location and radius
+  const [contractor] = await db
+    .select()
+    .from(contractorProfiles)
+    .where(eq(contractorProfiles.id, contractorProfileId))
+    .limit(1);
+  if (!contractor) return [];
+  if (contractor.isAvailable === false) return [];
+  // Find all companies that trust this contractor
+  const trustedCompanyIds = await getTrustedCompanyIdsForContractor(contractorProfileId);
+  if (trustedCompanyIds.length === 0) return [];
+  const contractorLat = contractor.latitude ? parseFloat(String(contractor.latitude)) : null;
+  const contractorLng = contractor.longitude ? parseFloat(String(contractor.longitude)) : null;
+  const radiusMiles = contractor.serviceRadiusMiles ?? 25;
+  const jobs = await db
+    .select({
+      job: maintenanceRequests,
+      property: {
+        id: properties.id,
+        name: properties.name,
+        city: properties.city,
+        state: properties.state,
+        zipCode: properties.zipCode,
+        latitude: properties.latitude,
+        longitude: properties.longitude,
+      },
+      company: {
+        id: companies.id,
+        name: companies.name,
+      },
+    })
+    .from(maintenanceRequests)
+    .innerJoin(properties, eq(maintenanceRequests.propertyId, properties.id))
+    .innerJoin(companies, eq(maintenanceRequests.companyId, companies.id))
+    .where(
+      and(
+        eq(maintenanceRequests.postedToBoard, true),
+        eq(maintenanceRequests.status, "open"),
+        eq(maintenanceRequests.jobBoardVisibility, "private"),
+        inArray(maintenanceRequests.companyId, trustedCompanyIds)
+      )
+    )
+    .orderBy(desc(maintenanceRequests.createdAt));
+  const enriched = await Promise.all(jobs.map(async (row) => {
+    const [countRow] = await db
+      .select({ count: sql<number>`COUNT(*)` })
+      .from(maintenanceRequests)
+      .where(and(
+        eq(maintenanceRequests.companyId, row.company.id),
+        eq(maintenanceRequests.status, "paid")
+      ));
+    return { ...row, company: { ...row.company, paidJobCount: countRow?.count ?? 0 } };
+  }));
+  // Filter by service area if contractor has coordinates
+  if (contractorLat !== null && contractorLng !== null) {
+    return enriched
+      .map((row) => {
+        const propLat = row.property.latitude ? parseFloat(String(row.property.latitude)) : null;
+        const propLng = row.property.longitude ? parseFloat(String(row.property.longitude)) : null;
+        if (propLat === null || propLng === null) return null;
+        const distanceMiles = Math.round(haversineDistanceMiles(contractorLat, contractorLng, propLat, propLng) * 10) / 10;
+        if (distanceMiles > radiusMiles) return null;
+        return { ...row, distanceMiles };
+      })
+      .filter((row): row is NonNullable<typeof row> => row !== null);
+  }
   return [];
 }
 
@@ -2218,14 +2315,17 @@ export async function getContractorsInServiceArea(
 }
 
 // ─── PMS Webhook Events ────────────────────────────────────────────────────
-export async function getPmsWebhookEvents(options: { companyId?: number; limit?: number; offset?: number } = {}) {
+export async function getPmsWebhookEvents(options: { companyId?: number; limit?: number; offset?: number; dateFrom?: Date; dateTo?: Date } = {}) {
   const db = await getDb();
   if (!db) return [];
-  const { companyId, limit = 50, offset = 0 } = options;
-  if (companyId) {
-    return db.select().from(pmsWebhookEvents).where(eq(pmsWebhookEvents.companyId, companyId)).orderBy(desc(pmsWebhookEvents.createdAt)).limit(limit).offset(offset);
-  }
-  return db.select().from(pmsWebhookEvents).orderBy(desc(pmsWebhookEvents.createdAt)).limit(limit).offset(offset);
+  const { companyId, limit = 50, offset = 0, dateFrom, dateTo } = options;
+  const conditions: ReturnType<typeof eq>[] = [];
+  if (companyId) conditions.push(eq(pmsWebhookEvents.companyId, companyId) as any);
+  if (dateFrom) conditions.push(gte(pmsWebhookEvents.createdAt, dateFrom) as any);
+  if (dateTo) conditions.push(lte(pmsWebhookEvents.createdAt, dateTo) as any);
+  const base = db.select().from(pmsWebhookEvents);
+  const filtered = conditions.length > 0 ? base.where(and(...conditions)) : base;
+  return filtered.orderBy(desc(pmsWebhookEvents.createdAt)).limit(limit).offset(offset);
 }
 
 // ─── Subscriber Migration Helpers ─────────────────────────────────────────

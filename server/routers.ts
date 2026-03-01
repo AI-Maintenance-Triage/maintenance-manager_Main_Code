@@ -156,6 +156,8 @@ const settingsRouter = router({
       notifyOnClockOut: z.boolean().optional(),
       notifyOnJobSubmitted: z.boolean().optional(),
       notifyOnNewContractor: z.boolean().optional(),
+      // Job Board Visibility Default
+      defaultJobBoardVisibility: z.enum(["public", "private"]).optional(),
     }))
     .mutation(async ({ ctx, input }) => {
       if (!getEffectiveCompanyId(ctx)) throw new TRPCError({ code: "NOT_FOUND" });
@@ -328,7 +330,8 @@ const contractorRouter = router({
               companyId: invite.companyId,
               status: "approved",
               invitedBy: "company",
-            }).onDuplicateKeyUpdate({ set: { status: "approved" } });
+              isTrusted: true, // Invite-accepted contractors are automatically trusted
+            }).onDuplicateKeyUpdate({ set: { status: "approved", isTrusted: true } });
           }
           // Mark invite as accepted
           await db.updateContractorInviteStatus(invite.id, "accepted", Date.now());
@@ -473,6 +476,7 @@ const contractorRouter = router({
         companyId,
         invitedBy: "company",
         status: status as any,
+        isTrusted: true, // Company-invited contractors are automatically trusted
       });
       return { id };
     }),
@@ -482,6 +486,14 @@ const contractorRouter = router({
     .input(z.object({ relationshipId: z.number(), status: z.enum(["approved", "rejected", "suspended"]) }))
     .mutation(async ({ input }) => {
       await db.updateContractorCompanyStatus(input.relationshipId, input.status);
+      return { success: true };
+    }),
+  // Company-side: mark/unmark a contractor as trusted
+  setTrusted: companyAdminProcedure
+    .input(z.object({ relationshipId: z.number(), isTrusted: z.boolean() }))
+    .mutation(async ({ ctx, input }) => {
+      const companyId = getEffectiveCompanyId(ctx);
+      await db.setContractorTrusted(input.relationshipId, companyId, input.isTrusted);
       return { success: true };
     }),
 
@@ -1614,6 +1626,36 @@ const jobBoardRouter = router({
       await db.removeJobFromBoard(input.jobId, getEffectiveCompanyId(ctx));
       return { success: true };
     }),
+  // Company: toggle a job's visibility between public and private
+  setVisibility: companyAdminProcedure
+    .input(z.object({ jobId: z.number(), visibility: z.enum(["public", "private"]) }))
+    .mutation(async ({ ctx, input }) => {
+      const companyId = getEffectiveCompanyId(ctx);
+      const drizzleDb = await db.getDb();
+      if (!drizzleDb) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const { maintenanceRequests: mr } = await import("../drizzle/schema");
+      const { eq, and } = await import("drizzle-orm");
+      await drizzleDb
+        .update(mr)
+        .set({ jobBoardVisibility: input.visibility })
+        .where(and(eq(mr.id, input.jobId), eq(mr.companyId, companyId)));
+      return { success: true };
+    }),
+  // Contractor: list private board jobs (from all trusted companies)
+  listPrivate: contractorProcedure.query(async ({ ctx }) => {
+    const profile = await getEffectiveContractorProfile(ctx);
+    if (!profile) throw new TRPCError({ code: "NOT_FOUND", message: "No contractor profile" });
+    return db.listPrivateJobBoardForContractor(profile.id);
+  }),
+  // Contractor: accept a private board job (same logic as public)
+  acceptPrivate: contractorProcedure
+    .input(z.object({ jobId: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      const profile = await getEffectiveContractorProfile(ctx);
+      if (!profile) throw new TRPCError({ code: "NOT_FOUND", message: "No contractor profile" });
+      await db.acceptJobFromBoard(input.jobId, profile.id);
+      return { success: true };
+    }),
 });
 
 // ─── Stripe Router ─────────────────────────────────────────────────────────
@@ -2072,7 +2114,13 @@ const platformRouter = router({
   }),
 
   webhookEvents: adminProcedure
-    .input(z.object({ companyId: z.number().optional(), limit: z.number().default(50), offset: z.number().default(0) }))
+    .input(z.object({
+      companyId: z.number().optional(),
+      limit: z.number().default(50),
+      offset: z.number().default(0),
+      dateFrom: z.date().optional(),
+      dateTo: z.date().optional(),
+    }))
     .query(async ({ input }) => {
       return db.getPmsWebhookEvents(input);
     }),

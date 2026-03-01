@@ -81,6 +81,7 @@ function GeneralSettings({ readOnly, companyId }: { readOnly: boolean; companyId
   const [autoApprove, setAutoApprove] = useState(false);
   const [escalationTimeout, setEscalationTimeout] = useState("60");
   const [partsMarkup, setPartsMarkup] = useState("0");
+  const [defaultVisibility, setDefaultVisibility] = useState<"public" | "private">("public");
 
   useEffect(() => {
     if (company) setCompanyName((company as any).name || "");
@@ -88,6 +89,7 @@ function GeneralSettings({ readOnly, companyId }: { readOnly: boolean; companyId
       setAutoApprove((settings as any).autoApproveContractors ?? false);
       setEscalationTimeout(String((settings as any).escalationTimeoutMinutes ?? 60));
       setPartsMarkup((settings as any).partsMarkupPercent ?? "0");
+      setDefaultVisibility((settings as any).defaultJobBoardVisibility ?? "public");
     }
   }, [company, settings]);
 
@@ -135,6 +137,30 @@ function GeneralSettings({ readOnly, companyId }: { readOnly: boolean; companyId
             <Label>Parts Markup (%)</Label>
             <p className="text-xs text-muted-foreground">Markup percentage applied to contractor-submitted parts receipts</p>
             <Input type="number" value={partsMarkup} disabled={readOnly} onChange={(e) => setPartsMarkup(e.target.value)} onBlur={() => { if (!readOnly) updateSettings.mutate({ partsMarkupPercent: partsMarkup }); }} />
+          </div>
+          <div className="space-y-2">
+            <Label>Default Job Board Visibility</Label>
+            <p className="text-xs text-muted-foreground">
+              Where new jobs are posted by default. <strong>Public</strong> = visible to all contractors on the public board. <strong>Private</strong> = visible only to contractors you've marked as trusted.
+            </p>
+            <Select
+              value={defaultVisibility}
+              disabled={readOnly}
+              onValueChange={(v: "public" | "private") => {
+                if (!readOnly) {
+                  setDefaultVisibility(v);
+                  updateSettings.mutate({ defaultJobBoardVisibility: v });
+                }
+              }}
+            >
+              <SelectTrigger className="w-48">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="public">Public Board</SelectItem>
+                <SelectItem value="private">Private Board (Trusted Only)</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </CardContent>
       </Card>
