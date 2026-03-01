@@ -682,6 +682,43 @@ export const appRouter = router({
   transactions: transactionsRouter,
   platform: platformRouter,
   adminViewAs: adminViewAsRouter,
+  admin: router({
+    // Re-geocode all properties and contractor profiles that are missing coordinates.
+    // Safe to run multiple times — only updates records with null lat/lng.
+    bulkReGeocode: adminProcedure.mutation(async () => {
+      const results = { properties: { ok: 0, fail: 0 }, contractors: { ok: 0, fail: 0 } };
+
+      // Re-geocode properties
+      const allProps = await db.getAllPropertiesMissingCoords();
+      for (const prop of allProps) {
+        const addr = [prop.address, prop.city, prop.state, prop.zipCode].filter(Boolean).join(", ");
+        if (!addr) { results.properties.fail++; continue; }
+        const coords = await db.geocodeAddress(addr);
+        if (coords) {
+          await db.updatePropertyCoords(prop.id, coords.lat, coords.lng);
+          results.properties.ok++;
+        } else {
+          results.properties.fail++;
+        }
+      }
+
+      // Re-geocode contractor profiles
+      const allContractors = await db.getAllContractorsMissingCoords();
+      for (const contractor of allContractors) {
+        const zip = (contractor.serviceAreaZips as string[] | null)?.[0];
+        if (!zip) { results.contractors.fail++; continue; }
+        const coords = await db.geocodeAddress(`${zip}, USA`);
+        if (coords) {
+          await db.updateContractorCoords(contractor.id, coords.lat, coords.lng);
+          results.contractors.ok++;
+        } else {
+          results.contractors.fail++;
+        }
+      }
+
+      return results;
+    }),
+  }),
 });
 
 export type AppRouter = typeof appRouter;

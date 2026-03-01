@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Checkbox } from "@/components/ui/checkbox";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
-import { Building2, HardHat, ClipboardList, DollarSign, Plus, Wrench, Pencil, Trash2 } from "lucide-react";
+import { Building2, HardHat, ClipboardList, DollarSign, Plus, Wrench, Pencil, Trash2, MapPin, Loader2 } from "lucide-react";
 
 const TRADE_OPTIONS = [
   "General Handyman", "Plumbing", "Electrical", "HVAC",
@@ -117,6 +117,18 @@ export default function PlatformDashboard() {
     setEditContractorTrades(prev => prev.includes(trade) ? prev.filter(t => t !== trade) : [...prev, trade]);
   };
 
+  const bulkReGeocode = trpc.admin.bulkReGeocode.useMutation({
+    onSuccess: (result) => {
+      toast.success(
+        `Re-geocoded: ${result.properties.ok} properties, ${result.contractors.ok} contractors. ` +
+        (result.properties.fail + result.contractors.fail > 0
+          ? `${result.properties.fail + result.contractors.fail} failed (check server logs).`
+          : "All successful!")
+      );
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
   const openEditCompany = (c: any) => {
     setEditCompany({ ...c });
     setEditCompanyOpen(true);
@@ -136,6 +148,18 @@ export default function PlatformDashboard() {
           <p className="text-muted-foreground mt-1">Overview of the entire platform</p>
         </div>
         <div className="flex gap-2">
+          {/* Bulk Re-Geocode Button */}
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-2"
+            onClick={() => bulkReGeocode.mutate()}
+            disabled={bulkReGeocode.isPending}
+            title="Fix missing coordinates for all properties and contractors"
+          >
+            {bulkReGeocode.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <MapPin className="h-4 w-4" />}
+            {bulkReGeocode.isPending ? "Geocoding..." : "Fix Locations"}
+          </Button>
           {/* Create Company Dialog */}
           <Dialog open={companyOpen} onOpenChange={setCompanyOpen}>
             <DialogTrigger asChild>

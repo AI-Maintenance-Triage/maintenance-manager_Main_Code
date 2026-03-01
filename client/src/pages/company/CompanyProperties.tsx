@@ -10,6 +10,7 @@ import { useViewAs } from "@/contexts/ViewAsContext";
 import { Plus, MapPin, Trash2, Building } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
+import AddressAutocomplete from "@/components/AddressAutocomplete";
 
 export default function CompanyProperties() {
   const { user } = useAuth();
@@ -30,7 +31,8 @@ export default function CompanyProperties() {
   const properties = isImpersonating ? viewAsProps.data : regularProps.data;
   const isLoading = isImpersonating ? viewAsProps.isLoading : regularProps.isLoading;
 
-  const [form, setForm] = useState({ name: "", address: "", city: "", state: "", zipCode: "", units: "" });
+  const emptyForm = { name: "", address: "", city: "", state: "", zipCode: "", units: "", lat: "", lng: "" };
+  const [form, setForm] = useState(emptyForm);
 
   // Single mutation — works for both regular users and admin impersonation
   // (admin sends x-impersonate-company-id header automatically via tRPC client)
@@ -40,7 +42,7 @@ export default function CompanyProperties() {
       utils.properties.list.invalidate();
       utils.adminViewAs.companyProperties.invalidate();
       setOpen(false);
-      setForm({ name: "", address: "", city: "", state: "", zipCode: "", units: "" });
+      setForm(emptyForm);
     },
     onError: (err: any) => toast.error(err.message),
   });
@@ -62,6 +64,9 @@ export default function CompanyProperties() {
       state: form.state || undefined,
       zipCode: form.zipCode || undefined,
       units: form.units ? Number(form.units) : undefined,
+      // Pass coordinates if autocomplete already resolved them
+      latitude: form.lat || undefined,
+      longitude: form.lng || undefined,
     });
   };
 
@@ -87,7 +92,25 @@ export default function CompanyProperties() {
               </div>
               <div className="space-y-2">
                 <Label>Address <span className="text-destructive">*</span></Label>
-                <Input placeholder="123 Main Street" value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} />
+                <AddressAutocomplete
+                  value={form.address}
+                  onChange={(val) => setForm({ ...form, address: val })}
+                  onSelect={(result) => setForm({
+                    ...form,
+                    address: result.street || result.formattedAddress,
+                    city: result.city,
+                    state: result.state,
+                    zipCode: result.zipCode,
+                    lat: result.lat,
+                    lng: result.lng,
+                  })}
+                  placeholder="Start typing an address..."
+                />
+                {form.lat && (
+                  <p className="text-xs text-emerald-500 flex items-center gap-1">
+                    <MapPin className="h-3 w-3" /> Location confirmed ({parseFloat(form.lat).toFixed(4)}, {parseFloat(form.lng).toFixed(4)})
+                  </p>
+                )}
               </div>
               <div className="grid grid-cols-3 gap-3">
                 <div className="space-y-2">
@@ -139,6 +162,11 @@ export default function CompanyProperties() {
                       <span className="truncate">{prop.address}{prop.city ? `, ${prop.city}` : ""}{prop.state ? `, ${prop.state}` : ""} {prop.zipCode}</span>
                     </div>
                     {prop.units && <p className="text-xs text-muted-foreground mt-1">{prop.units} units</p>}
+                    {prop.latitude && prop.longitude && (
+                      <p className="text-xs text-emerald-600 mt-1 flex items-center gap-1">
+                        <MapPin className="h-3 w-3" /> Geocoded
+                      </p>
+                    )}
                   </div>
                   <Button
                     variant="ghost"

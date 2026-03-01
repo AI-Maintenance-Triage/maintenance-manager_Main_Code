@@ -199,3 +199,13 @@
 - [x] Added contractor.refreshGeocode mutation to re-geocode on demand from the job board
 - [x] Added jobBoard.debug endpoint + Debug panel on job board to show raw coords and distances
 - [x] Debug panel shows contractor coords, property coords, distance, and whether each job is in range
+
+## Google Maps API Key Integration
+- [x] Added GOOGLE_MAPS_API_KEY secret (server-side geocoding)
+- [x] Added VITE_GOOGLE_MAPS_API_KEY secret (frontend address autocomplete)
+- [x] Updated geocodeAddress helper to use direct Google Maps Geocoding API with key
+- [x] Added address autocomplete (Places API) to property creation form with auto-fill city/state/ZIP/coords
+- [x] Added geocoding status badge to contractor profile service area section
+- [x] Added admin.bulkReGeocode mutation to fix all existing records missing coordinates
+- [x] Added "Fix Locations" button to admin dashboard that re-geocodes all missing records
+- [x] Geocoding test passes: ZIP 10001 → 40.75, -73.99 (Manhattan)

@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { User, Phone, MapPin, Wrench, AlertCircle } from "lucide-react";
+import { User, Phone, MapPin, Wrench, AlertCircle, CheckCircle2, Loader2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
@@ -149,14 +149,29 @@ export default function ContractorProfile() {
           <CardDescription>Define where you're willing to take jobs</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
+          {/* Geocoding status */}
+          {profile && (
+            <div className={`flex items-center gap-2 text-sm rounded-lg px-3 py-2 ${
+              profile.latitude && profile.longitude
+                ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
+                : "bg-amber-500/10 text-amber-400 border border-amber-500/20"
+            }`}>
+              {profile.latitude && profile.longitude ? (
+                <><CheckCircle2 className="h-4 w-4 shrink-0" /> Location geocoded — job board filtering is active</>
+              ) : (
+                <><AlertCircle className="h-4 w-4 shrink-0" /> Location not geocoded — save your profile to fix this</>
+              )}
+            </div>
+          )}
           <div className="space-y-2">
             <Label>Service Area Zip Codes</Label>
             <Input value={serviceAreaZips} onChange={(e) => setServiceAreaZips(e.target.value)} placeholder="02101, 02102, 02103" disabled={readOnly} />
-            <p className="text-xs text-muted-foreground">Comma-separated zip codes</p>
+            <p className="text-xs text-muted-foreground">Comma-separated. The first ZIP is used as your base location for distance filtering.</p>
           </div>
           <div className="space-y-2">
             <Label>Service Radius (miles)</Label>
             <Input type="number" value={serviceRadiusMiles} onChange={(e) => setServiceRadiusMiles(e.target.value)} disabled={readOnly} />
+            <p className="text-xs text-muted-foreground">Jobs within this radius of your first ZIP code will appear on your job board.</p>
           </div>
         </CardContent>
       </Card>

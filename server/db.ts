@@ -1,4 +1,4 @@
-import { eq, and, desc, sql, inArray } from "drizzle-orm";
+import { eq, and, desc, sql, inArray, or, isNull } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import {
   InsertUser, users,
@@ -563,15 +563,26 @@ export async function updateUserName(userId: number, name: string) {
   await db.update(users).set({ name }).where(eq(users.id, userId));
 }
 
-// ─── Geocoding Helper (server-side via Maps proxy) ────────────────────────
+/// ─── Geocoding Helper (server-side via Google Maps API) ────────────────────
 export async function geocodeAddress(address: string): Promise<{ lat: string; lng: string } | null> {
+  const { ENV } = await import("./_core/env");
+  const apiKey = ENV.googleMapsApiKey;
+  if (!apiKey) {
+    console.error("[Geocode] GOOGLE_MAPS_API_KEY is not set");
+    return null;
+  }
   try {
-    const { makeRequest } = await import("./_core/map");
-    const result = await makeRequest<any>("/maps/api/geocode/json", { address });
+    const url = new URL("https://maps.googleapis.com/maps/api/geocode/json");
+    url.searchParams.set("address", address);
+    url.searchParams.set("key", apiKey);
+    const response = await fetch(url.toString());
+    const result = await response.json() as any;
     if (result?.results?.[0]?.geometry?.location) {
       const { lat, lng } = result.results[0].geometry.location;
+      console.log(`[Geocode] OK: "${address}" → ${lat}, ${lng}`);
       return { lat: String(lat), lng: String(lng) };
     }
+    console.error(`[Geocode] No results for "${address}": status=${result?.status} error=${result?.error_message ?? ""}`);
   } catch (err) {
     console.error("[Geocode] Failed:", err);
   }
@@ -590,6 +601,25 @@ export async function updateContractorCoords(profileId: number, lat: string, lng
   const db = await getDb();
   if (!db) return;
   await db.update(contractorProfiles).set({ latitude: lat, longitude: lng }).where(eq(contractorProfiles.id, profileId));
+}
+
+// ─── Bulk Re-Geocode Helpers ─────────────────────────────────────────────────
+export async function getAllPropertiesMissingCoords() {
+  const db = await getDb();
+  if (!db) return [];
+  return db
+    .select()
+    .from(properties)
+    .where(or(isNull(properties.latitude), isNull(properties.longitude)));
+}
+
+export async function getAllContractorsMissingCoords() {
+  const db = await getDb();
+  if (!db) return [];
+  return db
+    .select()
+    .from(contractorProfiles)
+    .where(or(isNull(contractorProfiles.latitude), isNull(contractorProfiles.longitude)));
 }
 
 // ─── Haversine Distance (miles) ────────────────────────────────────────────
