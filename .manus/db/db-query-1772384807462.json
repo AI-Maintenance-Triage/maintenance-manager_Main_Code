@@ -1,0 +1,31 @@
+{
+  "query": "SELECT * FROM companies LIMIT 5;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user sHLCts4RR6iL2PA.1ead08cf1a54 --database bBuQZrfKLoBs6LmtvQ4y6E --execute SELECT * FROM companies LIMIT 5;",
+  "rows": [
+    {
+      "id": "3",
+      "name": "Trevors PM Comaany",
+      "logoUrl": "NULL",
+      "address": "101 main st",
+      "phone": "3045555555",
+      "email": "company1@test.com",
+      "stripeAccountId": "NULL",
+      "subscriptionTier": "free",
+      "subscriptionStatus": "trialing",
+      "createdAt": "2026-03-01 01:11:59",
+      "updatedAt": "2026-03-01 17:04:38",
+      "stripeCustomerId": "cus_U4M5Jqh6oOzsZw",
+      "planId": "1",
+      "planPriceOverride": "NULL",
+      "planNotes": "NULL",
+      "planStatus": "active",
+      "planAssignedAt": "1772384678865",
+      "planExpiresAt": "NULL",
+      "stripeSubscriptionId": "sub_1T6DQ0KAKVvgAItHkEKzg368"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tname\tlogoUrl\taddress\tphone\temail\tstripeAccountId\tsubscriptionTier\tsubscriptionStatus\tcreatedAt\tupdatedAt\tstripeCustomerId\tplanId\tplanPriceOverride\tplanNotes\tplanStatus\tplanAssignedAt\tplanExpiresAt\tstripeSubscriptionId\n3\tTrevors PM Comaany\tNULL\t101 main st\t3045555555\tcompany1@test.com\tNULL\tfree\ttrialing\t2026-03-01 01:11:59\t2026-03-01 17:04:38\tcus_U4M5Jqh6oOzsZw\t1\tNULL\tNULL\tactive\t1772384678865\tNULL\tsub_1T6DQ0KAKVvgAItHkEKzg368\n",
+  "stderr": "",
+  "execution_time_ms": 56
+}

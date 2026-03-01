@@ -1,0 +1,19 @@
+{
+  "query": "SELECT c.id, c.name, c.planId, c.planStatus, c.stripeCustomerId, c.stripeSubscriptionId, sp.name as plan_name FROM companies c LEFT JOIN subscription_plans sp ON c.planId = sp.id;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user sHLCts4RR6iL2PA.1ead08cf1a54 --database bBuQZrfKLoBs6LmtvQ4y6E --execute SELECT c.id, c.name, c.planId, c.planStatus, c.stripeCustomerId, c.stripeSubscriptionId, sp.name as plan_name FROM companies c LEFT JOIN subscription_plans sp ON c.planId = sp.id;",
+  "rows": [
+    {
+      "id": "3",
+      "name": "Trevors PM Comaany",
+      "planId": "1",
+      "planStatus": "active",
+      "stripeCustomerId": "cus_U4M5Jqh6oOzsZw",
+      "stripeSubscriptionId": "sub_1T6DQ0KAKVvgAItHkEKzg368",
+      "plan_name": "Pro"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tname\tplanId\tplanStatus\tstripeCustomerId\tstripeSubscriptionId\tplan_name\n3\tTrevors PM Comaany\t1\tactive\tcus_U4M5Jqh6oOzsZw\tsub_1T6DQ0KAKVvgAItHkEKzg368\tPro\n",
+  "stderr": "",
+  "execution_time_ms": 58
+}

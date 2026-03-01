@@ -60,6 +60,7 @@ export default function CompanyBilling() {
   const [billingInterval, setBillingInterval] = useState<"monthly" | "annual">("monthly");
   const [checkoutLoading, setCheckoutLoading] = useState<number | null>(null);
 
+  const utils = trpc.useUtils();
   const { data: txns, isLoading: txnsLoading } = trpc.transactions.listByCompany.useQuery();
   const { data: planData, isLoading: planLoading } = trpc.company.getMyPlan.useQuery();
   const { data: availablePlans, isLoading: plansLoading } = trpc.company.listAvailablePlans.useQuery();
@@ -94,11 +95,25 @@ export default function CompanyBilling() {
     if (sub === "success") {
       toast.success("Subscription activated!", { description: "Your plan has been updated. It may take a moment to reflect." });
       setLocation("/company/billing", { replace: true });
+      // Invalidate after a short delay to allow webhook processing
+      setTimeout(() => {
+        utils.company.getMyPlan.invalidate();
+        utils.company.listAvailablePlans.invalidate();
+      }, 2500);
     } else if (sub === "canceled") {
       toast.info("Checkout canceled", { description: "No changes were made." });
       setLocation("/company/billing", { replace: true });
     }
   }, []);
+
+  // Poll every 5s when no plan is detected yet (catches webhook processing delay)
+  useEffect(() => {
+    if (!planData || planData.plan) return;
+    const interval = setInterval(() => {
+      utils.company.getMyPlan.invalidate();
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [!!planData?.plan]);
 
   const plan = planData?.plan;
   const usage = planData?.usage;

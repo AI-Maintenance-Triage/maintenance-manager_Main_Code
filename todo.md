@@ -748,3 +748,12 @@
 - [x] Frontend: admin sidebar — Webhooks nav item
 - [x] Fix: db.ts duplicate mid-file import of contractorInvites (moved to top-level import block)
 - [x] 115 tests passing, 0 TypeScript errors
+
+## Stripe Subscription E2E Test (Session 19)
+- [x] Create "Pro Company Plan" product in Stripe test dashboard (price_1T6DKRKAKVvgAItH4S9mYP6Z)
+- [x] Create "Pro" plan in admin UI with Stripe Price ID attached
+- [x] Checkout flow: company user subscribes at $99/month via Stripe test checkout
+- [x] Webhook chain verified: payment_intent.succeeded → checkout.session.completed → Plan 1 assigned to company 3
+- [x] Database confirmed: planId=1, planStatus=active, stripeCustomerId, stripeSubscriptionId all set
+- [x] Billing page shows Pro — Active — $99/mo with usage gauges after server restart
+- [x] Fix: billing page stale cache after checkout success (added 2.5s invalidation + 5s polling)

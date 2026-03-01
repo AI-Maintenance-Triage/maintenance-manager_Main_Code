@@ -1,0 +1,18 @@
+{
+  "query": "SELECT id, name, planId, planStatus, stripeCustomerId, stripeSubscriptionId FROM companies;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user sHLCts4RR6iL2PA.1ead08cf1a54 --database bBuQZrfKLoBs6LmtvQ4y6E --execute SELECT id, name, planId, planStatus, stripeCustomerId, stripeSubscriptionId FROM companies;",
+  "rows": [
+    {
+      "id": "3",
+      "name": "Trevors PM Comaany",
+      "planId": "1",
+      "planStatus": "active",
+      "stripeCustomerId": "cus_U4M5Jqh6oOzsZw",
+      "stripeSubscriptionId": "sub_1T6DQ0KAKVvgAItHkEKzg368"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tname\tplanId\tplanStatus\tstripeCustomerId\tstripeSubscriptionId\n3\tTrevors PM Comaany\t1\tactive\tcus_U4M5Jqh6oOzsZw\tsub_1T6DQ0KAKVvgAItHkEKzg368\n",
+  "stderr": "",
+  "execution_time_ms": 46
+}

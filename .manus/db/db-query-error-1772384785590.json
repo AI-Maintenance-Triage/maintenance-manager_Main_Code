@@ -1,0 +1,8 @@
+{
+  "query": "SELECT c.id, c.name, c.plan_id, c.stripe_customer_id, c.stripe_subscription_id, c.subscription_status, sp.name as plan_name FROM companies c LEFT JOIN subscription_plans sp ON c.plan_id = sp.id ORDER BY c.id;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user sHLCts4RR6iL2PA.1ead08cf1a54 --database bBuQZrfKLoBs6LmtvQ4y6E --execute SELECT c.id, c.name, c.plan_id, c.stripe_customer_id, c.stripe_subscription_id, c.subscription_status, sp.name as plan_name FROM companies c LEFT JOIN subscription_plans sp ON c.plan_id = sp.id ORDER BY c.id;",
+  "returncode": 1,
+  "logs": [
+    "ERROR 1054 (42S22) at line 1: Unknown column 'c.plan_id' in 'on clause'"
+  ]
+}

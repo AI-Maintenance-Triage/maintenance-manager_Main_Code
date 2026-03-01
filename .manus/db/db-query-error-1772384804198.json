@@ -1,0 +1,8 @@
+{
+  "query": "SELECT id, name, stripe_customer_id, stripe_subscription_id, subscription_status FROM companies;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user sHLCts4RR6iL2PA.1ead08cf1a54 --database bBuQZrfKLoBs6LmtvQ4y6E --execute SELECT id, name, stripe_customer_id, stripe_subscription_id, subscription_status FROM companies;",
+  "returncode": 1,
+  "logs": [
+    "ERROR 1054 (42S22) at line 1: Unknown column 'stripe_customer_id' in 'field list'"
+  ]
+}
