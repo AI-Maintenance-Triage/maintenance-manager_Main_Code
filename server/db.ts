@@ -658,16 +658,18 @@ export async function listJobBoardForContractor(contractorProfileId: number) {
       const propLat = row.property.latitude ? parseFloat(String(row.property.latitude)) : null;
       const propLng = row.property.longitude ? parseFloat(String(row.property.longitude)) : null;
       if (propLat === null || propLng === null) {
-        // If property has no coords, include it (fallback)
-        return true;
+        // Property has no geocoded coordinates — exclude it from the board
+        // (can't determine distance, so it should not appear)
+        return false;
       }
       const dist = haversineDistanceMiles(contractorLat, contractorLng, propLat, propLng);
       return dist <= radiusMiles;
     });
   }
 
-  // If contractor has no coords yet, return all board jobs
-  return jobs;
+  // Contractor has no geocoded coordinates — return empty list so the UI
+  // can prompt them to complete their service area setup.
+  return [];
 }
 
 // ─── Job Board: Accept a Job ───────────────────────────────────────────────
@@ -719,4 +721,73 @@ export async function removeJobFromBoard(jobId: number, companyId: number) {
     .update(maintenanceRequests)
     .set({ postedToBoard: false })
     .where(and(eq(maintenanceRequests.id, jobId), eq(maintenanceRequests.companyId, companyId)));
+}
+
+// ─── Job Board: Debug — returns raw coords and distances ──────────────────
+export async function debugJobBoardForContractor(contractorProfileId: number) {
+  const db = await getDb();
+  if (!db) return { contractor: null, jobs: [] };
+
+  const [contractor] = await db
+    .select({
+      id: contractorProfiles.id,
+      businessName: contractorProfiles.businessName,
+      latitude: contractorProfiles.latitude,
+      longitude: contractorProfiles.longitude,
+      serviceRadiusMiles: contractorProfiles.serviceRadiusMiles,
+      serviceAreaZips: contractorProfiles.serviceAreaZips,
+    })
+    .from(contractorProfiles)
+    .where(eq(contractorProfiles.id, contractorProfileId))
+    .limit(1);
+
+  const jobs = await db
+    .select({
+      jobId: maintenanceRequests.id,
+      jobTitle: maintenanceRequests.title,
+      status: maintenanceRequests.status,
+      postedToBoard: maintenanceRequests.postedToBoard,
+      propertyId: properties.id,
+      propertyAddress: properties.address,
+      propertyCity: properties.city,
+      propertyZip: properties.zipCode,
+      propertyLat: properties.latitude,
+      propertyLng: properties.longitude,
+    })
+    .from(maintenanceRequests)
+    .innerJoin(properties, eq(maintenanceRequests.propertyId, properties.id))
+    .orderBy(desc(maintenanceRequests.createdAt));
+
+  const contractorLat = contractor?.latitude ? parseFloat(String(contractor.latitude)) : null;
+  const contractorLng = contractor?.longitude ? parseFloat(String(contractor.longitude)) : null;
+  const radiusMiles = contractor?.serviceRadiusMiles ?? 25;
+
+  const jobsWithDistance = jobs.map((row) => {
+    const propLat = row.propertyLat ? parseFloat(String(row.propertyLat)) : null;
+    const propLng = row.propertyLng ? parseFloat(String(row.propertyLng)) : null;
+    let distanceMiles: number | null = null;
+    let withinRadius: boolean | null = null;
+    if (contractorLat !== null && contractorLng !== null && propLat !== null && propLng !== null) {
+      const R = 3958.8;
+      const dLat = ((propLat - contractorLat) * Math.PI) / 180;
+      const dLon = ((propLng - contractorLng) * Math.PI) / 180;
+      const a =
+        Math.sin(dLat / 2) ** 2 +
+        Math.cos((contractorLat * Math.PI) / 180) *
+          Math.cos((propLat * Math.PI) / 180) *
+          Math.sin(dLon / 2) ** 2;
+      distanceMiles = Math.round(R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)) * 10) / 10;
+      withinRadius = distanceMiles <= radiusMiles;
+    }
+    return { ...row, distanceMiles, withinRadius };
+  });
+
+  return {
+    contractor: contractor ? {
+      ...contractor,
+      hasCoords: contractorLat !== null && contractorLng !== null,
+      radiusMiles,
+    } : null,
+    jobs: jobsWithDistance,
+  };
 }

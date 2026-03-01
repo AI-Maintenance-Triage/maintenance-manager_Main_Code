@@ -1,0 +1,18 @@
+{
+  "query": "SELECT id, businessName, serviceRadiusMiles, serviceAreaZips, latitude, longitude FROM contractor_profiles LIMIT 10;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user sHLCts4RR6iL2PA.1ead08cf1a54 --database bBuQZrfKLoBs6LmtvQ4y6E --execute SELECT id, businessName, serviceRadiusMiles, serviceAreaZips, latitude, longitude FROM contractor_profiles LIMIT 10;",
+  "rows": [
+    {
+      "id": "3",
+      "businessName": "Trevor's Pluimbing",
+      "serviceRadiusMiles": "5",
+      "serviceAreaZips": "[\"26554\"]",
+      "latitude": "39.4392651",
+      "longitude": "-80.1428584"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tbusinessName\tserviceRadiusMiles\tserviceAreaZips\tlatitude\tlongitude\n3\tTrevor's Pluimbing\t5\t[\"26554\"]\t39.4392651\t-80.1428584\n",
+  "stderr": "",
+  "execution_time_ms": 122
+}

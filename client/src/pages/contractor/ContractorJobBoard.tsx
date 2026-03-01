@@ -7,7 +7,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
   MapPin, Wrench, AlertTriangle, CheckCircle2, Briefcase,
-  Building2, Calendar, DollarSign, Loader2, RefreshCw
+  Building2, Calendar, DollarSign, Loader2, RefreshCw, Bug
 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -23,6 +23,19 @@ export default function ContractorJobBoard() {
   const { user } = useAuth({ redirectOnUnauthenticated: true });
   const utils = trpc.useUtils();
   const { data: jobs, isLoading, refetch } = trpc.jobBoard.list.useQuery();
+  const { data: debugData, refetch: refetchDebug } = trpc.jobBoard.debug.useQuery();
+  const refreshGeocode = trpc.contractor.refreshGeocode.useMutation({
+    onSuccess: (result) => {
+      if (result.success) {
+        toast.success(`Location updated! Refreshing job board...`);
+        utils.jobBoard.list.invalidate();
+        utils.jobBoard.debug.invalidate();
+      } else {
+        toast.error(result.message || "Geocoding failed");
+      }
+    },
+    onError: (err) => toast.error(err.message || "Failed to update location"),
+  });
   const acceptJob = trpc.jobBoard.accept.useMutation({
     onSuccess: () => {
       toast.success("Job accepted! Check your active jobs.");
@@ -33,6 +46,7 @@ export default function ContractorJobBoard() {
   });
 
   const [selectedJob, setSelectedJob] = useState<any | null>(null);
+  const [showDebug, setShowDebug] = useState(false);
 
   if (!user) return null;
 
@@ -46,11 +60,59 @@ export default function ContractorJobBoard() {
             Open jobs in your service area — accept one to get started
           </p>
         </div>
-        <Button variant="outline" size="sm" onClick={() => refetch()} className="gap-2">
-          <RefreshCw className="h-4 w-4" />
-          Refresh
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={() => { refetch(); refetchDebug(); }} className="gap-2">
+            <RefreshCw className="h-4 w-4" />
+            Refresh
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => setShowDebug(v => !v)} className="gap-2 text-yellow-400 border-yellow-400/40 hover:bg-yellow-400/10">
+            <Bug className="h-4 w-4" />
+            {showDebug ? "Hide" : "Debug"}
+          </Button>
+        </div>
       </div>
+
+      {/* Debug Panel */}
+      {showDebug && debugData && (
+        <Card className="bg-yellow-950/30 border-yellow-500/30">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-yellow-400 text-sm flex items-center gap-2"><Bug className="h-4 w-4" /> Service Area Debug</CardTitle>
+          </CardHeader>
+          <CardContent className="text-xs font-mono space-y-3">
+            <div>
+              <p className="text-yellow-300 font-semibold mb-1">Your Contractor Profile</p>
+              {debugData.contractor ? (
+                <div className="space-y-0.5 text-muted-foreground">
+                  <p>Name: <span className="text-foreground">{debugData.contractor.businessName || "(unnamed)"}</span></p>
+                  <p>Coords stored: <span className={debugData.contractor.hasCoords ? "text-green-400" : "text-red-400"}>{debugData.contractor.hasCoords ? `${debugData.contractor.latitude}, ${debugData.contractor.longitude}` : "❌ NULL — geocoding failed or not yet run"}</span></p>
+                  <p>Service radius: <span className="text-foreground">{debugData.contractor.radiusMiles} miles</span></p>
+                  <p>Service ZIPs: <span className="text-foreground">{(debugData.contractor.serviceAreaZips as string[] | null)?.join(", ") || "(none)"}</span></p>
+                </div>
+              ) : <p className="text-red-400">No contractor profile found</p>}
+            </div>
+            <div>
+              <p className="text-yellow-300 font-semibold mb-1">All Jobs (board + non-board)</p>
+              {debugData.jobs.length === 0 ? <p className="text-muted-foreground">No jobs found</p> : (
+                <table className="w-full text-left">
+                  <thead><tr className="text-yellow-300"><th className="pr-3">Title</th><th className="pr-3">Status</th><th className="pr-3">Board</th><th className="pr-3">Prop Coords</th><th className="pr-3">Distance</th><th>In Range?</th></tr></thead>
+                  <tbody>
+                    {debugData.jobs.map((j: any) => (
+                      <tr key={j.jobId} className="border-t border-yellow-500/10">
+                        <td className="pr-3 py-0.5 text-foreground">{j.jobTitle}</td>
+                        <td className="pr-3">{j.status}</td>
+                        <td className="pr-3">{j.postedToBoard ? <span className="text-green-400">✓</span> : <span className="text-red-400">✗</span>}</td>
+                        <td className="pr-3">{j.propertyLat ? <span className="text-green-400">{j.propertyLat}, {j.propertyLng}</span> : <span className="text-red-400">❌ NULL</span>}</td>
+                        <td className="pr-3">{j.distanceMiles !== null ? `${j.distanceMiles} mi` : "N/A"}</td>
+                        <td>{j.withinRadius === null ? <span className="text-yellow-400">?</span> : j.withinRadius ? <span className="text-green-400">✓</span> : <span className="text-red-400">✗</span>}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Stats */}
       {!isLoading && jobs && (
@@ -76,10 +138,30 @@ export default function ContractorJobBoard() {
         <Card className="bg-card border-border">
           <CardContent className="flex flex-col items-center justify-center py-16 text-center">
             <MapPin className="h-12 w-12 text-muted-foreground mb-4 opacity-40" />
-            <h3 className="text-lg font-semibold text-foreground mb-2">No jobs in your area</h3>
-            <p className="text-muted-foreground max-w-sm">
-              There are no open jobs within your service area right now. Check back later or expand your service radius in your profile settings.
-            </p>
+            {debugData?.contractor && !debugData.contractor.hasCoords ? (
+              <>
+                <h3 className="text-lg font-semibold text-foreground mb-2">Location not set up</h3>
+                <p className="text-muted-foreground max-w-sm mb-4">
+                  Your service area coordinates could not be determined. This prevents the job board from filtering by distance. Click below to fix it.
+                </p>
+                <Button
+                  onClick={() => refreshGeocode.mutate()}
+                  disabled={refreshGeocode.isPending}
+                  className="gap-2"
+                >
+                  {refreshGeocode.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <MapPin className="h-4 w-4" />}
+                  {refreshGeocode.isPending ? "Updating location..." : "Fix My Location"}
+                </Button>
+                <p className="text-xs text-muted-foreground mt-3">Make sure your service ZIP code is set in your profile settings.</p>
+              </>
+            ) : (
+              <>
+                <h3 className="text-lg font-semibold text-foreground mb-2">No jobs in your area</h3>
+                <p className="text-muted-foreground max-w-sm">
+                  There are no open jobs within your {debugData?.contractor?.radiusMiles ?? 25}-mile service radius right now. Check back later or expand your service radius in your profile settings.
+                </p>
+              </>
+            )}
           </CardContent>
         </Card>
       ) : (

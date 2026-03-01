@@ -255,6 +255,18 @@ const contractorRouter = router({
       return { success: true };
     }),
 
+  // Re-geocode the contractor's base ZIP on demand (fixes missing coords)
+  refreshGeocode: contractorProcedure.mutation(async ({ ctx }) => {
+    const profile = await getEffectiveContractorProfile(ctx);
+    if (!profile) throw new TRPCError({ code: "NOT_FOUND", message: "No contractor profile" });
+    const zip = (profile.serviceAreaZips as string[] | null)?.[0];
+    if (!zip) return { success: false, message: "No service ZIP set — update your profile first" };
+    const coords = await db.geocodeAddress(`${zip}, USA`);
+    if (!coords) return { success: false, message: `Geocoding failed for ZIP ${zip}` };
+    await db.updateContractorCoords(profile.id, coords.lat, coords.lng);
+    return { success: true, lat: coords.lat, lng: coords.lng };
+  }),
+
   // Company-side: list contractors for this company
   listByCompany: companyAdminProcedure.query(async ({ ctx }) => {
     if (!getEffectiveCompanyId(ctx)) throw new TRPCError({ code: "NOT_FOUND" });
@@ -588,6 +600,13 @@ const transactionsRouter = router({
 
 // ─── Job Board Router ─────────────────────────────────────────────────────
 const jobBoardRouter = router({
+  // Debug: returns raw contractor coords + all board jobs with their distances
+  debug: contractorProcedure.query(async ({ ctx }) => {
+    const profile = await getEffectiveContractorProfile(ctx);
+    if (!profile) throw new TRPCError({ code: "NOT_FOUND", message: "No contractor profile" });
+    return db.debugJobBoardForContractor(profile.id);
+  }),
+
   // Contractor: list jobs in their service area
   list: contractorProcedure.query(async ({ ctx }) => {
     const profile = await getEffectiveContractorProfile(ctx);

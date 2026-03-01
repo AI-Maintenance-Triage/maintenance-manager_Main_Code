@@ -190,3 +190,12 @@
 - [x] Company users can still edit hourly rate / emergency multiplier on existing tiers
 - [x] Edit dialog shows tier name and description as read-only text for company users (editable for admin)
 - [x] Backend: skillTiers.create and skillTiers.delete throw FORBIDDEN for company_admin role (admin only)
+
+## Bug: Job Board Service Area Filtering Not Working (Deep Investigation)
+- [x] Root cause 1: Silent fallback — if contractor has no coords, ALL jobs were returned (radius ignored)
+- [x] Root cause 2: Silent fallback — if property has no coords, job was always included regardless of distance
+- [x] Fix: contractor with no coords now returns empty list with "Fix My Location" CTA
+- [x] Fix: property with no coords is now excluded from the board (can't filter without coordinates)
+- [x] Added contractor.refreshGeocode mutation to re-geocode on demand from the job board
+- [x] Added jobBoard.debug endpoint + Debug panel on job board to show raw coords and distances
+- [x] Debug panel shows contractor coords, property coords, distance, and whether each job is in range
