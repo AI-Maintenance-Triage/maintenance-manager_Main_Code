@@ -169,6 +169,13 @@
       "when": 1772385598805,
       "tag": "0023_shallow_moondragon",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "5",
+      "when": 1772386144787,
+      "tag": "0024_wealthy_sheva_callister",
+      "breakpoints": true
     }
   ]
 }

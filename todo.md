@@ -791,3 +791,12 @@
 ### Stripe Invoice History
 - [x] Backend: billing.getInvoices procedure — fetch stripe.invoices.list({ customer }) 
 - [x] Frontend: billing page Payment History — show real Stripe invoices (date, amount, status, PDF link)
+
+## Stripe Auto-Sync for Admin Plans (Session 20b)
+- [x] Add stripeProductId column to subscription_plans schema (migration pushed)
+- [x] Backfill stripeProductId on all 5 existing plans
+- [x] createPlan: auto-create Stripe product + monthly/annual prices on save (no manual price IDs needed)
+- [x] updatePlan: auto-sync product name/description to Stripe on name change
+- [x] updatePlan: archive old Stripe price + create new price when monthly/annual price changes
+- [x] Admin Plans UI: replace manual Stripe Price ID fields with "Stripe Auto-Sync Enabled" notice
+- [x] Admin Plans UI: plan cards show "Stripe Synced" (green) or "Stripe Pending" (yellow) badge

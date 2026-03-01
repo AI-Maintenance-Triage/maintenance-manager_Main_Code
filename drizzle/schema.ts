@@ -430,7 +430,8 @@ export const subscriptionPlans = mysqlTable("subscription_plans", {
   platformFeePercent: decimal("platformFeePercent", { precision: 5, scale: 2 }),  // null = use global default
   perListingFeeEnabled: boolean("perListingFeeEnabled").default(false).notNull(),
   perListingFeeAmount: decimal("perListingFeeAmount", { precision: 8, scale: 2 }).default("0.00").notNull(),
-  // Stripe Price IDs for automated subscription billing
+  // Stripe Product + Price IDs — managed automatically by the platform
+  stripeProductId: varchar("stripeProductId", { length: 255 }),
   stripePriceIdMonthly: varchar("stripePriceIdMonthly", { length: 255 }),
   stripePriceIdAnnual: varchar("stripePriceIdAnnual", { length: 255 }),
   // Feature flags — stored as JSON so admin can add new features without migrations

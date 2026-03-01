@@ -246,24 +246,17 @@ function PlanFormDialog({
             </div>
           )}
 
-          {/* Stripe Price IDs */}
-          <div>
-            <h3 className="text-sm font-semibold text-foreground mb-1 flex items-center gap-2">
-              <Zap className="h-4 w-4 text-primary" /> Stripe Price IDs
-            </h3>
-            <p className="text-xs text-muted-foreground mb-3">
-              Link to Stripe Price IDs (format: price_...) to enable automated subscription billing.
-            </p>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-2">
-                <Label className="text-sm">Monthly Price ID</Label>
-                <Input value={form.stripePriceIdMonthly} onChange={e => set("stripePriceIdMonthly", e.target.value)}
-                  placeholder="price_..." className="bg-secondary border-border font-mono text-xs" />
-              </div>
-              <div className="space-y-2">
-                <Label className="text-sm">Annual Price ID</Label>
-                <Input value={form.stripePriceIdAnnual} onChange={e => set("stripePriceIdAnnual", e.target.value)}
-                  placeholder="price_..." className="bg-secondary border-border font-mono text-xs" />
+          {/* Stripe Auto-Sync Notice */}
+          <div className="rounded-lg border border-green-500/20 bg-green-500/5 p-3">
+            <div className="flex items-start gap-2">
+              <Zap className="h-4 w-4 text-green-400 mt-0.5 shrink-0" />
+              <div>
+                <p className="text-sm font-medium text-green-400">Stripe Auto-Sync Enabled</p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  When you save this plan, the platform automatically creates or updates the corresponding
+                  Stripe product and prices. If you change the price, the old Stripe price is archived and
+                  a new one is created — no manual Stripe dashboard changes needed.
+                </p>
               </div>
             </div>
           </div>
@@ -340,6 +333,7 @@ function PlanCard({
   const f = plan.features ?? {};
   const hasFee = plan.platformFeePercent != null;
   const hasStripe = plan.stripePriceIdMonthly || plan.stripePriceIdAnnual;
+  const stripeProductId = plan.stripeProductId as string | null | undefined;
   const limit1 = planType === "company" ? f.maxProperties : f.maxActiveJobs;
   const limit2 = planType === "company" ? f.maxContractors : f.maxCompanies;
   const limit3 = planType === "company" ? f.maxJobsPerMonth : null;
@@ -354,11 +348,15 @@ function PlanCard({
             <div className="flex items-center gap-2 flex-wrap">
               <CardTitle className="text-lg text-card-foreground">{plan.name}</CardTitle>
               {!plan.isActive && <Badge variant="secondary" className="text-xs">Inactive</Badge>}
-              {hasStripe && (
-                <Badge variant="outline" className="text-xs border-green-500/30 text-green-400">
-                  <Zap className="h-3 w-3 mr-1" /> Stripe
+              {hasStripe ? (
+                <Badge variant="outline" className="text-xs border-green-500/30 text-green-400" title={stripeProductId ? `Stripe Product: ${stripeProductId}` : undefined}>
+                  <Zap className="h-3 w-3 mr-1" /> Stripe Synced
                 </Badge>
-              )}
+              ) : parseFloat(plan.priceMonthly ?? "0") > 0 ? (
+                <Badge variant="outline" className="text-xs border-yellow-500/30 text-yellow-400">
+                  <Zap className="h-3 w-3 mr-1" /> Stripe Pending
+                </Badge>
+              ) : null}
               <Badge variant="outline" className="text-xs border-primary/30 text-primary">
                 {planType === "company" ? <Building2 className="h-3 w-3 mr-1" /> : <HardHat className="h-3 w-3 mr-1" />}
                 {companiesCount} {planType === "company" ? (companiesCount === 1 ? "company" : "companies") : (companiesCount === 1 ? "contractor" : "contractors")}

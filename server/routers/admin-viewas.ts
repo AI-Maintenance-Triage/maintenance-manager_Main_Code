@@ -2,6 +2,53 @@ import { z } from "zod";
 import { adminProcedure, router } from "../_core/trpc";
 import * as db from "../db";
 import * as email from "../email";
+import Stripe from "stripe";
+
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY ?? "");
+
+/**
+ * Sync a plan's name/description to its Stripe Product.
+ * Safe to call even if stripeProductId is null (no-op).
+ */
+async function syncStripeProductMeta(
+  stripeProductId: string | null | undefined,
+  name: string,
+  description?: string | null
+) {
+  if (!stripeProductId) return;
+  await stripe.products.update(stripeProductId, {
+    name,
+    ...(description != null ? { description } : {}),
+  });
+}
+
+/**
+ * Archive the old Stripe price and create a new one at the new amount.
+ * Returns the new price ID, or null if no product is linked.
+ */
+async function rotateSripePrice(
+  stripeProductId: string | null | undefined,
+  oldPriceId: string | null | undefined,
+  newAmountDollars: number,
+  interval: "month" | "year"
+): Promise<string | null> {
+  if (!stripeProductId) return null;
+  // Archive old price so it can't be used for new checkouts
+  if (oldPriceId) {
+    try {
+      await stripe.prices.update(oldPriceId, { active: false });
+    } catch {
+      // ignore if already archived
+    }
+  }
+  const newPrice = await stripe.prices.create({
+    product: stripeProductId,
+    unit_amount: Math.round(newAmountDollars * 100),
+    currency: "usd",
+    recurring: { interval },
+  });
+  return newPrice.id;
+}
 
 /**
  * Admin "View As" router — allows platform admin to:
@@ -286,6 +333,7 @@ export const adminViewAsRouter = router({
     .input(z.object({
       name: z.string().min(1),
       description: z.string().optional(),
+      planType: z.enum(["company", "contractor"]).default("company"),
       priceMonthly: z.number().min(0),
       priceAnnual: z.number().min(0),
       isActive: z.boolean().default(true),
@@ -294,9 +342,7 @@ export const adminViewAsRouter = router({
       platformFeePercent: z.number().min(0).max(100).nullable().optional(),
       perListingFeeEnabled: z.boolean().default(false),
       perListingFeeAmount: z.number().min(0).default(0),
-      // Stripe Price IDs
-      stripePriceIdMonthly: z.string().nullable().optional(),
-      stripePriceIdAnnual: z.string().nullable().optional(),
+      earlyNotificationMinutes: z.number().min(0).default(0),
       features: z.object({
         maxProperties: z.number().nullable().optional(),
         maxContractors: z.number().nullable().optional(),
@@ -314,9 +360,42 @@ export const adminViewAsRouter = router({
       }).optional(),
     }))
     .mutation(async ({ input }) => {
+      // Auto-create Stripe product + prices when priceMonthly > 0
+      let stripeProductId: string | null = null;
+      let stripePriceIdMonthly: string | null = null;
+      let stripePriceIdAnnual: string | null = null;
+
+      if (input.priceMonthly > 0) {
+        const product = await stripe.products.create({
+          name: input.name,
+          ...(input.description ? { description: input.description } : {}),
+          metadata: { planType: input.planType, source: "maintenance-manager" },
+        });
+        stripeProductId = product.id;
+
+        const monthlyPrice = await stripe.prices.create({
+          product: stripeProductId,
+          unit_amount: Math.round(input.priceMonthly * 100),
+          currency: "usd",
+          recurring: { interval: "month" },
+        });
+        stripePriceIdMonthly = monthlyPrice.id;
+
+        if (input.priceAnnual > 0) {
+          const annualPrice = await stripe.prices.create({
+            product: stripeProductId,
+            unit_amount: Math.round(input.priceAnnual * 100),
+            currency: "usd",
+            recurring: { interval: "year" },
+          });
+          stripePriceIdAnnual = annualPrice.id;
+        }
+      }
+
       const id = await db.createSubscriptionPlan({
         name: input.name,
         description: input.description ?? null,
+        planType: input.planType,
         priceMonthly: String(input.priceMonthly),
         priceAnnual: String(input.priceAnnual),
         isActive: input.isActive,
@@ -325,10 +404,12 @@ export const adminViewAsRouter = router({
         platformFeePercent: input.platformFeePercent != null ? String(input.platformFeePercent) : null,
         perListingFeeEnabled: input.perListingFeeEnabled,
         perListingFeeAmount: String(input.perListingFeeAmount),
-        stripePriceIdMonthly: input.stripePriceIdMonthly ?? null,
-        stripePriceIdAnnual: input.stripePriceIdAnnual ?? null,
+        earlyNotificationMinutes: input.earlyNotificationMinutes,
+        stripeProductId,
+        stripePriceIdMonthly,
+        stripePriceIdAnnual,
       });
-      return { id };
+      return { id, stripeProductId, stripePriceIdMonthly, stripePriceIdAnnual };
     }),
 
   updatePlan: adminProcedure
@@ -344,9 +425,7 @@ export const adminViewAsRouter = router({
       platformFeePercent: z.number().min(0).max(100).nullable().optional(),
       perListingFeeEnabled: z.boolean().optional(),
       perListingFeeAmount: z.number().min(0).optional(),
-      // Stripe Price IDs
-      stripePriceIdMonthly: z.string().nullable().optional(),
-      stripePriceIdAnnual: z.string().nullable().optional(),
+      earlyNotificationMinutes: z.number().min(0).optional(),
       features: z.object({
         maxProperties: z.number().nullable().optional(),
         maxContractors: z.number().nullable().optional(),
@@ -364,16 +443,61 @@ export const adminViewAsRouter = router({
       }).optional(),
     }))
     .mutation(async ({ input }) => {
-      const { id, priceMonthly, priceAnnual, platformFeePercent, perListingFeeAmount, stripePriceIdMonthly, stripePriceIdAnnual, ...rest } = input;
-      await db.updateSubscriptionPlan(id, {
-        ...rest,
-        ...(priceMonthly !== undefined ? { priceMonthly: String(priceMonthly) } : {}),
-        ...(priceAnnual !== undefined ? { priceAnnual: String(priceAnnual) } : {}),
-        ...(platformFeePercent !== undefined ? { platformFeePercent: platformFeePercent != null ? String(platformFeePercent) : null } : {}),
-        ...(perListingFeeAmount !== undefined ? { perListingFeeAmount: String(perListingFeeAmount) } : {}),
-        ...(stripePriceIdMonthly !== undefined ? { stripePriceIdMonthly: stripePriceIdMonthly ?? null } : {}),
-        ...(stripePriceIdAnnual !== undefined ? { stripePriceIdAnnual: stripePriceIdAnnual ?? null } : {}),
-      });
+      const { id, priceMonthly, priceAnnual, platformFeePercent, perListingFeeAmount, ...rest } = input;
+
+      // Fetch current plan to compare prices and get stripeProductId
+      const plans = await db.listSubscriptionPlans();
+      const current = plans.find(p => p.id === id);
+
+      const dbUpdate: Record<string, unknown> = { ...rest };
+
+      // ── Name / description → sync to Stripe product ──────────────────────
+      if ((rest.name || rest.description !== undefined) && current?.stripeProductId) {
+        await syncStripeProductMeta(
+          current.stripeProductId,
+          rest.name ?? current.name,
+          rest.description !== undefined ? rest.description : current.description
+        );
+      }
+
+      // ── Monthly price changed → archive old price, create new one ─────────
+      if (priceMonthly !== undefined) {
+        dbUpdate.priceMonthly = String(priceMonthly);
+        const currentMonthly = parseFloat(current?.priceMonthly ?? "0");
+        if (current?.stripeProductId && priceMonthly !== currentMonthly) {
+          const newPriceId = await rotateSripePrice(
+            current.stripeProductId,
+            current.stripePriceIdMonthly,
+            priceMonthly,
+            "month"
+          );
+          if (newPriceId) dbUpdate.stripePriceIdMonthly = newPriceId;
+        }
+      }
+
+      // ── Annual price changed → archive old price, create new one ──────────
+      if (priceAnnual !== undefined) {
+        dbUpdate.priceAnnual = String(priceAnnual);
+        const currentAnnual = parseFloat(current?.priceAnnual ?? "0");
+        if (current?.stripeProductId && priceAnnual !== currentAnnual) {
+          const newPriceId = await rotateSripePrice(
+            current.stripeProductId,
+            current.stripePriceIdAnnual,
+            priceAnnual,
+            "year"
+          );
+          if (newPriceId) dbUpdate.stripePriceIdAnnual = newPriceId;
+        }
+      }
+
+      if (platformFeePercent !== undefined) {
+        dbUpdate.platformFeePercent = platformFeePercent != null ? String(platformFeePercent) : null;
+      }
+      if (perListingFeeAmount !== undefined) {
+        dbUpdate.perListingFeeAmount = String(perListingFeeAmount);
+      }
+
+      await db.updateSubscriptionPlan(id, dbUpdate as any);
       return { success: true };
     }),
 
