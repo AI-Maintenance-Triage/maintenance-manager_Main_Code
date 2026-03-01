@@ -17,10 +17,13 @@ import {
   XCircle,
   Clock,
   Copy,
-  ExternalLink,
   AlertTriangle,
   Webhook,
   Key,
+  ShieldCheck,
+  Info,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 
 const PROVIDER_LOGOS: Record<string, string> = {
@@ -28,9 +31,69 @@ const PROVIDER_LOGOS: Record<string, string> = {
   appfolio: "https://logo.clearbit.com/appfolio.com",
   rentmanager: "https://logo.clearbit.com/rentmanager.com",
   yardi: "https://logo.clearbit.com/yardi.com",
-  resman: "https://logo.clearbit.com/myresman.com",
   doorloop: "https://logo.clearbit.com/doorloop.com",
+  realpage: "https://logo.clearbit.com/realpage.com",
+  propertyware: "https://logo.clearbit.com/propertyware.com",
 };
+
+/** Per-provider setup instructions shown after connecting */
+const PROVIDER_SETUP_INSTRUCTIONS: Record<string, { steps: string[]; signatureHeader: string }> = {
+  buildium: {
+    signatureHeader: "X-Buildium-Signature",
+    steps: [
+      "Log in to your Buildium account and go to Settings → Integrations → Webhooks.",
+      "Click 'Add Webhook' and paste the Endpoint URL above.",
+      "Under 'Signing Secret', paste the Webhook Signing Secret shown above.",
+      "Select the event types: Maintenance Request Created, Maintenance Request Updated.",
+      "Click Save. Buildium will now send signed requests to your platform.",
+    ],
+  },
+  appfolio: {
+    signatureHeader: "X-AppFolio-Signature",
+    steps: [
+      "In AppFolio, go to Settings → Integrations → Outbound Webhooks.",
+      "Click 'New Webhook' and paste the Endpoint URL above.",
+      "Enter the Webhook Signing Secret in the 'Secret' field.",
+      "Select 'Maintenance Request' events.",
+      "Save and test the connection.",
+    ],
+  },
+  rentmanager: {
+    signatureHeader: "X-RentManager-Signature",
+    steps: [
+      "In Rent Manager, go to Admin → Integrations → Webhooks.",
+      "Add a new webhook with the Endpoint URL above.",
+      "Enter the Webhook Signing Secret in the signing secret field.",
+      "Select 'Service Request' events to subscribe to.",
+      "Save the configuration.",
+    ],
+  },
+  doorloop: {
+    signatureHeader: "X-DoorLoop-Signature",
+    steps: [
+      "In DoorLoop, go to Settings → Integrations → Webhooks.",
+      "Create a new webhook and paste the Endpoint URL.",
+      "Add the Webhook Signing Secret to the secret field.",
+      "Subscribe to Maintenance Request events.",
+      "Save and activate the webhook.",
+    ],
+  },
+};
+
+const DEFAULT_SETUP_INSTRUCTIONS = {
+  signatureHeader: "X-Webhook-Signature",
+  steps: [
+    "In your PMS portal, go to Settings → Integrations or Webhooks.",
+    "Create a new outbound webhook and paste the Endpoint URL above.",
+    "Enter the Webhook Signing Secret in the signing secret / HMAC secret field.",
+    "Subscribe to maintenance request or work order events.",
+    "Save the configuration.",
+  ],
+};
+
+function getSetupInstructions(provider: string) {
+  return PROVIDER_SETUP_INSTRUCTIONS[provider] ?? DEFAULT_SETUP_INSTRUCTIONS;
+}
 
 function StatusBadge({ status }: { status: string }) {
   if (status === "connected") return <Badge className="bg-green-500/15 text-green-600 border-green-500/30"><CheckCircle2 className="w-3 h-3 mr-1" />Connected</Badge>;
@@ -38,22 +101,31 @@ function StatusBadge({ status }: { status: string }) {
   return <Badge className="bg-yellow-500/15 text-yellow-600 border-yellow-500/30"><Clock className="w-3 h-3 mr-1" />Pending</Badge>;
 }
 
+function EventStatusBadge({ status }: { status: string }) {
+  if (status === "processed") return <Badge className="bg-green-500/15 text-green-600 border-green-500/30 text-xs">Processed</Badge>;
+  if (status === "failed") return <Badge className="bg-red-500/15 text-red-600 border-red-500/30 text-xs">Failed</Badge>;
+  if (status === "ignored") return <Badge className="bg-gray-500/15 text-gray-600 border-gray-500/30 text-xs">Ignored</Badge>;
+  return <Badge className="bg-blue-500/15 text-blue-600 border-blue-500/30 text-xs">Received</Badge>;
+}
+
 export default function CompanyIntegrations() {
   const utils = trpc.useUtils();
   const { data: providers = [] } = trpc.pms.listProviders.useQuery();
   const { data: integrations = [], isLoading } = trpc.pms.list.useQuery();
-  const { data: webhookEvents = [] } = trpc.pms.webhookEvents.useQuery({ limit: 20 });
+  const { data: webhookEvents = [] } = trpc.pms.webhookEvents.useQuery({ limit: 50 });
 
   const [connectingProvider, setConnectingProvider] = useState<string | null>(null);
   const [credentials, setCredentials] = useState<Record<string, string>>({});
-  const [newWebhookSecret, setNewWebhookSecret] = useState<string | null>(null);
+  const [newIntegration, setNewIntegration] = useState<{ webhookSecret: string; provider: string } | null>(null);
+  const [expandedInstructions, setExpandedInstructions] = useState<number | null>(null);
 
   const connectMutation = trpc.pms.connect.useMutation({
     onSuccess: (data) => {
       utils.pms.list.invalidate();
-      setNewWebhookSecret(data.webhookSecret);
+      setNewIntegration({ webhookSecret: data.webhookSecret, provider: connectingProvider! });
+      setConnectingProvider(null);
       setCredentials({});
-      toast.success("Integration connected", { description: "Your PMS has been connected successfully." });
+      toast.success("Integration connected", { description: "Your PMS has been connected. Follow the setup instructions to complete configuration." });
     },
     onError: (err) => {
       toast.error("Connection failed", { description: err.message });
@@ -71,15 +143,17 @@ export default function CompanyIntegrations() {
     onSuccess: (data) => {
       utils.pms.list.invalidate();
       utils.pms.webhookEvents.invalidate();
-      toast.success("Sync complete", { description: `Imported ${data.imported} properties and created ${data.jobs} new jobs.` });
+      toast.success("Sync complete", {
+        description: `Imported ${(data as any).imported ?? 0} properties and created ${(data as any).jobs ?? 0} new jobs.`,
+      });
     },
     onError: (err) => {
       toast.error("Sync failed", { description: err.message });
     },
   });
 
-  const providerConfig = providers.find(p => p.id === connectingProvider);
-  const connectedProviderIds = new Set(integrations.map(i => i.provider));
+  const providerConfig = providers.find((p: any) => p.id === connectingProvider);
+  const connectedProviderIds = new Set(integrations.map((i: any) => i.provider));
 
   function handleConnect() {
     if (!connectingProvider) return;
@@ -105,13 +179,19 @@ export default function CompanyIntegrations() {
       {/* How it works */}
       <Card className="border-blue-500/20 bg-blue-500/5">
         <CardHeader className="pb-2">
-          <CardTitle className="text-base text-blue-700 dark:text-blue-400">How it works</CardTitle>
+          <CardTitle className="text-base text-blue-700 dark:text-blue-400 flex items-center gap-2">
+            <Info className="w-4 h-4" />How it works
+          </CardTitle>
         </CardHeader>
         <CardContent className="text-sm text-muted-foreground space-y-1">
-          <p>1. Connect your PMS using the API credentials from your PMS portal.</p>
+          <p>1. Connect your PMS using the API credentials or webhook setup from your PMS portal.</p>
           <p>2. We automatically import all your properties and sync new maintenance requests every 15 minutes.</p>
           <p>3. Each new request becomes a job on the job board for contractors to accept.</p>
           <p>4. When a job is completed, we update the request status in your PMS automatically.</p>
+          <p className="flex items-center gap-1 mt-2 text-green-700 dark:text-green-400">
+            <ShieldCheck className="w-3.5 h-3.5" />
+            All inbound webhooks are verified using HMAC-SHA256 signatures for security.
+          </p>
         </CardContent>
       </Card>
 
@@ -119,11 +199,14 @@ export default function CompanyIntegrations() {
       {integrations.length > 0 && (
         <div className="space-y-3">
           <h2 className="text-lg font-semibold">Active Integrations</h2>
-          {integrations.map(integration => {
-            const provider = providers.find(p => p.id === integration.provider);
+          {(integrations as any[]).map((integration: any) => {
+            const provider = (providers as any[]).find((p: any) => p.id === integration.provider);
+            const instructions = getSetupInstructions(integration.provider);
+            const webhookEndpoint = `${appBaseUrl}/api/webhooks/pms/${integration.provider}`;
+            const isExpanded = expandedInstructions === integration.id;
             return (
               <Card key={integration.id}>
-                <CardContent className="pt-4">
+                <CardContent className="pt-4 space-y-3">
                   <div className="flex items-center justify-between gap-4">
                     <div className="flex items-center gap-3">
                       {PROVIDER_LOGOS[integration.provider] ? (
@@ -171,33 +254,84 @@ export default function CompanyIntegrations() {
                   </div>
 
                   {integration.lastErrorMessage && (
-                    <Alert variant="destructive" className="mt-3">
+                    <Alert variant="destructive">
                       <AlertTriangle className="h-4 w-4" />
                       <AlertDescription className="text-xs">{integration.lastErrorMessage}</AlertDescription>
                     </Alert>
                   )}
 
-                  {/* Webhook URL for webhook-only providers */}
-                  {integration.authType === "webhook_only" && (
-                    <div className="mt-3 p-3 bg-muted/50 rounded-md space-y-2">
-                      <p className="text-xs font-medium flex items-center gap-1"><Webhook className="w-3 h-3" />Webhook URL</p>
+                  {/* Webhook configuration — always shown for all integrations */}
+                  <div className="p-3 bg-muted/50 rounded-md space-y-3">
+                    <div className="flex items-center justify-between">
+                      <p className="text-xs font-semibold flex items-center gap-1.5">
+                        <ShieldCheck className="w-3.5 h-3.5 text-green-600" />
+                        Webhook Configuration
+                      </p>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 text-xs"
+                        onClick={() => setExpandedInstructions(isExpanded ? null : integration.id)}
+                      >
+                        {isExpanded ? <><ChevronUp className="w-3 h-3 mr-1" />Hide Setup</>
+                          : <><ChevronDown className="w-3 h-3 mr-1" />Setup Instructions</>}
+                      </Button>
+                    </div>
+
+                    {/* Endpoint URL */}
+                    <div className="space-y-1">
+                      <p className="text-xs text-muted-foreground font-medium">Endpoint URL</p>
                       <div className="flex items-center gap-2">
-                        <code className="text-xs bg-background border rounded px-2 py-1 flex-1 truncate">
-                          {appBaseUrl}/api/pms/webhook/{integration.provider}/{integration.webhookSecret}
+                        <code className="text-xs bg-background border rounded px-2 py-1.5 flex-1 truncate font-mono">
+                          {webhookEndpoint}
                         </code>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => copyToClipboard(`${appBaseUrl}/api/pms/webhook/${integration.provider}/${integration.webhookSecret}`)}
-                        >
+                        <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => copyToClipboard(webhookEndpoint)}>
                           <Copy className="w-3 h-3" />
                         </Button>
                       </div>
-                      <p className="text-xs text-muted-foreground">
-                        Paste this URL into your PMS portal as the outbound webhook destination.
-                      </p>
                     </div>
-                  )}
+
+                    {/* Signing secret */}
+                    {integration.webhookSecret && (
+                      <div className="space-y-1">
+                        <p className="text-xs text-muted-foreground font-medium">
+                          Webhook Signing Secret
+                          <span className="ml-1 text-muted-foreground/60">(header: {instructions.signatureHeader})</span>
+                        </p>
+                        <div className="flex items-center gap-2">
+                          <code className="text-xs bg-background border rounded px-2 py-1.5 flex-1 truncate font-mono text-amber-600 dark:text-amber-400">
+                            {integration.webhookSecret}
+                          </code>
+                          <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => copyToClipboard(integration.webhookSecret)}>
+                            <Copy className="w-3 h-3" />
+                          </Button>
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          Paste this into your PMS portal as the webhook signing secret. Keep it private.
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Step-by-step instructions (collapsible) */}
+                    {isExpanded && (
+                      <div className="mt-2 space-y-2">
+                        <Separator />
+                        <p className="text-xs font-semibold capitalize">
+                          {provider?.name ?? integration.provider} Setup Steps
+                        </p>
+                        <ol className="space-y-1.5">
+                          {instructions.steps.map((step, idx) => (
+                            <li key={idx} className="flex gap-2 text-xs text-muted-foreground">
+                              <span className="flex-shrink-0 w-4 h-4 rounded-full bg-primary/10 text-primary flex items-center justify-center text-[10px] font-bold mt-0.5">
+                                {idx + 1}
+                              </span>
+                              <span>{step}</span>
+                            </li>
+                          ))}
+                        </ol>
+                      </div>
+                    )}
+                  </div>
                 </CardContent>
               </Card>
             );
@@ -208,56 +342,64 @@ export default function CompanyIntegrations() {
       {/* Available providers */}
       <div className="space-y-3">
         <h2 className="text-lg font-semibold">Available Integrations</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          {providers.map(provider => {
-            const isConnected = connectedProviderIds.has(provider.id);
-            return (
-              <Card key={provider.id} className={isConnected ? "opacity-60" : ""}>
-                <CardContent className="pt-4">
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-3">
-                      {PROVIDER_LOGOS[provider.id] ? (
-                        <img
-                          src={PROVIDER_LOGOS[provider.id]}
-                          alt={provider.name}
-                          className="w-8 h-8 rounded object-contain"
-                          onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
-                        />
-                      ) : (
-                        <div className="w-8 h-8 rounded bg-muted flex items-center justify-center">
-                          <Plug className="w-4 h-4 text-muted-foreground" />
-                        </div>
-                      )}
-                      <div>
-                        <p className="font-medium">{provider.name}</p>
-                        <div className="flex items-center gap-1 mt-0.5">
-                          {provider.authType === "api_key" ? (
-                            <Badge variant="outline" className="text-xs py-0"><Key className="w-2.5 h-2.5 mr-1" />API Key</Badge>
-                          ) : (
-                            <Badge variant="outline" className="text-xs py-0"><Webhook className="w-2.5 h-2.5 mr-1" />Webhook</Badge>
-                          )}
-                          {provider.supportsPropertyImport && <Badge variant="outline" className="text-xs py-0 text-green-600">Auto-import</Badge>}
-                          {provider.supportsWriteback && <Badge variant="outline" className="text-xs py-0 text-blue-600">Writeback</Badge>}
+        {isLoading ? (
+          <p className="text-sm text-muted-foreground">Loading providers...</p>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {(providers as any[]).map((provider: any) => {
+              const isConnected = connectedProviderIds.has(provider.id);
+              return (
+                <Card key={provider.id} className={isConnected ? "opacity-60" : ""}>
+                  <CardContent className="pt-4">
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-3">
+                        {PROVIDER_LOGOS[provider.id] ? (
+                          <img
+                            src={PROVIDER_LOGOS[provider.id]}
+                            alt={provider.name}
+                            className="w-8 h-8 rounded object-contain"
+                            onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+                          />
+                        ) : (
+                          <div className="w-8 h-8 rounded bg-muted flex items-center justify-center">
+                            <Plug className="w-4 h-4 text-muted-foreground" />
+                          </div>
+                        )}
+                        <div>
+                          <p className="font-medium">{provider.name}</p>
+                          <div className="flex items-center gap-1 mt-0.5 flex-wrap">
+                            {provider.authType === "api_key" ? (
+                              <Badge variant="outline" className="text-xs py-0"><Key className="w-2.5 h-2.5 mr-1" />API Key</Badge>
+                            ) : (
+                              <Badge variant="outline" className="text-xs py-0"><Webhook className="w-2.5 h-2.5 mr-1" />Webhook</Badge>
+                            )}
+                            {provider.supportsPropertyImport && (
+                              <Badge variant="outline" className="text-xs py-0 text-green-600">Auto-import</Badge>
+                            )}
+                            {provider.supportsWriteback && (
+                              <Badge variant="outline" className="text-xs py-0 text-blue-600">Writeback</Badge>
+                            )}
+                          </div>
                         </div>
                       </div>
+                      <Button
+                        size="sm"
+                        disabled={isConnected}
+                        onClick={() => {
+                          setConnectingProvider(provider.id);
+                          setCredentials({});
+                          setNewIntegration(null);
+                        }}
+                      >
+                        {isConnected ? "Connected" : "Connect"}
+                      </Button>
                     </div>
-                    <Button
-                      size="sm"
-                      disabled={isConnected}
-                      onClick={() => {
-                        setConnectingProvider(provider.id);
-                        setCredentials({});
-                        setNewWebhookSecret(null);
-                      }}
-                    >
-                      {isConnected ? "Connected" : "Connect"}
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            );
-          })}
-        </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {/* Webhook event log */}
@@ -267,15 +409,28 @@ export default function CompanyIntegrations() {
           <Card>
             <CardContent className="pt-4">
               <div className="space-y-2">
-                {webhookEvents.map((event, i) => (
-                  <div key={i} className="flex items-center justify-between text-sm py-1 border-b last:border-0">
-                    <div className="flex items-center gap-2">
-                      <Badge variant="outline" className="text-xs capitalize">{event.provider}</Badge>
-                      <span className="text-muted-foreground">{event.rawPayload ? JSON.stringify(event.rawPayload).slice(0, 60) + "..." : "No payload"}</span>
+                {(webhookEvents as any[]).map((event: any, i: number) => (
+                  <div key={i} className="flex items-start justify-between text-sm py-2 border-b last:border-0 gap-3">
+                    <div className="flex items-start gap-2 min-w-0">
+                      <Badge variant="outline" className="text-xs capitalize flex-shrink-0">{event.provider}</Badge>
+                      <div className="min-w-0">
+                        <p className="text-xs text-muted-foreground truncate">
+                          {event.rawPayload ? JSON.stringify(event.rawPayload).slice(0, 80) + "..." : "No payload"}
+                        </p>
+                        {event.errorMessage && (
+                          <p className="text-xs text-destructive mt-0.5">{event.errorMessage}</p>
+                        )}
+                        {event.createdJobId && (
+                          <p className="text-xs text-green-600 mt-0.5">Created Job #{event.createdJobId}</p>
+                        )}
+                      </div>
                     </div>
-                    <span className="text-xs text-muted-foreground">
-                      {event.createdAt ? new Date(event.createdAt).toLocaleTimeString() : ""}
-                    </span>
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      <EventStatusBadge status={event.status} />
+                      <span className="text-xs text-muted-foreground whitespace-nowrap">
+                        {event.createdAt ? new Date(event.createdAt).toLocaleTimeString() : ""}
+                      </span>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -285,20 +440,20 @@ export default function CompanyIntegrations() {
       )}
 
       {/* Connect dialog */}
-      <Dialog open={!!connectingProvider && !newWebhookSecret} onOpenChange={(open) => { if (!open) { setConnectingProvider(null); setCredentials({}); } }}>
+      <Dialog open={!!connectingProvider} onOpenChange={(open) => { if (!open) { setConnectingProvider(null); setCredentials({}); } }}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Connect {providerConfig?.name}</DialogTitle>
+            <DialogTitle>Connect {(providers as any[]).find((p: any) => p.id === connectingProvider)?.name ?? connectingProvider}</DialogTitle>
             <DialogDescription>
-              {providerConfig?.authType === "api_key"
+              {(providerConfig as any)?.authType === "api_key"
                 ? "Enter your API credentials from your PMS portal. We'll test the connection before saving."
-                : "This integration uses webhooks. We'll generate a webhook URL for you to paste into your PMS portal."}
+                : "This integration uses webhooks. We'll generate a secure webhook endpoint and signing secret for you."}
             </DialogDescription>
           </DialogHeader>
 
-          {providerConfig?.authType === "api_key" && (
+          {(providerConfig as any)?.authType === "api_key" && (
             <div className="space-y-3">
-              {([...providerConfig.fields] as Array<{ key: string; label: string; type: string; required: boolean }>).map(field => (
+              {([...((providerConfig as any).fields ?? [])] as Array<{ key: string; label: string; type: string; required: boolean }>).map(field => (
                 <div key={field.key} className="space-y-1.5">
                   <Label htmlFor={field.key}>{field.label}{field.required && <span className="text-destructive ml-1">*</span>}</Label>
                   <Input
@@ -310,19 +465,14 @@ export default function CompanyIntegrations() {
                   />
                 </div>
               ))}
-              {"webhookNote" in (providerConfig as Record<string, unknown>) && (
-                <Alert>
-                  <AlertDescription className="text-xs">{(providerConfig as Record<string, unknown>).webhookNote as string}</AlertDescription>
-                </Alert>
-              )}
             </div>
           )}
 
-          {providerConfig?.authType === "webhook_only" && (
+          {(providerConfig as any)?.authType === "webhook_only" && (
             <Alert>
-              <Webhook className="h-4 w-4" />
+              <ShieldCheck className="h-4 w-4 text-green-600" />
               <AlertDescription className="text-sm">
-                {"webhookNote" in (providerConfig as Record<string, unknown>) ? (providerConfig as Record<string, unknown>).webhookNote as string : "Click Connect to generate your webhook URL."}
+                We'll generate a unique webhook endpoint URL and HMAC signing secret. You'll paste both into your PMS portal to complete the setup.
               </AlertDescription>
             </Alert>
           )}
@@ -336,38 +486,84 @@ export default function CompanyIntegrations() {
         </DialogContent>
       </Dialog>
 
-      {/* Webhook secret reveal dialog (shown after connecting webhook-only provider) */}
-      <Dialog open={!!newWebhookSecret} onOpenChange={(open) => { if (!open) { setNewWebhookSecret(null); setConnectingProvider(null); } }}>
-        <DialogContent className="max-w-md">
+      {/* Post-connect setup dialog — shows endpoint URL and signing secret */}
+      <Dialog open={!!newIntegration} onOpenChange={(open) => { if (!open) setNewIntegration(null); }}>
+        <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2"><CheckCircle2 className="w-5 h-5 text-green-500" />Integration Connected!</DialogTitle>
+            <DialogTitle className="flex items-center gap-2">
+              <CheckCircle2 className="w-5 h-5 text-green-500" />
+              Integration Connected!
+            </DialogTitle>
             <DialogDescription>
-              Copy the webhook URL below and paste it into your PMS portal as the outbound webhook destination.
+              Copy the details below and configure them in your PMS portal to complete the setup.
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-3">
-            <Label>Your Webhook URL</Label>
-            <div className="flex items-center gap-2">
-              <code className="text-xs bg-muted border rounded px-2 py-2 flex-1 break-all">
-                {appBaseUrl}/api/pms/webhook/{connectingProvider}/{newWebhookSecret}
-              </code>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => copyToClipboard(`${appBaseUrl}/api/pms/webhook/${connectingProvider}/${newWebhookSecret}`)}
-              >
-                <Copy className="w-3 h-3" />
-              </Button>
-            </div>
-            <Alert>
-              <AlertTriangle className="h-4 w-4" />
-              <AlertDescription className="text-xs">
-                Save this URL now. You can always find it again on this page under your active integrations.
-              </AlertDescription>
-            </Alert>
-          </div>
+
+          {newIntegration && (() => {
+            const instructions = getSetupInstructions(newIntegration.provider);
+            const webhookEndpoint = `${appBaseUrl}/api/webhooks/pms/${newIntegration.provider}`;
+            return (
+              <div className="space-y-4">
+                {/* Endpoint URL */}
+                <div className="space-y-1.5">
+                  <Label className="text-sm font-semibold">Webhook Endpoint URL</Label>
+                  <div className="flex items-center gap-2">
+                    <code className="text-xs bg-muted border rounded px-2 py-2 flex-1 break-all font-mono">
+                      {webhookEndpoint}
+                    </code>
+                    <Button variant="outline" size="sm" onClick={() => copyToClipboard(webhookEndpoint)}>
+                      <Copy className="w-3 h-3" />
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Signing secret */}
+                <div className="space-y-1.5">
+                  <Label className="text-sm font-semibold">
+                    Webhook Signing Secret
+                    <span className="ml-2 text-xs font-normal text-muted-foreground">(header: {instructions.signatureHeader})</span>
+                  </Label>
+                  <div className="flex items-center gap-2">
+                    <code className="text-xs bg-muted border rounded px-2 py-2 flex-1 break-all font-mono text-amber-600 dark:text-amber-400">
+                      {newIntegration.webhookSecret}
+                    </code>
+                    <Button variant="outline" size="sm" onClick={() => copyToClipboard(newIntegration.webhookSecret)}>
+                      <Copy className="w-3 h-3" />
+                    </Button>
+                  </div>
+                </div>
+
+                <Alert>
+                  <AlertTriangle className="h-4 w-4" />
+                  <AlertDescription className="text-xs">
+                    Save the signing secret now — it is also visible on this page under your active integrations.
+                  </AlertDescription>
+                </Alert>
+
+                <Separator />
+
+                {/* Setup steps */}
+                <div className="space-y-2">
+                  <p className="text-sm font-semibold capitalize">
+                    {(providers as any[]).find((p: any) => p.id === newIntegration.provider)?.name ?? newIntegration.provider} Setup Steps
+                  </p>
+                  <ol className="space-y-2">
+                    {instructions.steps.map((step, idx) => (
+                      <li key={idx} className="flex gap-2 text-xs text-muted-foreground">
+                        <span className="flex-shrink-0 w-5 h-5 rounded-full bg-primary/10 text-primary flex items-center justify-center text-[10px] font-bold mt-0.5">
+                          {idx + 1}
+                        </span>
+                        <span>{step}</span>
+                      </li>
+                    ))}
+                  </ol>
+                </div>
+              </div>
+            );
+          })()}
+
           <DialogFooter>
-            <Button onClick={() => { setNewWebhookSecret(null); setConnectingProvider(null); }}>Done</Button>
+            <Button onClick={() => setNewIntegration(null)}>Done</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

@@ -967,3 +967,38 @@
 - [x] Generic/Other adapter: webhook-only mode (no pull sync, just receive pushed events)
 - [x] Sync scheduler: cron job every 15 minutes per connected integration to pull new requests
 - [x] Duplicate guard: skip importing requests that already exist by externalId
+
+## Session 30: Stripe Connect Payout Flow + PMS Webhook Hardening
+
+### Stripe Connect — Contractor Onboarding
+- [x] Schema: add stripeAccountId, stripeAccountStatus to contractorProfiles
+- [x] Backend: stripe.createConnectAccount — create Stripe Express account for contractor
+- [x] Backend: stripe.getOnboardingLink — generate account link for contractor to complete KYC
+- [x] Backend: stripe.getConnectStatus — check if contractor's account is fully enabled for payouts
+- [x] Backend: Stripe webhook: account.updated — sync contractor's account status
+- [x] Frontend: contractor Billing page — "Set Up Payouts" button → opens Stripe onboarding in new tab
+- [x] Frontend: show payout setup status badge (Not Set Up / Pending / Active)
+
+### Stripe Connect — Charge & Split Flow
+- [x] Backend: payment.chargeAndSplit — charge company's payment method, deduct platform fee, transfer remainder to contractor's Connect account
+- [x] Backend: payment.refund — refund a charge and reverse the transfer
+- [x] Backend: Stripe webhook: payment_intent.succeeded — mark job as paid, record transaction
+- [x] Backend: Stripe webhook: transfer.failed — notify admin and flag job for manual review
+- [x] Frontend: company Jobs page — "Pay Contractor" button on verified jobs (opens Stripe checkout)
+- [x] Frontend: contractor Earnings page — show "Stripe Transfer" entries with transfer ID and amount
+
+### PMS Webhook Hardening
+- [x] Add HMAC-SHA256 signature verification to POST /api/webhooks/pms/:provider
+- [x] Buildium: verify X-Buildium-Signature header using webhookSecret stored in pmsIntegrations
+- [x] Generic: verify X-Webhook-Signature header using webhookSecret
+- [x] Reject requests with missing or invalid signatures with 401
+
+### Tests
+- [x] Vitest tests for all new Stripe Connect and webhook hardening logic
+
+### Buildium Live Test Prep (Session 30 addition)
+- [x] CompanyIntegrations: "Test Connection" button that calls pms.testConnection and shows detailed result
+- [x] CompanyIntegrations: sync log viewer showing last 20 sync events with status, count, and errors
+- [x] CompanyIntegrations: error badge on integration card when last sync had errors
+- [x] Backend: pms.getSyncLog — return last N webhook events for a company's integration
+- [x] Backend: pms.testConnection — return detailed connection result (properties found, API version, account name)

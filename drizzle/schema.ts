@@ -366,6 +366,7 @@ export const integrationConnectors = mysqlTable("integration_connectors", {
   lastSyncAt: timestamp("lastSyncAt"),
   syncStatus: mysqlEnum("syncStatus", ["idle", "syncing", "success", "error"]).default("idle"),
   syncError: text("syncError"),
+  webhookSecret: text("webhookSecret"),  // HMAC-SHA256 signing secret for inbound webhook verification
   config: json("config").$type<Record<string, unknown>>(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),

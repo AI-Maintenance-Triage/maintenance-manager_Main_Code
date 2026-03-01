@@ -1,0 +1,1 @@
+ALTER TABLE `integration_connectors` ADD `webhookSecret` text;

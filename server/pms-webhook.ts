@@ -5,8 +5,9 @@
  * software (Buildium, AppFolio, Rent Manager, Yardi, DoorLoop, RealPage,
  * Propertyware) and auto-creates jobs in the platform.
  *
- * Authentication: Bearer token matching the company's integration connector
- * apiKey for the given provider.
+ * Authentication:
+ *   Primary:   HMAC-SHA256 signature verification (if webhookSecret is set on connector)
+ *   Fallback:  Bearer token matching the company's integration connector apiKey
  *
  * Route: POST /api/webhooks/pms/:provider
  *
@@ -26,6 +27,7 @@
  * }
  */
 
+import { createHmac, timingSafeEqual } from "crypto";
 import { Request, Response, Router } from "express";
 import * as db from "./db";
 import { pmsWebhookEvents, integrationConnectors } from "../drizzle/schema";
@@ -39,6 +41,52 @@ const SUPPORTED_PROVIDERS = [
   "buildium", "appfolio", "rentmanager", "yardi", "doorloop", "realpage", "propertyware",
 ] as const;
 type Provider = typeof SUPPORTED_PROVIDERS[number];
+
+// ─── HMAC Signature Verification ─────────────────────────────────────────────
+
+/**
+ * Per-provider header name for the HMAC signature.
+ * Buildium: X-Buildium-Signature
+ * AppFolio: X-AppFolio-Signature
+ * Generic:  X-Webhook-Signature
+ */
+function getSignatureHeader(provider: Provider): string {
+  switch (provider) {
+    case "buildium":    return "x-buildium-signature";
+    case "appfolio":    return "x-appfolio-signature";
+    case "rentmanager": return "x-rentmanager-signature";
+    case "yardi":       return "x-yardi-signature";
+    case "doorloop":    return "x-doorloop-signature";
+    case "realpage":    return "x-realpage-signature";
+    case "propertyware":return "x-propertyware-signature";
+    default:            return "x-webhook-signature";
+  }
+}
+
+/**
+ * Verify HMAC-SHA256 signature.
+ * Returns true if the signature matches, false otherwise.
+ * Uses timing-safe comparison to prevent timing attacks.
+ */
+export function verifyHmacSignature(
+  secret: string,
+  rawBody: Buffer,
+  signatureHeader: string
+): boolean {
+  try {
+    // Some providers prefix with "sha256=" — strip it
+    const sig = signatureHeader.startsWith("sha256=")
+      ? signatureHeader.slice(7)
+      : signatureHeader;
+    const expected = createHmac("sha256", secret).update(rawBody).digest("hex");
+    const expectedBuf = Buffer.from(expected, "hex");
+    const sigBuf = Buffer.from(sig, "hex");
+    if (expectedBuf.length !== sigBuf.length) return false;
+    return timingSafeEqual(expectedBuf, sigBuf);
+  } catch {
+    return false;
+  }
+}
 
 // ─── Normalised inbound payload ───────────────────────────────────────────
 interface PmsPayload {
@@ -82,71 +130,58 @@ function normalise(provider: Provider, raw: Record<string, unknown>): PmsPayload
         externalId: String(mr.id ?? raw.id ?? ""),
         title: String(mr.subject ?? mr.title ?? raw.title ?? "Maintenance Request"),
         description: String(mr.description ?? raw.description ?? ""),
-        unitNumber: String(mr.unit_name ?? ""),
+        unitNumber: String(mr.unit ?? ""),
         tenantName: String(mr.tenant_name ?? ""),
         tenantEmail: String(mr.tenant_email ?? ""),
         tenantPhone: String(mr.tenant_phone ?? ""),
         priority: mapPriority(String(mr.priority ?? raw.priority ?? "")),
-        propertyRef: String(mr.property_name ?? mr.property_address ?? ""),
+        propertyRef: String(mr.property_address ?? mr.property_name ?? ""),
         photoUrls: Array.isArray(raw.photo_urls) ? raw.photo_urls as string[] : [],
       };
     }
-    case "yardi": {
+    case "rentmanager": {
+      const sr = (raw.ServiceRequest ?? raw) as Record<string, unknown>;
       return {
-        externalId: String(raw.ServiceRequestId ?? raw.id ?? ""),
-        title: String(raw.Category ?? raw.title ?? "Maintenance Request"),
-        description: String(raw.Description ?? raw.description ?? ""),
-        unitNumber: String(raw.Unit ?? ""),
-        tenantName: String(raw.TenantName ?? ""),
-        tenantEmail: String(raw.TenantEmail ?? ""),
-        tenantPhone: String(raw.TenantPhone ?? ""),
-        priority: mapPriority(String(raw.Priority ?? raw.priority ?? "")),
-        propertyRef: String(raw.PropertyCode ?? raw.PropertyName ?? ""),
+        externalId: String(sr.ServiceRequestID ?? sr.ID ?? raw.id ?? ""),
+        title: String(sr.Subject ?? sr.Title ?? raw.title ?? "Maintenance Request"),
+        description: String(sr.Description ?? raw.description ?? ""),
+        unitNumber: String(sr.UnitNumber ?? ""),
+        tenantName: String(sr.TenantName ?? ""),
+        tenantEmail: String(sr.TenantEmail ?? ""),
+        tenantPhone: String(sr.TenantPhone ?? ""),
+        priority: mapPriority(String(sr.Priority ?? raw.priority ?? "")),
+        propertyRef: String(sr.PropertyName ?? sr.PropertyAddress ?? ""),
         photoUrls: [],
       };
     }
-    case "doorloop": {
-      const wr = (raw.work_request ?? raw) as Record<string, unknown>;
+    default: {
+      // Generic / webhook-only mode — accept any reasonable field names
       return {
-        externalId: String(wr.id ?? raw.id ?? ""),
-        title: String(wr.title ?? raw.title ?? "Maintenance Request"),
-        description: String(wr.description ?? raw.description ?? ""),
-        unitNumber: String(wr.unit_number ?? ""),
-        tenantName: String(wr.tenant_name ?? ""),
-        tenantEmail: String(wr.tenant_email ?? ""),
-        tenantPhone: String(wr.tenant_phone ?? ""),
-        priority: mapPriority(String(wr.priority ?? raw.priority ?? "")),
-        propertyRef: String(wr.property_name ?? ""),
-        photoUrls: Array.isArray(wr.attachments) ? (wr.attachments as string[]) : [],
-      };
-    }
-    default:
-      // Generic / Rent Manager / RealPage / Propertyware — use field names as-is
-      return {
-        externalId: String(raw.externalId ?? raw.id ?? raw.workOrderId ?? ""),
+        externalId: String(raw.externalId ?? raw.id ?? raw.external_id ?? ""),
         title: String(raw.title ?? raw.subject ?? raw.summary ?? "Maintenance Request"),
-        description: String(raw.description ?? raw.notes ?? raw.details ?? ""),
-        unitNumber: String(raw.unitNumber ?? raw.unit ?? ""),
-        tenantName: String(raw.tenantName ?? raw.tenant_name ?? ""),
+        description: String(raw.description ?? raw.body ?? raw.notes ?? ""),
+        unitNumber: String(raw.unitNumber ?? raw.unit ?? raw.unit_number ?? ""),
+        tenantName: String(raw.tenantName ?? raw.tenant_name ?? raw.tenant ?? ""),
         tenantEmail: String(raw.tenantEmail ?? raw.tenant_email ?? ""),
         tenantPhone: String(raw.tenantPhone ?? raw.tenant_phone ?? ""),
-        priority: mapPriority(String(raw.priority ?? raw.Priority ?? "")),
-        propertyRef: String(raw.propertyRef ?? raw.property ?? raw.propertyName ?? ""),
-        propertyId: typeof raw.propertyId === "number" ? raw.propertyId : undefined,
-        photoUrls: Array.isArray(raw.photoUrls) ? raw.photoUrls as string[] : [],
+        priority: mapPriority(String(raw.priority ?? "")),
+        propertyRef: String(raw.propertyRef ?? raw.property_ref ?? raw.property ?? raw.address ?? ""),
+        photoUrls: Array.isArray(raw.photoUrls) ? raw.photoUrls as string[] :
+                   Array.isArray(raw.photo_urls) ? raw.photo_urls as string[] : [],
       };
+    }
   }
 }
 
 function mapPriority(raw: string): "low" | "medium" | "high" | "emergency" {
-  const v = raw.toLowerCase();
-  if (v.includes("emergency") || v.includes("urgent") || v === "4") return "emergency";
-  if (v.includes("high") || v === "3") return "high";
-  if (v.includes("medium") || v.includes("normal") || v === "2") return "medium";
-  return "low";
+  const p = raw.toLowerCase();
+  if (p.includes("emergency") || p.includes("urgent") || p === "critical") return "emergency";
+  if (p.includes("high")) return "high";
+  if (p.includes("low")) return "low";
+  return "medium";
 }
 
-// ─── AI classification helper ─────────────────────────────────────────────
+// ─── AI Classification ────────────────────────────────────────────────────
 async function classifyWithAI(title: string, description: string) {
   try {
     const result = await invokeLLM({
@@ -226,25 +261,61 @@ async function handlePmsWebhook(req: Request, res: Response) {
     return res.status(400).json({ error: `Unsupported provider: ${provider}` });
   }
 
-  // Authenticate via Bearer token matching integrationConnectors.apiKey
-  const authHeader = req.headers.authorization ?? "";
-  const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : authHeader;
-  if (!token) {
-    return res.status(401).json({ error: "Missing Authorization header" });
-  }
-
   const database = await getDb();
   if (!database) return res.status(503).json({ error: "Database unavailable" });
 
-  // Find the connector matching this provider + apiKey
-  const [connector] = await database
-    .select()
-    .from(integrationConnectors)
-    .where(and(eq(integrationConnectors.provider, provider), eq(integrationConnectors.apiKey, token), eq(integrationConnectors.isActive, true)))
-    .limit(1);
+  // ── Step 1: Identify the connector ──────────────────────────────────────
+  // Try HMAC-signed requests first (no Bearer token needed — provider signs the body)
+  // Fall back to Bearer token auth for connectors without a webhook secret configured.
 
-  if (!connector) {
-    return res.status(401).json({ error: "Invalid API key or integration not active" });
+  const authHeader = req.headers.authorization ?? "";
+  const bearerToken = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : authHeader;
+
+  let connector: typeof integrationConnectors.$inferSelect | undefined;
+
+  // Check if there's a signature header for this provider
+  const sigHeaderName = getSignatureHeader(provider);
+  const incomingSignature = req.headers[sigHeaderName] as string | undefined;
+
+  if (incomingSignature) {
+    // HMAC path: find connectors for this provider that have a webhookSecret
+    const candidates = await database
+      .select()
+      .from(integrationConnectors)
+      .where(and(eq(integrationConnectors.provider, provider), eq(integrationConnectors.isActive, true)))
+      .limit(50);
+
+    // rawBody is available because we registered the route with express.raw()
+    const rawBody: Buffer = (req as any).rawBody ?? Buffer.from(JSON.stringify(req.body));
+
+    connector = candidates.find((c) => {
+      if (!c.webhookSecret) return false;
+      return verifyHmacSignature(c.webhookSecret, rawBody, incomingSignature);
+    });
+
+    if (!connector) {
+      return res.status(401).json({ error: "Invalid webhook signature" });
+    }
+  } else {
+    // Bearer token fallback
+    if (!bearerToken) {
+      return res.status(401).json({ error: "Missing Authorization header or webhook signature" });
+    }
+
+    const [found] = await database
+      .select()
+      .from(integrationConnectors)
+      .where(and(
+        eq(integrationConnectors.provider, provider),
+        eq(integrationConnectors.apiKey, bearerToken),
+        eq(integrationConnectors.isActive, true)
+      ))
+      .limit(1);
+
+    if (!found) {
+      return res.status(401).json({ error: "Invalid API key or integration not active" });
+    }
+    connector = found;
   }
 
   const companyId = connector.companyId;
@@ -267,21 +338,8 @@ async function handlePmsWebhook(req: Request, res: Response) {
 
     // Deduplicate: skip if externalId already processed for this company
     if (payload.externalId) {
-      const existing = await database
-        .select({ id: pmsWebhookEvents.id })
-        .from(pmsWebhookEvents)
-        .where(
-          and(
-            eq(pmsWebhookEvents.companyId, companyId),
-            eq(pmsWebhookEvents.provider, provider),
-            eq(pmsWebhookEvents.status, "processed")
-          )
-        )
-        .limit(1);
-      // Check via rawPayload externalId match
-      // (simple approach — check if any processed event has same externalId in rawPayload)
       const dupCheck = await database
-        .select({ id: pmsWebhookEvents.id })
+        .select({ id: pmsWebhookEvents.id, rawPayload: pmsWebhookEvents.rawPayload })
         .from(pmsWebhookEvents)
         .where(and(eq(pmsWebhookEvents.companyId, companyId), eq(pmsWebhookEvents.provider, provider)))
         .limit(200);
@@ -349,6 +407,22 @@ async function handlePmsWebhook(req: Request, res: Response) {
 // ─── Route registration ───────────────────────────────────────────────────
 export function registerPmsWebhookRoute(app: { use: (path: string, router: Router) => void }) {
   const router = Router();
-  router.post("/:provider", handlePmsWebhook);
+  // Use express.raw() to preserve the raw body for HMAC signature verification
+  // This must be registered BEFORE express.json() parses the body
+  router.post("/:provider", (req, res, next) => {
+    // Capture raw body for HMAC verification
+    const chunks: Buffer[] = [];
+    req.on("data", (chunk: Buffer) => chunks.push(chunk));
+    req.on("end", () => {
+      (req as any).rawBody = Buffer.concat(chunks);
+      // Parse JSON body manually since express.raw() won't do it
+      try {
+        req.body = JSON.parse((req as any).rawBody.toString());
+      } catch {
+        req.body = {};
+      }
+      next();
+    });
+  }, handlePmsWebhook);
   app.use("/api/webhooks/pms", router);
 }
