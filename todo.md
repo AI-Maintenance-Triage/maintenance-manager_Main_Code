@@ -98,3 +98,19 @@
 - [x] Ensure company registration flow completes and redirects to /company dashboard
 - [x] Ensure contractor registration flow completes and redirects to /contractor dashboard
 - [x] Fix DashboardLayout to redirect to / instead of showing inline sign-in when unauthenticated
+
+## Custom Email/Password Authentication (Session 2)
+- [x] Add password_hash column to users table
+- [x] Install bcrypt for password hashing
+- [x] Build /api/auth/register endpoint (email + password + name)
+- [x] Build /api/auth/login endpoint (email + password)
+- [x] Build custom session token generation (JWT)
+- [x] Build frontend Sign Up page with email/password form
+- [x] Build frontend Sign In page with email/password form
+- [x] Update homepage CTA buttons to route to custom sign-up page
+- [x] Keep Manus OAuth working for admin account
+- [x] Integrate role selection (Company vs Contractor) into sign-up flow
+- [x] Test: register as new company user with email/password
+- [x] Test: register as new contractor user with email/password
+- [x] Test: sign in with existing email/password
+- [x] Test: admin still works via Manus OAuth

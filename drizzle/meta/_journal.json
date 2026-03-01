@@ -8,6 +8,13 @@
       "when": 1772297922966,
       "tag": "0000_numerous_white_queen",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "5",
+      "when": 1772324810507,
+      "tag": "0001_damp_kang",
+      "breakpoints": true
     }
   ]
 }

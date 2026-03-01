@@ -91,22 +91,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   if (loading) return <DashboardLayoutSkeleton />;
 
   if (!user) {
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-background">
-        <div className="flex flex-col items-center gap-8 p-8 max-w-md w-full">
-          <div className="flex flex-col items-center gap-4">
-            <div className="h-14 w-14 rounded-xl bg-primary/10 flex items-center justify-center">
-              <Wrench className="h-7 w-7 text-primary" />
-            </div>
-            <h1 className="text-2xl font-semibold tracking-tight text-center text-foreground">Maintenance Manager</h1>
-            <p className="text-sm text-muted-foreground text-center">Sign in to access your dashboard</p>
-          </div>
-          <Button onClick={() => { window.location.href = getLoginUrl(); }} size="lg" className="w-full">
-            Sign in
-          </Button>
-        </div>
-      </div>
-    );
+    // Redirect to sign-in page instead of showing inline sign-in
+    window.location.href = "/signin";
+    return <DashboardLayoutSkeleton />;
   }
 
   return (

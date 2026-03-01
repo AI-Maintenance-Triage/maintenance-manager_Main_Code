@@ -7,6 +7,8 @@ import { ThemeProvider } from "./contexts/ThemeContext";
 import { ViewAsProvider } from "./contexts/ViewAsContext";
 import Home from "./pages/Home";
 import Register from "./pages/Register";
+import SignUp from "./pages/SignUp";
+import SignIn from "./pages/SignIn";
 import DashboardLayout from "./components/DashboardLayout";
 import CompanyDashboard from "./pages/company/CompanyDashboard";
 import CompanyJobs from "./pages/company/CompanyJobs";
@@ -26,6 +28,8 @@ function Router() {
       {/* Public routes */}
       <Route path="/" component={Home} />
       <Route path="/register" component={Register} />
+      <Route path="/signup" component={SignUp} />
+      <Route path="/signin" component={SignIn} />
       {/* Company Admin Routes */}
       <Route path="/company">
         <DashboardLayout><CompanyDashboard /></DashboardLayout>

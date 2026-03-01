@@ -1,6 +1,6 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
-import { getLoginUrl } from "@/const";
+
 import {
   Wrench, Building2, HardHat, ArrowRight, Zap, MapPin,
   CreditCard, Clock, Shield, BarChart3, Bell, CheckCircle2,
@@ -47,10 +47,10 @@ export default function Home() {
             <span className="text-lg font-semibold text-foreground">Maintenance Manager</span>
           </div>
           <div className="flex items-center gap-3">
-            <Button variant="ghost" onClick={() => { window.location.href = getLoginUrl(); }} className="text-muted-foreground hover:text-foreground">
+            <Button variant="ghost" onClick={() => setLocation("/signin")} className="text-muted-foreground hover:text-foreground">
               Sign In
             </Button>
-            <Button onClick={() => { window.location.href = getLoginUrl(); }} className="gap-2">
+            <Button onClick={() => setLocation("/signup")} className="gap-2">
               Get Started Free <ArrowRight className="h-4 w-4" />
             </Button>
           </div>
@@ -80,7 +80,7 @@ export default function Home() {
               to stop chasing contractors and start scaling.
             </p>
             <div className="flex flex-wrap gap-4">
-              <Button size="lg" onClick={() => { window.location.href = getLoginUrl(); }} className="gap-2 h-12 px-8 text-base">
+              <Button size="lg" onClick={() => setLocation("/signup")} className="gap-2 h-12 px-8 text-base">
                 Start Free <ArrowRight className="h-4 w-4" />
               </Button>
               <Button size="lg" variant="outline" onClick={() => document.getElementById("features")?.scrollIntoView({ behavior: "smooth" })} className="h-12 px-8 text-base border-border text-foreground hover:bg-accent">
@@ -178,7 +178,7 @@ export default function Home() {
                   </li>
                 ))}
               </ul>
-              <Button onClick={() => { window.location.href = getLoginUrl(); }} className="w-full mt-8 gap-2">
+              <Button onClick={() => setLocation("/signup")} className="w-full mt-8 gap-2">
                 Get Started as Property Manager <ArrowRight className="h-4 w-4" />
               </Button>
             </div>
@@ -209,7 +209,7 @@ export default function Home() {
                   </li>
                 ))}
               </ul>
-              <Button onClick={() => { window.location.href = getLoginUrl(); }} variant="outline" className="w-full mt-8 gap-2 border-primary/30 text-foreground hover:bg-primary/10">
+              <Button onClick={() => setLocation("/signup")} variant="outline" className="w-full mt-8 gap-2 border-primary/30 text-foreground hover:bg-primary/10">
                 Get Started as Contractor <ArrowRight className="h-4 w-4" />
               </Button>
             </div>
@@ -244,7 +244,7 @@ export default function Home() {
             Join property managers who are saving hours every week by letting AI handle job classification, 
             GPS handle time tracking, and Stripe handle payments.
           </p>
-          <Button size="lg" onClick={() => { window.location.href = getLoginUrl(); }} className="gap-2 h-12 px-8 text-base">
+          <Button size="lg" onClick={() => setLocation("/signup")} className="gap-2 h-12 px-8 text-base">
             Get Started Free <ArrowRight className="h-4 w-4" />
           </Button>
         </div>

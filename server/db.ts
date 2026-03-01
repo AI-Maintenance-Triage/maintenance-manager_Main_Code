@@ -68,6 +68,30 @@ export async function getUserByOpenId(openId: string) {
   return result.length > 0 ? result[0] : undefined;
 }
 
+export async function getUserByEmail(email: string) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(users).where(eq(users.email, email)).limit(1);
+  return result.length > 0 ? result[0] : undefined;
+}
+
+export async function createLocalUser(data: { name: string; email: string; passwordHash: string }) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  // Generate a unique openId for local users (prefix with "local_" to distinguish from OAuth)
+  const localOpenId = `local_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+  const result = await db.insert(users).values({
+    openId: localOpenId,
+    name: data.name,
+    email: data.email,
+    passwordHash: data.passwordHash,
+    loginMethod: "email",
+    role: "user",
+    lastSignedIn: new Date(),
+  });
+  return result[0].insertId;
+}
+
 export async function getUserById(id: number) {
   const db = await getDb();
   if (!db) return undefined;
