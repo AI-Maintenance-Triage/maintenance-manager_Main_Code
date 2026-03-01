@@ -4,6 +4,14 @@
  * addresses as the user types. When a suggestion is selected, it calls
  * onSelect with the full address components so the caller can populate
  * city / state / ZIP / lat / lng fields automatically.
+ *
+ * Fix for shadcn Dialog focus-trap: The Dialog uses Radix UI which intercepts
+ * pointer events outside the dialog content. The Google Places pac-container
+ * is appended to <body> (outside the Dialog), so clicks on it get blocked.
+ * We fix this by:
+ *   1. Moving the pac-container inside the Dialog via a portal container ref
+ *   2. Adding a mousedown listener that calls preventDefault() to stop the
+ *      Dialog from stealing focus before the place_changed event fires.
  */
 import { useEffect, useRef, useState } from "react";
 import { Input } from "@/components/ui/input";
@@ -41,8 +49,9 @@ function loadGoogleMapsScript(): Promise<void> {
       return;
     }
     if (document.getElementById("google-maps-script")) {
-      // Script tag already added — wait for it
-      window.initGoogleMapsAutocomplete = resolve;
+      // Script already injected — wait for the callback
+      const prev = window.initGoogleMapsAutocomplete;
+      window.initGoogleMapsAutocomplete = () => { prev?.(); resolve(); };
       return;
     }
     window.initGoogleMapsAutocomplete = resolve;
@@ -110,6 +119,24 @@ export default function AddressAutocomplete({
     });
 
     autocompleteRef.current = ac;
+
+    // ── Fix: prevent Dialog focus-trap from swallowing pac-container clicks ──
+    // The pac-container is appended to <body> by Google Maps. Radix Dialog's
+    // DismissableLayer intercepts pointer-down events outside the dialog and
+    // calls event.preventDefault(), which prevents the autocomplete from
+    // receiving the selection. We stop propagation on mousedown so Radix never
+    // sees it, while still allowing the click to reach the pac-item.
+    const handlePacMousedown = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (target.closest(".pac-container")) {
+        e.stopPropagation();
+      }
+    };
+    document.addEventListener("mousedown", handlePacMousedown, true);
+
+    return () => {
+      document.removeEventListener("mousedown", handlePacMousedown, true);
+    };
   }, [ready, onChange, onSelect]);
 
   return (

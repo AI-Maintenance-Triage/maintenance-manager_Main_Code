@@ -175,6 +175,15 @@ const propertiesRouter = router({
       if (!getEffectiveCompanyId(ctx)) throw new TRPCError({ code: "NOT_FOUND" });
       const { id, ...data } = input;
       await db.updateProperty(id, getEffectiveCompanyId(ctx), data);
+      // Re-geocode if address fields changed and no explicit coords provided
+      if ((input.address || input.city || input.state || input.zipCode) && !input.latitude && !input.longitude) {
+        const prop = await db.getPropertyById(id, getEffectiveCompanyId(ctx));
+        if (prop) {
+          const fullAddress = [prop.address, prop.city, prop.state, prop.zipCode].filter(Boolean).join(", ");
+          const coords = await db.geocodeAddress(fullAddress);
+          if (coords) await db.updatePropertyCoords(id, coords.lat, coords.lng);
+        }
+      }
       return { success: true };
     }),
 
@@ -242,15 +251,25 @@ const contractorRouter = router({
       isAvailable: z.boolean().optional(),
     }))
     .mutation(async ({ ctx, input }) => {
+      console.log("[updateProfile] called for user", ctx.user.id, "input:", JSON.stringify(input));
       const profile = await getEffectiveContractorProfile(ctx);
       if (!profile) throw new TRPCError({ code: "NOT_FOUND", message: "No contractor profile" });
+      console.log("[updateProfile] found profile id", profile.id, "current lat/lng:", profile.latitude, profile.longitude);
       await db.updateContractorProfile(profile.id, input);
       // Re-geocode base location whenever the service ZIP changes so that
       // the Haversine distance filter on the job board uses fresh coordinates.
       const zip = input.serviceAreaZips?.[0];
+      console.log("[updateProfile] serviceAreaZips:", input.serviceAreaZips, "first zip:", zip, "serviceRadiusMiles:", input.serviceRadiusMiles);
       if (zip) {
+        console.log("[updateProfile] geocoding ZIP:", zip);
         const coords = await db.geocodeAddress(`${zip}, USA`);
-        if (coords) await db.updateContractorCoords(profile.id, coords.lat, coords.lng);
+        console.log("[updateProfile] geocode result:", coords);
+        if (coords) {
+          await db.updateContractorCoords(profile.id, coords.lat, coords.lng);
+          console.log("[updateProfile] saved coords for profile", profile.id, ":", coords);
+        }
+      } else {
+        console.log("[updateProfile] no ZIP provided, skipping geocode");
       }
       return { success: true };
     }),

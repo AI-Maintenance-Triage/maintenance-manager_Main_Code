@@ -209,3 +209,16 @@
 - [x] Added admin.bulkReGeocode mutation to fix all existing records missing coordinates
 - [x] Added "Fix Locations" button to admin dashboard that re-geocodes all missing records
 - [x] Geocoding test passes: ZIP 10001 → 40.75, -73.99 (Manhattan)
+
+## Bug: Address Autocomplete Click Not Working in Dialog
+- [x] Google Places dropdown shows but clicking a suggestion does not fill the form
+- [x] Root cause: Radix Dialog DismissableLayer intercepts mousedown on pac-container (appended to body outside dialog)
+- [x] Fix: capture-phase mousedown listener stops propagation when target is inside .pac-container
+
+## Bug: Job Board Radius Filtering Still Not Working
+- [x] Root cause confirmed via Debug panel: property had NULL coordinates (not the contractor)
+- [x] Contractor coords: 39.43, -80.14 (West Virginia) — correct
+- [x] Property coords: NULL — needs Fix Locations button on admin dashboard
+- [x] Fix: properties.update now re-geocodes when address fields change (same as properties.create)
+- [x] Fix: added detailed server-side logging to updateProfile mutation for future debugging
+- [x] 38 tests passing, 0 TypeScript errors
