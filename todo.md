@@ -114,3 +114,7 @@
 - [x] Test: register as new contractor user with email/password
 - [x] Test: sign in with existing email/password
 - [x] Test: admin still works via Manus OAuth
+
+## Admin Login Fix
+- [x] Add "Sign in with Manus" button to SignIn page for admin OAuth access
+- [x] Add "Sign in with Manus" option to SignUp page as alternative
