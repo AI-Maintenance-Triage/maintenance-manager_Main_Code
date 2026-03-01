@@ -1682,13 +1682,20 @@ export async function assignContractorPlan(
   contractorProfileId: number,
   planId: number | null,
   planPriceOverride: string | null,
-  planNotes: string | null
+  planNotes: string | null,
+  planStatus?: string,
+  planAssignedAt?: number | null,
+  planExpiresAt?: number | null
 ) {
   const db = await getDb();
   if (!db) return;
+  const updateData: Record<string, unknown> = { planId, planPriceOverride, planNotes };
+  if (planStatus !== undefined) updateData.planStatus = planStatus;
+  if (planAssignedAt !== undefined) updateData.planAssignedAt = planAssignedAt;
+  if (planExpiresAt !== undefined) updateData.planExpiresAt = planExpiresAt;
   await db
     .update(contractorProfiles)
-    .set({ planId, planPriceOverride, planNotes })
+    .set(updateData as any)
     .where(eq(contractorProfiles.id, contractorProfileId));
 }
 

@@ -392,6 +392,8 @@ export const adminViewAsRouter = router({
       planNotes: z.string().optional(),
     }))
     .mutation(async ({ input }) => {
+      const now = Date.now();
+      const FOURTEEN_DAYS_MS = 14 * 24 * 60 * 60 * 1000;
       const updateData: Record<string, unknown> = {
         planId: input.planId,
         planNotes: input.planNotes ?? null,
@@ -400,6 +402,17 @@ export const adminViewAsRouter = router({
         updateData.planPriceOverride = String(input.planPriceOverride);
       } else {
         updateData.planPriceOverride = null;
+      }
+      if (input.planId != null) {
+        // Manual admin assignment → start a 14-day trial (no Stripe subscription yet)
+        updateData.planStatus = "trialing";
+        updateData.planAssignedAt = now;
+        updateData.planExpiresAt = now + FOURTEEN_DAYS_MS;
+      } else {
+        // Removing plan
+        updateData.planStatus = "trialing";
+        updateData.planAssignedAt = null;
+        updateData.planExpiresAt = null;
       }
       await db.updateCompany(input.companyId, updateData as any);
       return { success: true };
@@ -434,12 +447,20 @@ export const adminViewAsRouter = router({
       planNotes: z.string().optional(),
     }))
     .mutation(async ({ input }) => {
+      const now = Date.now();
+      const FOURTEEN_DAYS_MS = 14 * 24 * 60 * 60 * 1000;
       const priceOverride = input.planPriceOverride != null ? String(input.planPriceOverride) : null;
+      const planStatus = input.planId != null ? "trialing" : "trialing";
+      const planAssignedAt = input.planId != null ? now : null;
+      const planExpiresAt = input.planId != null ? now + FOURTEEN_DAYS_MS : null;
       await db.assignContractorPlan(
         input.contractorProfileId,
         input.planId,
         priceOverride,
-        input.planNotes ?? null
+        input.planNotes ?? null,
+        planStatus,
+        planAssignedAt,
+        planExpiresAt
       );
       return { success: true };
     }),

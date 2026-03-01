@@ -103,6 +103,8 @@ export default function CompanyBilling() {
   const plan = planData?.plan;
   const usage = planData?.usage;
   const planPriceOverride = planData?.planPriceOverride;
+  const planStatus = planData?.planStatus ?? null;
+  const daysRemaining = planData?.daysRemaining ?? null;
 
   const totalCharged = txns?.reduce((s, t) => s + parseFloat(String(t.totalCharged ?? "0")), 0) ?? 0;
   const totalFees = txns?.reduce((s, t) => s + parseFloat(String(t.platformFee ?? "0")), 0) ?? 0;
@@ -131,13 +133,30 @@ export default function CompanyBilling() {
                 <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Current Plan</p>
                 <div className="flex items-center gap-2 flex-wrap">
                   <h2 className="text-xl font-bold text-foreground">{plan?.name ?? "No Plan"}</h2>
-                  {plan && planStatusBadge(planData?.plan ? "active" : "expired")}
+                  {planStatus && planStatusBadge(planStatus)}
+                  {planStatus === "trialing" && daysRemaining !== null && (
+                    <Badge className="bg-amber-500/15 text-amber-400 border-amber-500/30 gap-1">
+                      <Calendar className="h-3 w-3" /> {daysRemaining} day{daysRemaining !== 1 ? "s" : ""} left in trial
+                    </Badge>
+                  )}
                   {planPriceOverride && (
                     <Badge variant="secondary" className="text-xs">Custom Pricing</Badge>
                   )}
                 </div>
                 {plan?.description && <p className="text-sm text-muted-foreground">{plan.description}</p>}
                 {!plan && <p className="text-sm text-muted-foreground">You are not currently on a subscription plan. Choose a plan below to get started.</p>}
+                {planStatus === "expired" && (
+                  <div className="mt-2 flex items-center gap-2 text-sm text-red-400 bg-red-500/10 border border-red-500/20 rounded-md px-3 py-2">
+                    <XCircle className="h-4 w-4 shrink-0" />
+                    <span>Your plan has expired. Subscribe below to restore access to all features.</span>
+                  </div>
+                )}
+                {planStatus === "trialing" && daysRemaining !== null && daysRemaining <= 3 && (
+                  <div className="mt-2 flex items-center gap-2 text-sm text-amber-400 bg-amber-500/10 border border-amber-500/20 rounded-md px-3 py-2">
+                    <AlertCircle className="h-4 w-4 shrink-0" />
+                    <span>Your trial ends in {daysRemaining} day{daysRemaining !== 1 ? "s" : ""}. Subscribe now to avoid service interruption.</span>
+                  </div>
+                )}
               </div>
               {plan && (
                 <div className="text-right shrink-0">

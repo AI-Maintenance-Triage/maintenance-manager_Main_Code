@@ -105,8 +105,18 @@ const companyRouter = router({
       db.countApprovedContractorsForCompany(companyId),
       db.countJobsThisMonthForCompany(companyId),
     ]);
+    // Compute trial countdown
+    const planStatus = company?.planStatus ?? null;
+    const planExpiresAt = company?.planExpiresAt ?? null;
+    const now = Date.now();
+    const daysRemaining = planExpiresAt && planStatus === "trialing"
+      ? Math.max(0, Math.ceil((planExpiresAt - now) / (1000 * 60 * 60 * 24)))
+      : null;
     return {
       plan,
+      planStatus,
+      planExpiresAt,
+      daysRemaining,
       planPriceOverride: company?.planPriceOverride ?? null,
       planNotes: company?.planNotes ?? null,
       usage: { properties: propCount, contractors: contractorCount, jobsThisMonth },
@@ -306,8 +316,18 @@ const contractorRouter = router({
     const plan = await db.getEffectivePlanForContractor(profile.id);
     const activeJobs = await db.countActiveJobsForContractor(profile.id);
     const approvedCompanies = await db.countApprovedCompaniesForContractor(profile.id);
+    // Compute trial countdown
+    const planStatus = profile.planStatus ?? null;
+    const planExpiresAt = profile.planExpiresAt ?? null;
+    const now = Date.now();
+    const daysRemaining = planExpiresAt && planStatus === "trialing"
+      ? Math.max(0, Math.ceil((planExpiresAt - now) / (1000 * 60 * 60 * 24)))
+      : null;
     return {
       plan,
+      planStatus,
+      planExpiresAt,
+      daysRemaining,
       usage: {
         activeJobs,
         approvedCompanies,
@@ -1715,8 +1735,23 @@ const emailPrefsRouter = router({
 });
 
 // ─── Main App Router ────────────────────────────────────────────────────────
+// ─── Public Router (no auth required) ───────────────────────────────────────
+const publicRouter = router({
+  /** Returns all active company-type plans sorted by sortOrder — used on the landing page pricing section */
+  listCompanyPlans: publicProcedure.query(async () => {
+    const plans = await db.listSubscriptionPlansByType("company");
+    return (plans ?? []).filter((p) => p.isActive).sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
+  }),
+  /** Returns all active contractor-type plans sorted by sortOrder */
+  listContractorPlans: publicProcedure.query(async () => {
+    const plans = await db.listSubscriptionPlansByType("contractor");
+    return (plans ?? []).filter((p) => p.isActive).sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
+  }),
+});
+
 export const appRouter = router({
   system: systemRouter,
+  public: publicRouter,
   auth: router({
     me: publicProcedure.query(opts => {
       if (!opts.ctx.user) return null;

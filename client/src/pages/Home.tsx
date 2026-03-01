@@ -1,17 +1,50 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
-
+import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
+import { trpc } from "@/lib/trpc";
 import {
   Wrench, Building2, HardHat, ArrowRight, Zap, MapPin,
   CreditCard, Clock, Shield, BarChart3, Bell, CheckCircle2,
-  Globe, Users, FileText, Star,
+  Globe, Users, FileText, Star, Check, X,
 } from "lucide-react";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
+
+const FEATURE_LABELS: Record<string, string> = {
+  gpsTimeTracking: "GPS Time Tracking",
+  aiJobClassification: "AI Job Classification",
+  expenseReports: "Expense Reports",
+  contractorRatings: "Ratings & Reviews",
+  jobComments: "Job Comments",
+  emailNotifications: "Email Notifications",
+  billingHistory: "Billing History",
+  apiAccess: "API Access",
+  customBranding: "Custom Branding",
+  prioritySupport: "Priority Support",
+};
+
+const FEATURE_ORDER = [
+  "gpsTimeTracking",
+  "aiJobClassification",
+  "expenseReports",
+  "contractorRatings",
+  "jobComments",
+  "emailNotifications",
+  "billingHistory",
+  "apiAccess",
+  "customBranding",
+  "prioritySupport",
+];
 
 export default function Home() {
   const { user, loading } = useAuth();
   const [, setLocation] = useLocation();
+  const [pricingTab, setPricingTab] = useState<"company" | "contractor">("company");
+  const [billingInterval, setBillingInterval] = useState<"monthly" | "annual">("monthly");
+
+  const { data: companyPlans, isLoading: companyPlansLoading } = trpc.public.listCompanyPlans.useQuery();
+  const { data: contractorPlans, isLoading: contractorPlansLoading } = trpc.public.listContractorPlans.useQuery();
 
   useEffect(() => {
     if (!loading && user) {
@@ -35,6 +68,11 @@ export default function Home() {
 
   if (user) return null;
 
+  const activePlans = pricingTab === "company"
+    ? (companyPlans ?? [])
+    : (contractorPlans ?? []);
+  const plansLoading = pricingTab === "company" ? companyPlansLoading : contractorPlansLoading;
+
   return (
     <div className="min-h-screen bg-background">
       {/* Navigation */}
@@ -47,6 +85,13 @@ export default function Home() {
             <span className="text-lg font-semibold text-foreground">Maintenance Manager</span>
           </div>
           <div className="flex items-center gap-3">
+            <Button
+              variant="ghost"
+              onClick={() => document.getElementById("pricing")?.scrollIntoView({ behavior: "smooth" })}
+              className="text-muted-foreground hover:text-foreground hidden sm:flex"
+            >
+              Pricing
+            </Button>
             <Button variant="ghost" onClick={() => setLocation("/signin")} className="text-muted-foreground hover:text-foreground">
               Sign In
             </Button>
@@ -75,8 +120,8 @@ export default function Home() {
               </span>
             </h1>
             <p className="text-lg md:text-xl text-muted-foreground mb-10 max-w-2xl leading-relaxed">
-              From tenant request to contractor payment — AI classifies jobs, GPS tracks time, 
-              and payments flow automatically. Built for property management companies who want 
+              From tenant request to contractor payment — AI classifies jobs, GPS tracks time,
+              and payments flow automatically. Built for property management companies who want
               to stop chasing contractors and start scaling.
             </p>
             <div className="flex flex-wrap gap-4">
@@ -217,6 +262,186 @@ export default function Home() {
         </div>
       </section>
 
+      {/* ─── Pricing Section ─────────────────────────────────────────────────── */}
+      <section id="pricing" className="py-20 bg-card/30 border-t border-border/50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-10">
+            <h2 className="text-3xl font-bold text-foreground mb-4">Simple, Transparent Pricing</h2>
+            <p className="text-muted-foreground max-w-2xl mx-auto">
+              Choose the plan that fits your business. All plans include a 14-day free trial — no credit card required.
+            </p>
+          </div>
+
+          {/* Audience tabs */}
+          <div className="flex justify-center mb-8">
+            <div className="flex items-center gap-1 bg-secondary rounded-xl p-1">
+              <button
+                onClick={() => setPricingTab("company")}
+                className={`px-5 py-2 text-sm font-medium rounded-lg transition-colors ${pricingTab === "company" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
+              >
+                <Building2 className="h-4 w-4 inline mr-1.5 -mt-0.5" />
+                Property Managers
+              </button>
+              <button
+                onClick={() => setPricingTab("contractor")}
+                className={`px-5 py-2 text-sm font-medium rounded-lg transition-colors ${pricingTab === "contractor" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
+              >
+                <HardHat className="h-4 w-4 inline mr-1.5 -mt-0.5" />
+                Contractors
+              </button>
+            </div>
+          </div>
+
+          {/* Billing interval toggle */}
+          <div className="flex justify-center mb-10">
+            <div className="flex items-center gap-1 bg-secondary rounded-lg p-1">
+              <button
+                onClick={() => setBillingInterval("monthly")}
+                className={`px-4 py-1.5 text-xs font-medium rounded-md transition-colors ${billingInterval === "monthly" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
+              >
+                Monthly
+              </button>
+              <button
+                onClick={() => setBillingInterval("annual")}
+                className={`px-4 py-1.5 text-xs font-medium rounded-md transition-colors ${billingInterval === "annual" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
+              >
+                Annual
+                <Badge className="ml-1.5 bg-green-500/15 text-green-400 border-green-500/30 text-[10px] px-1 py-0">Save ~17%</Badge>
+              </button>
+            </div>
+          </div>
+
+          {/* Plan cards */}
+          {plansLoading ? (
+            <div className="grid md:grid-cols-3 gap-6">
+              {[1, 2, 3].map((i) => <Skeleton key={i} className="h-96 w-full rounded-2xl" />)}
+            </div>
+          ) : activePlans.length === 0 ? (
+            <div className="text-center py-16 text-muted-foreground">
+              <p className="text-lg">Plans coming soon — <button onClick={() => setLocation("/get-started")} className="text-primary underline">sign up free</button> to be notified.</p>
+            </div>
+          ) : (
+            <div className={`grid gap-6 ${activePlans.length === 1 ? "max-w-sm mx-auto" : activePlans.length === 2 ? "md:grid-cols-2 max-w-2xl mx-auto" : "md:grid-cols-3"}`}>
+              {activePlans.map((plan, idx) => {
+                const features = (plan.features ?? {}) as Record<string, unknown>;
+                const isFeatured = features.featured === true || idx === Math.floor(activePlans.length / 2);
+                const price = billingInterval === "annual"
+                  ? parseFloat(plan.priceAnnual ?? plan.priceMonthly ?? "0") / 12
+                  : parseFloat(plan.priceMonthly ?? "0");
+                const maxProps = features.maxProperties as number | null | undefined;
+                const maxContractors = features.maxContractors as number | null | undefined;
+                const maxJobs = features.maxJobsPerMonth as number | null | undefined;
+                const maxActiveJobs = features.maxActiveJobs as number | null | undefined;
+                const platformFee = features.platformFeePercent as number | null | undefined;
+
+                return (
+                  <div
+                    key={plan.id}
+                    className={`relative rounded-2xl border p-6 flex flex-col transition-all ${
+                      isFeatured
+                        ? "border-primary bg-primary/5 shadow-lg shadow-primary/10 scale-[1.02]"
+                        : "border-border bg-card"
+                    }`}
+                  >
+                    {isFeatured && (
+                      <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+                        <Badge className="bg-primary text-primary-foreground px-3 py-0.5 text-xs font-semibold shadow-sm">
+                          Most Popular
+                        </Badge>
+                      </div>
+                    )}
+
+                    <div className="mb-5">
+                      <h3 className="text-lg font-bold text-foreground mb-1">{plan.name}</h3>
+                      {plan.description && <p className="text-sm text-muted-foreground">{plan.description}</p>}
+                    </div>
+
+                    <div className="mb-6">
+                      <div className="flex items-end gap-1">
+                        <span className="text-4xl font-bold text-foreground">
+                          {price === 0 ? "Free" : `$${price.toFixed(0)}`}
+                        </span>
+                        {price > 0 && <span className="text-sm text-muted-foreground mb-1">/mo</span>}
+                      </div>
+                      {billingInterval === "annual" && price > 0 && (
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          Billed annually (${(price * 12).toFixed(0)}/yr)
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Usage limits */}
+                    {(maxProps != null || maxContractors != null || maxJobs != null || maxActiveJobs != null || platformFee != null) && (
+                      <div className="mb-5 space-y-1.5 p-3 rounded-lg bg-secondary/50">
+                        {pricingTab === "company" && maxProps != null && (
+                          <p className="text-xs text-muted-foreground flex justify-between">
+                            <span>Properties</span>
+                            <span className="font-medium text-foreground">{maxProps === 0 ? "Unlimited" : `Up to ${maxProps}`}</span>
+                          </p>
+                        )}
+                        {pricingTab === "company" && maxContractors != null && (
+                          <p className="text-xs text-muted-foreground flex justify-between">
+                            <span>Contractors</span>
+                            <span className="font-medium text-foreground">{maxContractors === 0 ? "Unlimited" : `Up to ${maxContractors}`}</span>
+                          </p>
+                        )}
+                        {pricingTab === "company" && maxJobs != null && (
+                          <p className="text-xs text-muted-foreground flex justify-between">
+                            <span>Jobs / month</span>
+                            <span className="font-medium text-foreground">{maxJobs === 0 ? "Unlimited" : `Up to ${maxJobs}`}</span>
+                          </p>
+                        )}
+                        {pricingTab === "contractor" && maxActiveJobs != null && (
+                          <p className="text-xs text-muted-foreground flex justify-between">
+                            <span>Active jobs</span>
+                            <span className="font-medium text-foreground">{maxActiveJobs === 0 ? "Unlimited" : `Up to ${maxActiveJobs}`}</span>
+                          </p>
+                        )}
+                        {platformFee != null && (
+                          <p className="text-xs text-muted-foreground flex justify-between">
+                            <span>Platform fee</span>
+                            <span className="font-medium text-foreground">{platformFee}%</span>
+                          </p>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Feature list */}
+                    <ul className="space-y-2 mb-6 flex-1">
+                      {FEATURE_ORDER.map((key) => {
+                        const enabled = features[key] === true;
+                        return (
+                          <li key={key} className={`flex items-center gap-2 text-sm ${enabled ? "text-foreground" : "text-muted-foreground/50"}`}>
+                            {enabled
+                              ? <Check className="h-3.5 w-3.5 text-primary shrink-0" />
+                              : <X className="h-3.5 w-3.5 shrink-0" />}
+                            {FEATURE_LABELS[key] ?? key}
+                          </li>
+                        );
+                      })}
+                    </ul>
+
+                    <Button
+                      onClick={() => setLocation(pricingTab === "company" ? "/get-started?role=company" : "/get-started?role=contractor")}
+                      className={`w-full gap-2 ${isFeatured ? "" : "variant-outline"}`}
+                      variant={isFeatured ? "default" : "outline"}
+                    >
+                      Get Started <ArrowRight className="h-4 w-4" />
+                    </Button>
+                    <p className="text-center text-xs text-muted-foreground mt-2">14-day free trial · No credit card</p>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          <p className="text-center text-sm text-muted-foreground mt-8">
+            Need a custom plan for a large portfolio?{" "}
+            <button onClick={() => setLocation("/contact")} className="text-primary underline">Contact us</button>
+          </p>
+        </div>
+      </section>
+
       {/* Social Proof */}
       <section className="py-16 bg-card/30 border-t border-border/50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -241,7 +466,7 @@ export default function Home() {
           </div>
           <h2 className="text-3xl font-bold text-foreground mb-4">Ready to Automate Your Maintenance?</h2>
           <p className="text-muted-foreground mb-8 max-w-xl mx-auto">
-            Join property managers who are saving hours every week by letting AI handle job classification, 
+            Join property managers who are saving hours every week by letting AI handle job classification,
             GPS handle time tracking, and Stripe handle payments.
           </p>
           <Button size="lg" onClick={() => setLocation("/get-started")} className="gap-2 h-12 px-8 text-base">

@@ -5,7 +5,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useViewAs } from "@/contexts/ViewAsContext";
-import { ClipboardList, HardHat, MapPin, DollarSign, AlertTriangle, Clock, Building2 } from "lucide-react";
+import { ClipboardList, HardHat, MapPin, DollarSign, AlertTriangle, Clock, Building2, Zap, Star, Shield, Crown, ArrowUpRight, CheckCircle2, XCircle, AlertCircle } from "lucide-react";
+import { Progress } from "@/components/ui/progress";
+import { Badge } from "@/components/ui/badge";
+import { useLocation } from "wouter";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -156,6 +159,100 @@ function CompanySetup({ onCreated }: { onCreated: () => void }) {
   );
 }
 
+function PlanUsageWidget() {
+  const [, setLocation] = useLocation();
+  const { data: planData, isLoading } = trpc.company.getMyPlan.useQuery();
+
+  if (isLoading) return <Skeleton className="h-48 w-full" />;
+
+  const plan = planData?.plan;
+  const usage = planData?.usage;
+  const planStatus = planData?.planStatus ?? null;
+  const daysRemaining = planData?.daysRemaining ?? null;
+
+  const features = (plan?.features ?? {}) as Record<string, unknown>;
+  const maxProperties = features.maxProperties as number | null | undefined;
+  const maxContractors = features.maxContractors as number | null | undefined;
+  const maxJobs = features.maxJobsPerMonth as number | null | undefined;
+
+  const usageItems = [
+    { icon: MapPin, label: "Properties", value: usage?.properties ?? 0, max: maxProperties },
+    { icon: HardHat, label: "Contractors", value: usage?.contractors ?? 0, max: maxContractors },
+    { icon: ClipboardList, label: "Jobs This Month", value: usage?.jobsThisMonth ?? 0, max: maxJobs },
+  ];
+
+  const isNearLimit = usageItems.some(({ value, max }) => max != null && max > 0 && value / max >= 0.8);
+
+  return (
+    <Card className={`bg-card border-border ${isNearLimit ? "border-amber-500/40" : ""}`}>
+      <CardHeader className="flex flex-row items-center justify-between pb-3">
+        <CardTitle className="text-sm font-medium text-card-foreground flex items-center gap-2">
+          <Zap className="h-4 w-4 text-primary" />
+          Plan Usage
+        </CardTitle>
+        <div className="flex items-center gap-2">
+          {!plan && (
+            <Badge variant="secondary" className="text-xs">No Plan</Badge>
+          )}
+          {planStatus === "active" && (
+            <Badge className="bg-green-500/15 text-green-400 border-green-500/30 text-xs gap-1"><CheckCircle2 className="h-3 w-3" /> Active</Badge>
+          )}
+          {planStatus === "trialing" && (
+            <Badge className="bg-blue-500/15 text-blue-400 border-blue-500/30 text-xs gap-1"><Zap className="h-3 w-3" /> Trial{daysRemaining !== null ? ` · ${daysRemaining}d left` : ""}</Badge>
+          )}
+          {planStatus === "expired" && (
+            <Badge className="bg-red-500/15 text-red-400 border-red-500/30 text-xs gap-1"><XCircle className="h-3 w-3" /> Expired</Badge>
+          )}
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {plan ? (
+          <>
+            <p className="text-xs text-muted-foreground font-medium">{plan.name}</p>
+            {usageItems.map(({ icon: Icon, label, value, max }) => (
+              <div key={label} className="space-y-1">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="flex items-center gap-1 text-muted-foreground"><Icon className="h-3 w-3" /> {label}</span>
+                  <span className={`font-medium ${max != null && max > 0 && value / max >= 0.8 ? "text-amber-400" : "text-foreground"}`}>
+                    {value}{max != null ? ` / ${max === 0 ? "∞" : max}` : " / ∞"}
+                  </span>
+                </div>
+                {max != null && max > 0 ? (
+                  <Progress
+                    value={Math.min(100, (value / max) * 100)}
+                    className={`h-1.5 ${value / max >= 0.9 ? "[&>div]:bg-red-400" : value / max >= 0.8 ? "[&>div]:bg-amber-400" : ""}`}
+                  />
+                ) : (
+                  <div className="h-1.5 rounded-full bg-secondary" />
+                )}
+              </div>
+            ))}
+            {(isNearLimit || planStatus === "expired") && (
+              <button
+                onClick={() => setLocation("/company/billing")}
+                className="w-full mt-1 flex items-center justify-center gap-1.5 text-xs text-primary hover:underline"
+              >
+                <ArrowUpRight className="h-3 w-3" />
+                {planStatus === "expired" ? "Renew subscription" : "Upgrade plan"}
+              </button>
+            )}
+          </>
+        ) : (
+          <div className="text-center py-2">
+            <p className="text-xs text-muted-foreground mb-2">No subscription plan assigned.</p>
+            <button
+              onClick={() => setLocation("/company/billing")}
+              className="text-xs text-primary hover:underline flex items-center gap-1 mx-auto"
+            >
+              <ArrowUpRight className="h-3 w-3" /> View available plans
+            </button>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 function CompanyDashboardContent() {
   const { data: stats, isLoading } = trpc.company.dashboardStats.useQuery();
 
@@ -200,17 +297,16 @@ function CompanyDashboardContent() {
           </Card>
         ))}
       </div>
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card className="bg-card border-border">
-          <CardHeader><CardTitle className="text-card-foreground">Recent Jobs</CardTitle></CardHeader>
-          <CardContent><RecentJobs /></CardContent>
-        </Card>
-        <Card className="bg-card border-border">
-          <CardHeader><CardTitle className="text-card-foreground">Quick Actions</CardTitle></CardHeader>
-          <CardContent className="space-y-3">
-            <p className="text-sm text-muted-foreground">Use the sidebar navigation to manage your jobs, properties, contractors, and settings.</p>
-          </CardContent>
-        </Card>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2">
+          <Card className="bg-card border-border">
+            <CardHeader><CardTitle className="text-card-foreground">Recent Jobs</CardTitle></CardHeader>
+            <CardContent><RecentJobs /></CardContent>
+          </Card>
+        </div>
+        <div className="space-y-4">
+          <PlanUsageWidget />
+        </div>
       </div>
     </div>
   );

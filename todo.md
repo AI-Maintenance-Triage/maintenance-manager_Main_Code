@@ -567,3 +567,32 @@
 - [x] Add contractor plan Stripe checkout procedure to stripeRouter
 - [x] Add webhook handling for contractor subscription events (checkout.session.completed for contractors)
 - [x] Write 66 tests for plan enforcement, fee calculation, and Stripe billing logic (all passing)
+
+## Trial Period Flow + Plan Usage Widget (COMPLETED)
+- [x] Backend: assignCompanyPlan sets planStatus="trialing", planAssignedAt=now, planExpiresAt=now+14days when no Stripe subscription
+- [x] Backend: assignContractorPlan same trialing logic
+- [x] Backend: getActivePlanForCompany / getActivePlanForContractor: return null if planStatus=expired AND planExpiresAt < now
+- [x] Backend: company.getMyPlan returns daysRemaining in trial and planStatus
+- [x] Backend: contractor.getMyPlan returns daysRemaining in trial and planStatus
+- [x] Frontend: company billing page — show trial countdown badge ("X days left in trial") when planStatus=trialing
+- [x] Frontend: contractor billing page — show trial countdown badge when planStatus=trialing
+- [x] Frontend: company billing page — show expired banner with subscribe CTA when planStatus=expired
+- [x] Frontend: contractor billing page — same expired banner
+- [x] Frontend: company dashboard home — Plan Usage widget (properties used/max, contractors used/max, jobs this month/max)
+- [x] Frontend: Plan Usage widget — trial countdown or plan name badge
+- [x] Frontend: Plan Usage widget — "Upgrade" link to /company/billing when near or at a limit
+
+## Dynamic Landing Page Pricing (COMPLETED)
+- [x] Backend: add publicProcedure listPublicCompanyPlans query (no auth required, returns active company plans sorted by sortOrder)
+- [x] Backend: add publicProcedure listPublicContractorPlans query (same for contractor plans)
+- [x] Frontend: landing page Pricing section — replace any hardcoded plan cards with dynamic data from trpc.public.listCompanyPlans
+- [x] Frontend: landing page — show plan name, price, description, and feature list from DB
+- [x] Frontend: landing page — highlight recommended/featured plan if a flag is set
+- [x] Frontend: landing page — "Get Started" button links to signup/login
+
+## Plan Usage Widget on Company Dashboard (COMPLETED)
+- [x] Backend: company.getMyPlan already returns usage stats, planStatus, daysRemaining
+- [x] Frontend: company dashboard home — Plan Usage card widget
+- [x] Frontend: Plan Usage widget — progress bars for each limit
+- [x] Frontend: Plan Usage widget — trial countdown badge or plan name
+- [x] Frontend: Plan Usage widget — "Upgrade" link to /company/billing when near or at a limit
