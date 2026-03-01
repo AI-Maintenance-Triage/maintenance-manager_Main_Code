@@ -332,7 +332,13 @@ export default function Home() {
                 const maxContractors = features.maxContractors as number | null | undefined;
                 const maxJobs = features.maxJobsPerMonth as number | null | undefined;
                 const maxActiveJobs = features.maxActiveJobs as number | null | undefined;
-                const platformFee = features.platformFeePercent as number | null | undefined;
+                const platformFee = (plan as any).platformFeePercent != null
+                  ? parseFloat(String((plan as any).platformFeePercent))
+                  : (features.platformFeePercent as number | null | undefined);
+                const perListingEnabled = (plan as any).perListingFeeEnabled as boolean | undefined;
+                const perListingAmount = (plan as any).perListingFeeAmount != null
+                  ? parseFloat(String((plan as any).perListingFeeAmount))
+                  : 0;
 
                 return (
                   <div
@@ -370,8 +376,8 @@ export default function Home() {
                       )}
                     </div>
 
-                    {/* Usage limits */}
-                    {(maxProps != null || maxContractors != null || maxJobs != null || maxActiveJobs != null || platformFee != null) && (
+                    {/* Usage limits + fees */}
+                    {(maxProps != null || maxContractors != null || maxJobs != null || maxActiveJobs != null || pricingTab === "company") && (
                       <div className="mb-5 space-y-1.5 p-3 rounded-lg bg-secondary/50">
                         {pricingTab === "company" && maxProps != null && (
                           <p className="text-xs text-muted-foreground flex justify-between">
@@ -397,11 +403,20 @@ export default function Home() {
                             <span className="font-medium text-foreground">{maxActiveJobs === 0 ? "Unlimited" : `Up to ${maxActiveJobs}`}</span>
                           </p>
                         )}
-                        {platformFee != null && (
-                          <p className="text-xs text-muted-foreground flex justify-between">
-                            <span>Platform fee</span>
-                            <span className="font-medium text-foreground">{platformFee}%</span>
-                          </p>
+                        {pricingTab === "company" && (
+                          <>
+                            <div className="border-t border-border/50 my-1" />
+                            <p className="text-xs text-muted-foreground flex justify-between">
+                              <span>Platform service charge</span>
+                              <span className="font-medium text-amber-400">{platformFee != null ? `${platformFee.toFixed(1)}%` : "0%"} per job</span>
+                            </p>
+                            <p className="text-xs text-muted-foreground flex justify-between">
+                              <span>Per-listing fee</span>
+                              <span className="font-medium text-amber-400">
+                                {perListingEnabled ? `$${perListingAmount.toFixed(2)} per job` : "None"}
+                              </span>
+                            </p>
+                          </>
                         )}
                       </div>
                     )}

@@ -1962,6 +1962,27 @@ const stripeRouter = router({
       })),
     };
   }),
+  // Company: create a Stripe Customer Portal session for self-service billing management
+  createCustomerPortalSession: companyAdminProcedure
+    .input(z.object({ origin: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const companyId = getEffectiveCompanyId(ctx);
+      const company = await db.getCompanyById(companyId);
+      if (!company) throw new TRPCError({ code: "NOT_FOUND" });
+      const user = await db.getUserById(ctx.user.id);
+      if (!user) throw new TRPCError({ code: "NOT_FOUND" });
+      // Ensure the company has a Stripe customer record
+      const customerId = await getOrCreateStripeCustomer(
+        companyId,
+        user.email ?? "",
+        company.name
+      );
+      const session = await stripe.billingPortal.sessions.create({
+        customer: customerId,
+        return_url: `${input.origin}/company/billing`,
+      });
+      return { url: session.url };
+    }),
 });
 // ─── Platform Admin Router ──────────────────────────────────────────────────
 const platformRouter = router({

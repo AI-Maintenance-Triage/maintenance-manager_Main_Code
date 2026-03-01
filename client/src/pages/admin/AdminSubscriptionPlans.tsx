@@ -406,12 +406,19 @@ function PlanCard({
           {parseFloat(plan.priceAnnual ?? "0") > 0 && (
             <span className="text-sm text-muted-foreground">${parseFloat(plan.priceAnnual ?? "0").toFixed(0)}/yr</span>
           )}
-          {hasFee && (
-            <Badge variant="secondary" className="text-xs gap-1">
-              <DollarSign className="h-3 w-3" />
-              {parseFloat(plan.platformFeePercent).toFixed(1)}% fee
-              {plan.perListingFeeEnabled && ` + $${parseFloat(plan.perListingFeeAmount ?? "0").toFixed(2)}/listing`}
-            </Badge>
+          {planType === "company" && (
+            <div className="flex gap-2 flex-wrap">
+              <Badge variant="outline" className="text-xs gap-1 border-amber-500/40 text-amber-400 bg-amber-500/10">
+                <DollarSign className="h-3 w-3" />
+                {hasFee ? `${parseFloat(plan.platformFeePercent).toFixed(1)}%` : "0%"} service charge
+              </Badge>
+              <Badge variant="outline" className={`text-xs gap-1 ${plan.perListingFeeEnabled ? 'border-amber-500/40 text-amber-400 bg-amber-500/10' : 'border-border text-muted-foreground'}`}>
+                <DollarSign className="h-3 w-3" />
+                {plan.perListingFeeEnabled
+                  ? `$${parseFloat(plan.perListingFeeAmount ?? "0").toFixed(2)} per listing`
+                  : "No listing fee"}
+              </Badge>
+            </div>
           )}
         </div>
 

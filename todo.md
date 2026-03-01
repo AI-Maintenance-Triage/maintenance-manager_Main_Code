@@ -816,3 +816,11 @@
 - [x] Fix Stripe Connect onboarding error in test mode (graceful handling + correct instructions)
 - [x] Company billing: Payment Methods section (add/remove cards, set default payment source via Stripe Customer Portal)
 - [x] Stripe Connect Express: contractor account creation, onboarding link, payout flow
+
+## Session 24: Fee Visibility + Stripe Connect Payouts + Customer Portal
+- [x] Show platform fee % and per-listing fee on admin plan cards/edit dialog
+- [x] Show platform fee % and per-listing fee on company billing plan cards (current plan + available plans)
+- [x] Show platform fee % and per-listing fee on public pricing page
+- [x] Verify job cost calculation uses plan-level platformFeePercent and perListingFee (confirmed correct)
+- [x] Implement Stripe Transfer payout trigger when job is marked Paid (already live via verifyJob approve)
+- [x] Add Stripe Customer Portal link for companies on billing page ("Manage Billing in Stripe" button)

@@ -247,6 +247,16 @@ export default function CompanyBilling() {
     },
   });
 
+  const openCustomerPortal = trpc.stripePayments.createCustomerPortalSession.useMutation({
+    onSuccess: (data) => {
+      if (data.url) {
+        window.open(data.url, "_blank");
+        toast.info("Opening billing portal...", { description: "Manage your subscription, invoices, and payment methods in Stripe." });
+      }
+    },
+    onError: (err) => toast.error("Could not open billing portal", { description: err.message }),
+  });
+
   const cancelSubscription = trpc.stripePayments.cancelPlanSubscription.useMutation({
     onSuccess: (data) => {
       toast.success("Subscription canceled", { description: data.message });
@@ -312,11 +322,23 @@ export default function CompanyBilling() {
 
   return (
     <div className="space-y-8">
-      <div>
-        <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
-          <CreditCard className="h-6 w-6 text-primary" /> Billing & Subscription
-        </h1>
-        <p className="text-muted-foreground mt-1">Manage your subscription plan and view payment history</p>
+      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
+            <CreditCard className="h-6 w-6 text-primary" /> Billing & Subscription
+          </h1>
+          <p className="text-muted-foreground mt-1">Manage your subscription plan and view payment history</p>
+        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          className="gap-1.5 shrink-0"
+          onClick={() => openCustomerPortal.mutate({ origin: window.location.origin })}
+          disabled={openCustomerPortal.isPending}
+        >
+          <ExternalLink className="h-3.5 w-3.5" />
+          {openCustomerPortal.isPending ? "Opening..." : "Manage Billing in Stripe"}
+        </Button>
       </div>
 
       {/* Current Plan Summary */}
@@ -342,6 +364,26 @@ export default function CompanyBilling() {
                 </div>
                 {plan?.description && <p className="text-sm text-muted-foreground">{plan.description}</p>}
                 {!plan && <p className="text-sm text-muted-foreground">You are not currently on a subscription plan. Choose a plan below to get started.</p>}
+                {plan && (
+                  <div className="flex flex-wrap gap-1.5 mt-2">
+                    <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full border border-amber-500/40 text-amber-400 bg-amber-500/10">
+                      <DollarSign className="h-3 w-3" />
+                      {(plan as any).platformFeePercent != null
+                        ? `${parseFloat(String((plan as any).platformFeePercent)).toFixed(1)}%`
+                        : "0%"} service charge per job
+                    </span>
+                    {(plan as any).perListingFeeEnabled ? (
+                      <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full border border-amber-500/40 text-amber-400 bg-amber-500/10">
+                        <DollarSign className="h-3 w-3" />
+                        ${parseFloat(String((plan as any).perListingFeeAmount ?? "0")).toFixed(2)} per job listing
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full border border-border text-muted-foreground">
+                        No per-listing fee
+                      </span>
+                    )}
+                  </div>
+                )}
                 {planStatus === "expired" && (
                   <div className="mt-2 flex items-center gap-2 text-sm text-red-400 bg-red-500/10 border border-red-500/20 rounded-md px-3 py-2">
                     <XCircle className="h-4 w-4 shrink-0" />
@@ -516,17 +558,25 @@ export default function CompanyBilling() {
                         <p className="text-xs text-muted-foreground mt-0.5">Billed ${parseFloat(p.priceAnnual ?? "0").toFixed(0)}/yr</p>
                       )}
                     </div>
-                    {/* Fee info */}
-                    {((p as any).platformFeePercent != null || (p as any).perListingFeeEnabled) && (
-                      <div className="mt-2 space-y-0.5">
-                        {(p as any).platformFeePercent != null && (
-                          <p className="text-xs text-muted-foreground">Platform fee: {parseFloat((p as any).platformFeePercent).toFixed(1)}%</p>
-                        )}
-                        {(p as any).perListingFeeEnabled && (
-                          <p className="text-xs text-muted-foreground">Per-listing fee: ${parseFloat((p as any).perListingFeeAmount ?? "0").toFixed(2)}</p>
-                        )}
-                      </div>
-                    )}
+                    {/* Fee info — always shown for company plans */}
+                    <div className="mt-2 flex flex-wrap gap-1.5">
+                      <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full border border-amber-500/40 text-amber-400 bg-amber-500/10">
+                        <DollarSign className="h-3 w-3" />
+                        {(p as any).platformFeePercent != null
+                          ? `${parseFloat((p as any).platformFeePercent).toFixed(1)}%`
+                          : "0%"} service charge
+                      </span>
+                      {(p as any).perListingFeeEnabled ? (
+                        <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full border border-amber-500/40 text-amber-400 bg-amber-500/10">
+                          <DollarSign className="h-3 w-3" />
+                          ${parseFloat((p as any).perListingFeeAmount ?? "0").toFixed(2)} per listing
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full border border-border text-muted-foreground">
+                          No listing fee
+                        </span>
+                      )}
+                    </div>
                   </CardHeader>
                   <CardContent className="flex-1 flex flex-col gap-4">
                     {/* Limits */}
