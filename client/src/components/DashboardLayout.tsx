@@ -32,6 +32,7 @@ import { useLocation } from "wouter";
 import { DashboardLayoutSkeleton } from "./DashboardLayoutSkeleton";
 import { Button } from "./ui/button";
 import { Separator } from "./ui/separator";
+import { NotificationBell } from "./NotificationBell";
 
 type MenuItem = { icon: React.ComponentType<{ className?: string }>; label: string; path: string };
 type MenuSection = { title: string; items: MenuItem[] };
@@ -260,14 +261,16 @@ function DashboardLayoutContent({ children, setSidebarWidth }: { children: React
         {/* Admin selector banner — only shown when admin is NOT impersonating */}
         {isAdmin && !isImpersonating && <AdminSelectorBanner />}
 
-        {isMobile && (
-          <div className="flex border-b h-14 items-center justify-between bg-background/95 px-2 backdrop-blur sticky top-0 z-40">
-            <div className="flex items-center gap-2">
-              <SidebarTrigger className="h-9 w-9 rounded-lg bg-background" />
-              <span className="tracking-tight text-foreground">{activeMenuItem?.label ?? "Menu"}</span>
-            </div>
+        {/* Persistent top header with notification bell */}
+        <div className="flex border-b h-14 items-center justify-between bg-background/95 px-4 backdrop-blur sticky top-0 z-40">
+          <div className="flex items-center gap-2">
+            {isMobile && <SidebarTrigger className="h-9 w-9 rounded-lg bg-background" />}
+            {isMobile && <span className="tracking-tight text-foreground">{activeMenuItem?.label ?? "Menu"}</span>}
           </div>
-        )}
+          <div className="ml-auto">
+            <NotificationBell />
+          </div>
+        </div>
         <main className="flex-1 p-4 md:p-6">{children}</main>
       </SidebarInset>
     </>

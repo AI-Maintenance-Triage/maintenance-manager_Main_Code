@@ -391,3 +391,23 @@
 - [x] Job comments: visible to both company and contractor
 - [x] Job comments: real-time-style polling (15s refresh while open)
 - [x] Job comments: company sidebar nav item for Reports
+
+## Session 13: Notification Bell, Ratings on Cards, Verification Fix
+- [x] Notifications: DB table (id, userId, type, title, body, link, metadata JSON, isRead, createdAt)
+- [x] Notifications: tRPC procedures (list, markRead, markAllRead, create internal helper)
+- [x] Notifications: Bell icon in DashboardLayout header (top-right, all roles)
+- [x] Notifications: Red badge with unread count on bell icon
+- [x] Notifications: Dropdown panel showing all notifications, newest first
+- [x] Notifications: Mark individual notification as read on click
+- [x] Notifications: Mark all as read button
+- [x] Notifications: Deep-link — clicking a comment notification navigates to the job and opens comments
+- [x] Notifications: Trigger notification to other party when a new comment is posted
+- [x] Notifications: Poll every 30s for new notifications while app is open
+- [x] Ratings: Show star average on contractor cards in company Contractors page
+- [ ] Ratings: Show star average on job board listing cards (contractor view)
+- [ ] Verification dialog: fix $0 labor — join time sessions and sum totalLaborMinutes
+- [ ] Verification dialog: show Labor Time (h:mm), Hourly Rate, Parts, Platform Fee %, Total
+- [ ] Verification dialog: show "No time recorded" if no session exists
+- [x] Contractor receipt PDF: server-side PDF at /api/receipt/:jobId (contractor auth only)
+- [x] Contractor receipt PDF: titled "Payment Receipt" with same fields as company invoice (job details, labor, parts, platform fee, payout amount, Stripe refs)
+- [x] Contractor receipt PDF: "Receipt" download button on paid/verified job cards in ContractorMyJobs

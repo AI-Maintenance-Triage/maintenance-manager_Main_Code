@@ -368,3 +368,20 @@ export const jobComments = mysqlTable("job_comments", {
 
 export type JobComment = typeof jobComments.$inferSelect;
 export type InsertJobComment = typeof jobComments.$inferInsert;
+
+// ─── In-App Notifications ──────────────────────────────────────────────────
+export const notifications = mysqlTable("notifications", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),           // recipient
+  type: varchar("type", { length: 64 }).notNull(), // e.g. "comment", "rating", "job_status"
+  title: varchar("title", { length: 255 }).notNull(),
+  body: text("body"),
+  // Deep-link: route to navigate to when clicked
+  linkRoute: varchar("linkRoute", { length: 512 }),
+  // Extra context (e.g. { jobId, commentId }) stored as JSON
+  metadata: json("metadata"),
+  isRead: boolean("isRead").default(false).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type Notification = typeof notifications.$inferSelect;
+export type InsertNotification = typeof notifications.$inferInsert;

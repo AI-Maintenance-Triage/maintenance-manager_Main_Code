@@ -980,8 +980,71 @@ const commentsRouter = router({
         authorName: ctx.user.name ?? 'Unknown',
         message: input.message,
       });
+
+      // Notify the other party about the new comment
+      const job = await db.getMaintenanceRequestById(input.maintenanceRequestId);
+      if (job) {
+        const senderName = ctx.user.name ?? 'Someone';
+        const linkRoute = `/company/jobs?jobId=${input.maintenanceRequestId}&openComments=1`;
+        const contractorLinkRoute = `/contractor/my-jobs?jobId=${input.maintenanceRequestId}&openComments=1`;
+        const preview = input.message.length > 80 ? input.message.slice(0, 80) + '...' : input.message;
+
+        if (role === 'contractor') {
+          // Notify company admins
+          const companyUserIds = await db.getCompanyAdminUserIds(job.companyId);
+          for (const uid of companyUserIds) {
+            await db.createNotification({
+              userId: uid,
+              type: 'comment',
+              title: `New note on Job #${input.maintenanceRequestId}`,
+              body: `${senderName}: ${preview}`,
+              linkRoute,
+              metadata: { jobId: input.maintenanceRequestId },
+            });
+          }
+        } else {
+          // Notify the assigned contractor
+          if (job.assignedContractorId) {
+            const contractorUserId = await db.getUserIdByContractorProfileId(job.assignedContractorId);
+            if (contractorUserId && contractorUserId !== ctx.user.id) {
+              await db.createNotification({
+                userId: contractorUserId,
+                type: 'comment',
+                title: `New note on Job #${input.maintenanceRequestId}`,
+                body: `${senderName}: ${preview}`,
+                linkRoute: contractorLinkRoute,
+                metadata: { jobId: input.maintenanceRequestId },
+              });
+            }
+          }
+        }
+      }
+
       return { success: true };
     }),
+});
+
+// ─── Notifications Router ────────────────────────────────────────────────────
+const notificationsRouter = router({
+  list: protectedProcedure.query(async ({ ctx }) => {
+    return db.getNotificationsForUser(ctx.user.id);
+  }),
+
+  unreadCount: protectedProcedure.query(async ({ ctx }) => {
+    return db.getUnreadCount(ctx.user.id);
+  }),
+
+  markRead: protectedProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      await db.markNotificationRead(input.id, ctx.user.id);
+      return { success: true };
+    }),
+
+  markAllRead: protectedProcedure.mutation(async ({ ctx }) => {
+    await db.markAllNotificationsRead(ctx.user.id);
+    return { success: true };
+  }),
 });
 
 // ─── Job Board Router ─────────────────────────────────────────────────────
@@ -1187,6 +1250,7 @@ export const appRouter = router({
   transactions: transactionsRouter,
   ratings: ratingsRouter,
   comments: commentsRouter,
+  notifications: notificationsRouter,
   platform: platformRouter,
   stripePayments: stripeRouter,
   adminViewAs: adminViewAsRouter,

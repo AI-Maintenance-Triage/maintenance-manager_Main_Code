@@ -17,6 +17,7 @@ import {
   platformSettings,
   contractorRatings, InsertContractorRating,
   jobComments, InsertJobComment,
+  notifications, InsertNotification,
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
@@ -255,9 +256,17 @@ export async function listContractorsByCompany(companyId: number) {
   if (!db) return [];
   const result = await db
     .select({
-      relationship: contractorCompanies,
-      profile: contractorProfiles,
-      user: { id: users.id, name: users.name, email: users.email },
+      relationshipId: contractorCompanies.id,
+      status: contractorCompanies.status,
+      contractorProfileId: contractorProfiles.id,
+      businessName: contractorProfiles.businessName,
+      phone: contractorProfiles.phone,
+      trades: contractorProfiles.trades,
+      isAvailable: contractorProfiles.isAvailable,
+      rating: contractorProfiles.rating,
+      userName: users.name,
+      userEmail: users.email,
+      userId: users.id,
     })
     .from(contractorCompanies)
     .innerJoin(contractorProfiles, eq(contractorCompanies.contractorProfileId, contractorProfiles.id))
@@ -1202,4 +1211,71 @@ export async function addJobComment(data: InsertJobComment) {
   if (!db) throw new Error("DB not available");
   const result = await db.insert(jobComments).values(data);
   return result[0].insertId;
+}
+
+// ─── Notifications ─────────────────────────────────────────────────────────
+export async function createNotification(data: InsertNotification) {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db.insert(notifications).values(data);
+  return result[0].insertId;
+}
+
+export async function getNotificationsForUser(userId: number, limit = 50) {
+  const db = await getDb();
+  if (!db) return [];
+  return db
+    .select()
+    .from(notifications)
+    .where(eq(notifications.userId, userId))
+    .orderBy(desc(notifications.createdAt))
+    .limit(limit);
+}
+
+export async function getUnreadCount(userId: number) {
+  const db = await getDb();
+  if (!db) return 0;
+  const [result] = await db
+    .select({ count: sql<number>`COUNT(*)` })
+    .from(notifications)
+    .where(and(eq(notifications.userId, userId), eq(notifications.isRead, false)));
+  return result?.count ?? 0;
+}
+
+export async function markNotificationRead(id: number, userId: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(notifications)
+    .set({ isRead: true })
+    .where(and(eq(notifications.id, id), eq(notifications.userId, userId)));
+}
+
+export async function markAllNotificationsRead(userId: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(notifications)
+    .set({ isRead: true })
+    .where(eq(notifications.userId, userId));
+}
+
+// ─── Notification Targeting Helpers ───────────────────────────────────────
+export async function getCompanyAdminUserIds(companyId: number): Promise<number[]> {
+  const db = await getDb();
+  if (!db) return [];
+  const rows = await db
+    .select({ id: users.id })
+    .from(users)
+    .where(and(eq(users.companyId, companyId), eq(users.role, "company_admin")));
+  return rows.map(r => r.id);
+}
+
+export async function getUserIdByContractorProfileId(contractorProfileId: number): Promise<number | null> {
+  const db = await getDb();
+  if (!db) return null;
+  const [row] = await db
+    .select({ id: users.id })
+    .from(users)
+    .where(eq(users.contractorProfileId, contractorProfileId))
+    .limit(1);
+  return row?.id ?? null;
 }

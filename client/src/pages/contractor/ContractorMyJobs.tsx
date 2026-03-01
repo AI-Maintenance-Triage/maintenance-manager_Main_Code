@@ -10,7 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import {
   Clock, CheckCircle, Play, Square, AlertCircle, Camera, CheckCheck,
-  XCircle, Loader2, Navigation2, MapPin, Wifi, WifiOff, MessageSquare,
+  XCircle, Loader2, Navigation2, MapPin, Wifi, WifiOff, MessageSquare, FileDown,
 } from "lucide-react";
 import { useState, useRef, useEffect, useCallback } from "react";
 import { toast } from "sonner";
@@ -469,6 +469,14 @@ function JobCard({ row, onUpdate, readOnly = false }: { row: any; onUpdate: () =
                       {Math.floor((job.totalLaborMinutes ?? 0) / 60)}h {(job.totalLaborMinutes ?? 0) % 60}m @ ${parseFloat(job.hourlyRate ?? "0").toFixed(2)}/hr
                     </p>
                   )}
+                  <a
+                    href={`/api/receipt/${job.id}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 mt-1 text-xs text-emerald-400 hover:text-emerald-300 underline underline-offset-2"
+                  >
+                    <FileDown className="h-3 w-3" /> Download Receipt
+                  </a>
                 </div>
               )}
             </div>

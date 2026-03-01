@@ -5,7 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useViewAs } from "@/contexts/ViewAsContext";
-import { HardHat, CheckCircle, XCircle } from "lucide-react";
+import { HardHat, CheckCircle, XCircle, Star } from "lucide-react";
 import { toast } from "sonner";
 
 export default function CompanyContractors() {
@@ -76,6 +76,12 @@ export default function CompanyContractors() {
                       {c.isAvailable !== undefined && (
                         <span className={c.isAvailable ? "text-green-400" : "text-muted-foreground"}>
                           {c.isAvailable ? "Available" : "Unavailable"}
+                        </span>
+                      )}
+                      {c.rating && parseFloat(c.rating) > 0 && (
+                        <span className="flex items-center gap-1 text-yellow-400">
+                          <Star className="h-3.5 w-3.5 fill-yellow-400" />
+                          {parseFloat(c.rating).toFixed(1)}
                         </span>
                       )}
                     </div>
