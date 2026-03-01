@@ -166,3 +166,12 @@
 - [x] Fix deleteCompany to also delete all users associated with that company
 - [x] Fix deleteContractorProfile to also delete the contractor's user account
 - [x] Verify re-registration with the same email works after deletion
+
+## Admin Impersonation Mutation Fix
+- [x] Fix circular reference bug in getEffectiveContractorProfile (was calling itself instead of db.getContractorProfile)
+- [x] Backend: getEffectiveCompanyId reads ctx.impersonatedCompanyId (set from x-impersonate-company-id header)
+- [x] Backend: getEffectiveContractorProfile reads ctx.impersonatedContractorProfileId (set from x-impersonate-contractor-id header)
+- [x] Frontend: tRPC client sends x-impersonate-company-id / x-impersonate-contractor-id headers from localStorage on every request
+- [x] Simplified CompanyProperties.tsx to use single properties.create mutation (works for both regular and impersonating admin)
+- [x] Added 9 impersonation unit tests (all passing)
+- [x] 26 total tests passing, 0 TypeScript errors

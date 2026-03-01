@@ -5,23 +5,45 @@ import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, protectedProcedure, adminProcedure, router } from "./_core/trpc";
 import * as db from "./db";
+import type { ContractorProfile } from "../drizzle/schema";
 import { classifyMaintenanceRequest } from "./ai-classify";
 import { adminViewAsRouter } from "./routers/admin-viewas";
 
-// ─── Middleware: require company_admin role ─────────────────────────────────
+/// ─── Middleware: require company_admin role ─────────────────────────────────
 const companyAdminProcedure = protectedProcedure.use(({ ctx, next }) => {
   if (ctx.user.role !== "company_admin" && ctx.user.role !== "admin") {
     throw new TRPCError({ code: "FORBIDDEN", message: "Company admin access required" });
   }
   return next({ ctx });
 });
-
 const contractorProcedure = protectedProcedure.use(({ ctx, next }) => {
   if (ctx.user.role !== "contractor" && ctx.user.role !== "admin") {
     throw new TRPCError({ code: "FORBIDDEN", message: "Contractor access required" });
   }
   return next({ ctx });
 });
+// ─── Impersonation Helpers ──────────────────────────────────────────────────
+// Returns the effective companyId: uses impersonated ID when admin is impersonating,
+// otherwise falls back to the user's own companyId.
+function getEffectiveCompanyId(ctx: { user: { companyId?: number | null }; impersonatedCompanyId: number | null }): number {
+  const id = ctx.impersonatedCompanyId ?? ctx.user.companyId;
+  if (!id) throw new TRPCError({ code: "NOT_FOUND", message: "No company associated" });
+  return id;
+}
+// Returns the effective contractor profile: uses impersonated profile when admin is
+// impersonating, otherwise looks up by ctx.user.id.
+async function getEffectiveContractorProfile(
+  ctx: { user: { id: number }; impersonatedContractorProfileId: number | null }
+): Promise<ContractorProfile> {
+  if (ctx.impersonatedContractorProfileId) {
+    const profile = await db.getContractorProfileById(ctx.impersonatedContractorProfileId);
+    if (!profile) throw new TRPCError({ code: "NOT_FOUND", message: "Contractor profile not found" });
+    return profile;
+  }
+  const profile = await db.getContractorProfile(ctx.user.id);
+  if (!profile) throw new TRPCError({ code: "NOT_FOUND", message: "Contractor profile not found" });
+  return profile;
+}
 
 // ─── Company Router ─────────────────────────────────────────────────────────
 const companyRouter = router({
@@ -34,15 +56,15 @@ const companyRouter = router({
     }),
 
   get: companyAdminProcedure.query(async ({ ctx }) => {
-    if (!ctx.user.companyId) throw new TRPCError({ code: "NOT_FOUND", message: "No company associated" });
-    return db.getCompanyById(ctx.user.companyId);
+    if (!getEffectiveCompanyId(ctx)) throw new TRPCError({ code: "NOT_FOUND", message: "No company associated" });
+    return db.getCompanyById(getEffectiveCompanyId(ctx));
   }),
 
   update: companyAdminProcedure
     .input(z.object({ name: z.string().optional(), address: z.string().optional(), phone: z.string().optional(), email: z.string().optional(), logoUrl: z.string().optional() }))
     .mutation(async ({ ctx, input }) => {
-      if (!ctx.user.companyId) throw new TRPCError({ code: "NOT_FOUND" });
-      await db.updateCompany(ctx.user.companyId, input);
+      if (!getEffectiveCompanyId(ctx)) throw new TRPCError({ code: "NOT_FOUND" });
+      await db.updateCompany(getEffectiveCompanyId(ctx), input);
       return { success: true };
     }),
 
@@ -51,16 +73,16 @@ const companyRouter = router({
   }),
 
   dashboardStats: companyAdminProcedure.query(async ({ ctx }) => {
-    if (!ctx.user.companyId) throw new TRPCError({ code: "NOT_FOUND" });
-    return db.getCompanyDashboardStats(ctx.user.companyId);
+    if (!getEffectiveCompanyId(ctx)) throw new TRPCError({ code: "NOT_FOUND" });
+    return db.getCompanyDashboardStats(getEffectiveCompanyId(ctx));
   }),
 });
 
 // ─── Settings Router ────────────────────────────────────────────────────────
 const settingsRouter = router({
   get: companyAdminProcedure.query(async ({ ctx }) => {
-    if (!ctx.user.companyId) throw new TRPCError({ code: "NOT_FOUND" });
-    return db.getCompanySettings(ctx.user.companyId);
+    if (!getEffectiveCompanyId(ctx)) throw new TRPCError({ code: "NOT_FOUND" });
+    return db.getCompanySettings(getEffectiveCompanyId(ctx));
   }),
 
   update: companyAdminProcedure
@@ -77,8 +99,8 @@ const settingsRouter = router({
       platformFeePercent: z.string().optional(),
     }))
     .mutation(async ({ ctx, input }) => {
-      if (!ctx.user.companyId) throw new TRPCError({ code: "NOT_FOUND" });
-      await db.updateCompanySettings(ctx.user.companyId, input);
+      if (!getEffectiveCompanyId(ctx)) throw new TRPCError({ code: "NOT_FOUND" });
+      await db.updateCompanySettings(getEffectiveCompanyId(ctx), input);
       return { success: true };
     }),
 });
@@ -86,32 +108,32 @@ const settingsRouter = router({
 // ─── Skill Tiers Router ────────────────────────────────────────────────────
 const skillTiersRouter = router({
   list: companyAdminProcedure.query(async ({ ctx }) => {
-    if (!ctx.user.companyId) throw new TRPCError({ code: "NOT_FOUND" });
-    return db.getSkillTiers(ctx.user.companyId);
+    if (!getEffectiveCompanyId(ctx)) throw new TRPCError({ code: "NOT_FOUND" });
+    return db.getSkillTiers(getEffectiveCompanyId(ctx));
   }),
 
   create: companyAdminProcedure
     .input(z.object({ name: z.string().min(1), description: z.string().optional(), hourlyRate: z.string(), emergencyMultiplier: z.string().optional(), sortOrder: z.number().optional() }))
     .mutation(async ({ ctx, input }) => {
-      if (!ctx.user.companyId) throw new TRPCError({ code: "NOT_FOUND" });
-      const id = await db.createSkillTier({ companyId: ctx.user.companyId, ...input });
+      if (!getEffectiveCompanyId(ctx)) throw new TRPCError({ code: "NOT_FOUND" });
+      const id = await db.createSkillTier({ companyId: getEffectiveCompanyId(ctx), ...input });
       return { id };
     }),
 
   update: companyAdminProcedure
     .input(z.object({ id: z.number(), name: z.string().optional(), description: z.string().optional(), hourlyRate: z.string().optional(), emergencyMultiplier: z.string().optional(), sortOrder: z.number().optional() }))
     .mutation(async ({ ctx, input }) => {
-      if (!ctx.user.companyId) throw new TRPCError({ code: "NOT_FOUND" });
+      if (!getEffectiveCompanyId(ctx)) throw new TRPCError({ code: "NOT_FOUND" });
       const { id, ...data } = input;
-      await db.updateSkillTier(id, ctx.user.companyId, data);
+      await db.updateSkillTier(id, getEffectiveCompanyId(ctx), data);
       return { success: true };
     }),
 
   delete: companyAdminProcedure
     .input(z.object({ id: z.number() }))
     .mutation(async ({ ctx, input }) => {
-      if (!ctx.user.companyId) throw new TRPCError({ code: "NOT_FOUND" });
-      await db.deleteSkillTier(input.id, ctx.user.companyId);
+      if (!getEffectiveCompanyId(ctx)) throw new TRPCError({ code: "NOT_FOUND" });
+      await db.deleteSkillTier(input.id, getEffectiveCompanyId(ctx));
       return { success: true };
     }),
 });
@@ -119,23 +141,23 @@ const skillTiersRouter = router({
 // ─── Properties Router ─────────────────────────────────────────────────────
 const propertiesRouter = router({
   list: companyAdminProcedure.query(async ({ ctx }) => {
-    if (!ctx.user.companyId) throw new TRPCError({ code: "NOT_FOUND" });
-    return db.listProperties(ctx.user.companyId);
+    if (!getEffectiveCompanyId(ctx)) throw new TRPCError({ code: "NOT_FOUND" });
+    return db.listProperties(getEffectiveCompanyId(ctx));
   }),
 
   get: companyAdminProcedure
     .input(z.object({ id: z.number() }))
     .query(async ({ ctx, input }) => {
-      if (!ctx.user.companyId) throw new TRPCError({ code: "NOT_FOUND" });
-      return db.getPropertyById(input.id, ctx.user.companyId);
+      if (!getEffectiveCompanyId(ctx)) throw new TRPCError({ code: "NOT_FOUND" });
+      return db.getPropertyById(input.id, getEffectiveCompanyId(ctx));
     }),
 
   create: companyAdminProcedure
     .input(z.object({ name: z.string().optional(), address: z.string().min(1), city: z.string().optional(), state: z.string().optional(), zipCode: z.string().optional(), latitude: z.string().optional(), longitude: z.string().optional(), units: z.number().optional() }))
     .mutation(async ({ ctx, input }) => {
-      if (!ctx.user.companyId) throw new TRPCError({ code: "NOT_FOUND" });
+      if (!getEffectiveCompanyId(ctx)) throw new TRPCError({ code: "NOT_FOUND" });
       const name = input.name?.trim() || input.address.trim();
-      const id = await db.createProperty({ companyId: ctx.user.companyId, ...input, name });
+      const id = await db.createProperty({ companyId: getEffectiveCompanyId(ctx), ...input, name });
       // Auto-geocode if no coords provided
       if (!input.latitude || !input.longitude) {
         const fullAddress = [input.address, input.city, input.state, input.zipCode].filter(Boolean).join(", ");
@@ -148,17 +170,17 @@ const propertiesRouter = router({
   update: companyAdminProcedure
     .input(z.object({ id: z.number(), name: z.string().optional(), address: z.string().optional(), city: z.string().optional(), state: z.string().optional(), zipCode: z.string().optional(), latitude: z.string().optional(), longitude: z.string().optional(), units: z.number().optional() }))
     .mutation(async ({ ctx, input }) => {
-      if (!ctx.user.companyId) throw new TRPCError({ code: "NOT_FOUND" });
+      if (!getEffectiveCompanyId(ctx)) throw new TRPCError({ code: "NOT_FOUND" });
       const { id, ...data } = input;
-      await db.updateProperty(id, ctx.user.companyId, data);
+      await db.updateProperty(id, getEffectiveCompanyId(ctx), data);
       return { success: true };
     }),
 
   delete: companyAdminProcedure
     .input(z.object({ id: z.number() }))
     .mutation(async ({ ctx, input }) => {
-      if (!ctx.user.companyId) throw new TRPCError({ code: "NOT_FOUND" });
-      await db.deleteProperty(input.id, ctx.user.companyId);
+      if (!getEffectiveCompanyId(ctx)) throw new TRPCError({ code: "NOT_FOUND" });
+      await db.deleteProperty(input.id, getEffectiveCompanyId(ctx));
       return { success: true };
     }),
 });
@@ -184,7 +206,7 @@ const contractorRouter = router({
         const fullName = [firstName, lastName].filter(Boolean).join(" ");
         await db.updateUserName(ctx.user.id, fullName);
       }
-      const existing = await db.getContractorProfile(ctx.user.id);
+      const existing = await getEffectiveContractorProfile(ctx);
       let profileId: number;
       if (existing) {
         await db.updateContractorProfile(existing.id, profileData);
@@ -203,7 +225,7 @@ const contractorRouter = router({
     }),
 
   getProfile: protectedProcedure.query(async ({ ctx }) => {
-    return db.getContractorProfile(ctx.user.id);
+    return getEffectiveContractorProfile(ctx);
   }),
 
   updateProfile: contractorProcedure
@@ -218,7 +240,7 @@ const contractorRouter = router({
       isAvailable: z.boolean().optional(),
     }))
     .mutation(async ({ ctx, input }) => {
-      const profile = await db.getContractorProfile(ctx.user.id);
+      const profile = await getEffectiveContractorProfile(ctx);
       if (!profile) throw new TRPCError({ code: "NOT_FOUND", message: "No contractor profile" });
       await db.updateContractorProfile(profile.id, input);
       return { success: true };
@@ -226,13 +248,13 @@ const contractorRouter = router({
 
   // Company-side: list contractors for this company
   listByCompany: companyAdminProcedure.query(async ({ ctx }) => {
-    if (!ctx.user.companyId) throw new TRPCError({ code: "NOT_FOUND" });
-    return db.listContractorsByCompany(ctx.user.companyId);
+    if (!getEffectiveCompanyId(ctx)) throw new TRPCError({ code: "NOT_FOUND" });
+    return db.listContractorsByCompany(getEffectiveCompanyId(ctx));
   }),
 
   // Contractor-side: list companies they're connected to
   myCompanies: contractorProcedure.query(async ({ ctx }) => {
-    const profile = await db.getContractorProfile(ctx.user.id);
+    const profile = await getEffectiveContractorProfile(ctx);
     if (!profile) return [];
     return db.listCompaniesByContractor(profile.id);
   }),
@@ -241,7 +263,7 @@ const contractorRouter = router({
   requestJoin: contractorProcedure
     .input(z.object({ companyId: z.number() }))
     .mutation(async ({ ctx, input }) => {
-      const profile = await db.getContractorProfile(ctx.user.id);
+      const profile = await getEffectiveContractorProfile(ctx);
       if (!profile) throw new TRPCError({ code: "NOT_FOUND", message: "Set up your profile first" });
       const id = await db.createContractorCompanyRelation({
         contractorProfileId: profile.id,
@@ -255,12 +277,12 @@ const contractorRouter = router({
   invite: companyAdminProcedure
     .input(z.object({ contractorProfileId: z.number() }))
     .mutation(async ({ ctx, input }) => {
-      if (!ctx.user.companyId) throw new TRPCError({ code: "NOT_FOUND" });
-      const settings = await db.getCompanySettings(ctx.user.companyId);
+      if (!getEffectiveCompanyId(ctx)) throw new TRPCError({ code: "NOT_FOUND" });
+      const settings = await db.getCompanySettings(getEffectiveCompanyId(ctx));
       const status = settings?.autoApproveContractors ? "approved" : "pending";
       const id = await db.createContractorCompanyRelation({
         contractorProfileId: input.contractorProfileId,
-        companyId: ctx.user.companyId,
+        companyId: getEffectiveCompanyId(ctx),
         invitedBy: "company",
         status: status as any,
       });
@@ -277,14 +299,14 @@ const contractorRouter = router({
 
   // Contractor: available jobs
   availableJobs: contractorProcedure.query(async ({ ctx }) => {
-    const profile = await db.getContractorProfile(ctx.user.id);
+    const profile = await getEffectiveContractorProfile(ctx);
     if (!profile) return [];
     return db.getJobsForContractor(profile.id);
   }),
 
   // Contractor: my assigned jobs
   myJobs: contractorProcedure.query(async ({ ctx }) => {
-    const profile = await db.getContractorProfile(ctx.user.id);
+    const profile = await getEffectiveContractorProfile(ctx);
     if (!profile) return [];
     return db.getContractorAssignedJobs(profile.id);
   }),
@@ -293,7 +315,7 @@ const contractorRouter = router({
   acceptJob: contractorProcedure
     .input(z.object({ jobId: z.number() }))
     .mutation(async ({ ctx, input }) => {
-      const profile = await db.getContractorProfile(ctx.user.id);
+      const profile = await getEffectiveContractorProfile(ctx);
       if (!profile) throw new TRPCError({ code: "NOT_FOUND" });
       const job = await db.getMaintenanceRequestById(input.jobId);
       if (!job || job.status !== "open") throw new TRPCError({ code: "BAD_REQUEST", message: "Job is not available" });
@@ -311,8 +333,8 @@ const jobsRouter = router({
   list: companyAdminProcedure
     .input(z.object({ status: z.string().optional() }).optional())
     .query(async ({ ctx, input }) => {
-      if (!ctx.user.companyId) throw new TRPCError({ code: "NOT_FOUND" });
-      return db.listMaintenanceRequests(ctx.user.companyId, input?.status);
+      if (!getEffectiveCompanyId(ctx)) throw new TRPCError({ code: "NOT_FOUND" });
+      return db.listMaintenanceRequests(getEffectiveCompanyId(ctx), input?.status);
     }),
 
   get: protectedProcedure
@@ -335,17 +357,17 @@ const jobsRouter = router({
       isEmergency: z.boolean().optional(),
     }))
     .mutation(async ({ ctx, input }) => {
-      if (!ctx.user.companyId) throw new TRPCError({ code: "NOT_FOUND" });
+      if (!getEffectiveCompanyId(ctx)) throw new TRPCError({ code: "NOT_FOUND" });
 
       // Create the request
       const id = await db.createMaintenanceRequest({
-        companyId: ctx.user.companyId,
+        companyId: getEffectiveCompanyId(ctx),
         ...input,
       });
 
       // AI classification
       try {
-        const tiers = await db.getSkillTiers(ctx.user.companyId);
+        const tiers = await db.getSkillTiers(getEffectiveCompanyId(ctx));
         if (tiers.length > 0) {
           const classification = await classifyMaintenanceRequest(input.title, input.description, tiers);
           const matchedTier = tiers.find(t => t.name.toLowerCase() === classification.skillTierName.toLowerCase());
@@ -406,7 +428,7 @@ const timeTrackingRouter = router({
       longitude: z.string(),
     }))
     .mutation(async ({ ctx, input }) => {
-      const profile = await db.getContractorProfile(ctx.user.id);
+      const profile = await getEffectiveContractorProfile(ctx);
       if (!profile) throw new TRPCError({ code: "NOT_FOUND" });
       const job = await db.getMaintenanceRequestById(input.jobId);
       if (!job) throw new TRPCError({ code: "NOT_FOUND" });
@@ -488,7 +510,7 @@ const receiptsRouter = router({
       receiptImageUrl: z.string().optional(),
     }))
     .mutation(async ({ ctx, input }) => {
-      const profile = await db.getContractorProfile(ctx.user.id);
+      const profile = await getEffectiveContractorProfile(ctx);
       if (!profile) throw new TRPCError({ code: "NOT_FOUND" });
       const job = await db.getMaintenanceRequestById(input.jobId);
       if (!job) throw new TRPCError({ code: "NOT_FOUND" });
@@ -515,8 +537,8 @@ const receiptsRouter = router({
 // ─── Integration Connectors Router ──────────────────────────────────────────
 const integrationsRouter = router({
   list: companyAdminProcedure.query(async ({ ctx }) => {
-    if (!ctx.user.companyId) throw new TRPCError({ code: "NOT_FOUND" });
-    return db.getIntegrationConnectors(ctx.user.companyId);
+    if (!getEffectiveCompanyId(ctx)) throw new TRPCError({ code: "NOT_FOUND" });
+    return db.getIntegrationConnectors(getEffectiveCompanyId(ctx));
   }),
 
   upsert: companyAdminProcedure
@@ -528,9 +550,9 @@ const integrationsRouter = router({
       isActive: z.boolean().optional(),
     }))
     .mutation(async ({ ctx, input }) => {
-      if (!ctx.user.companyId) throw new TRPCError({ code: "NOT_FOUND" });
+      if (!getEffectiveCompanyId(ctx)) throw new TRPCError({ code: "NOT_FOUND" });
       const id = await db.upsertIntegrationConnector({
-        companyId: ctx.user.companyId,
+        companyId: getEffectiveCompanyId(ctx),
         provider: input.provider,
         apiKey: input.apiKey ?? null,
         apiSecret: input.apiSecret ?? null,
@@ -544,12 +566,12 @@ const integrationsRouter = router({
 // ─── Transactions Router ────────────────────────────────────────────────────
 const transactionsRouter = router({
   listByCompany: companyAdminProcedure.query(async ({ ctx }) => {
-    if (!ctx.user.companyId) throw new TRPCError({ code: "NOT_FOUND" });
-    return db.getTransactionsByCompany(ctx.user.companyId);
+    if (!getEffectiveCompanyId(ctx)) throw new TRPCError({ code: "NOT_FOUND" });
+    return db.getTransactionsByCompany(getEffectiveCompanyId(ctx));
   }),
 
   listByContractor: contractorProcedure.query(async ({ ctx }) => {
-    const profile = await db.getContractorProfile(ctx.user.id);
+    const profile = await getEffectiveContractorProfile(ctx);
     if (!profile) return [];
     return db.getTransactionsByContractor(profile.id);
   }),
@@ -559,7 +581,7 @@ const transactionsRouter = router({
 const jobBoardRouter = router({
   // Contractor: list jobs in their service area
   list: contractorProcedure.query(async ({ ctx }) => {
-    const profile = await db.getContractorProfile(ctx.user.id);
+    const profile = await getEffectiveContractorProfile(ctx);
     if (!profile) throw new TRPCError({ code: "NOT_FOUND", message: "No contractor profile" });
     return db.listJobBoardForContractor(profile.id);
   }),
@@ -568,7 +590,7 @@ const jobBoardRouter = router({
   accept: contractorProcedure
     .input(z.object({ jobId: z.number() }))
     .mutation(async ({ ctx, input }) => {
-      const profile = await db.getContractorProfile(ctx.user.id);
+      const profile = await getEffectiveContractorProfile(ctx);
       if (!profile) throw new TRPCError({ code: "NOT_FOUND", message: "No contractor profile" });
       await db.acceptJobFromBoard(input.jobId, profile.id);
       return { success: true };
@@ -578,8 +600,8 @@ const jobBoardRouter = router({
   post: companyAdminProcedure
     .input(z.object({ jobId: z.number() }))
     .mutation(async ({ ctx, input }) => {
-      if (!ctx.user.companyId) throw new TRPCError({ code: "NOT_FOUND" });
-      await db.postJobToBoard(input.jobId, ctx.user.companyId);
+      if (!getEffectiveCompanyId(ctx)) throw new TRPCError({ code: "NOT_FOUND" });
+      await db.postJobToBoard(input.jobId, getEffectiveCompanyId(ctx));
       return { success: true };
     }),
 
@@ -587,8 +609,8 @@ const jobBoardRouter = router({
   remove: companyAdminProcedure
     .input(z.object({ jobId: z.number() }))
     .mutation(async ({ ctx, input }) => {
-      if (!ctx.user.companyId) throw new TRPCError({ code: "NOT_FOUND" });
-      await db.removeJobFromBoard(input.jobId, ctx.user.companyId);
+      if (!getEffectiveCompanyId(ctx)) throw new TRPCError({ code: "NOT_FOUND" });
+      await db.removeJobFromBoard(input.jobId, getEffectiveCompanyId(ctx));
       return { success: true };
     }),
 });

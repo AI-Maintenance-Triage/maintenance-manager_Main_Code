@@ -32,21 +32,12 @@ export default function CompanyProperties() {
 
   const [form, setForm] = useState({ name: "", address: "", city: "", state: "", zipCode: "", units: "" });
 
-  // Regular create mutation
-  const createPropertyRegular = trpc.properties.create.useMutation({
+  // Single mutation — works for both regular users and admin impersonation
+  // (admin sends x-impersonate-company-id header automatically via tRPC client)
+  const createProperty = trpc.properties.create.useMutation({
     onSuccess: () => {
       toast.success("Property added!");
       utils.properties.list.invalidate();
-      setOpen(false);
-      setForm({ name: "", address: "", city: "", state: "", zipCode: "", units: "" });
-    },
-    onError: (err: any) => toast.error(err.message),
-  });
-
-  // Admin impersonation create mutation
-  const createPropertyAdmin = trpc.adminViewAs.createProperty.useMutation({
-    onSuccess: () => {
-      toast.success("Property added!");
       utils.adminViewAs.companyProperties.invalidate();
       setOpen(false);
       setForm({ name: "", address: "", city: "", state: "", zipCode: "", units: "" });
@@ -60,25 +51,19 @@ export default function CompanyProperties() {
       utils.properties.list.invalidate();
       utils.adminViewAs.companyProperties.invalidate();
     },
+    onError: (err: any) => toast.error(err.message),
   });
 
   const handleCreate = () => {
-    const payload = {
+    createProperty.mutate({
       name: form.name || undefined,
       address: form.address,
       city: form.city || undefined,
       state: form.state || undefined,
       zipCode: form.zipCode || undefined,
       units: form.units ? Number(form.units) : undefined,
-    };
-    if (isImpersonating) {
-      createPropertyAdmin.mutate({ companyId: viewAs.companyId!, ...payload, name: form.name || form.address });
-    } else {
-      createPropertyRegular.mutate(payload);
-    }
+    });
   };
-
-  const isPending = isImpersonating ? createPropertyAdmin.isPending : createPropertyRegular.isPending;
 
   return (
     <div className="space-y-6">
@@ -122,8 +107,8 @@ export default function CompanyProperties() {
                 <Label>Number of Units</Label>
                 <Input type="number" placeholder="12" value={form.units} onChange={(e) => setForm({ ...form, units: e.target.value })} />
               </div>
-              <Button onClick={handleCreate} disabled={!form.address || isPending} className="w-full">
-                {isPending ? "Adding..." : "Add Property"}
+              <Button onClick={handleCreate} disabled={!form.address || createProperty.isPending} className="w-full">
+                {createProperty.isPending ? "Adding..." : "Add Property"}
               </Button>
             </div>
           </DialogContent>

@@ -37,11 +37,40 @@ queryClient.getMutationCache().subscribe(event => {
   }
 });
 
+/**
+ * Reads the current ViewAs state from localStorage and returns
+ * the appropriate impersonation headers. These headers are read
+ * on every request so they always reflect the latest impersonation state.
+ */
+function getImpersonationHeaders(): Record<string, string> {
+  try {
+    const saved = localStorage.getItem("viewAs");
+    if (!saved) return {};
+    const state = JSON.parse(saved) as {
+      mode: string;
+      companyId: number | null;
+      contractorProfileId: number | null;
+    };
+    const headers: Record<string, string> = {};
+    if (state.mode === "company" && state.companyId != null) {
+      headers["x-impersonate-company-id"] = String(state.companyId);
+    } else if (state.mode === "contractor" && state.contractorProfileId != null) {
+      headers["x-impersonate-contractor-id"] = String(state.contractorProfileId);
+    }
+    return headers;
+  } catch {
+    return {};
+  }
+}
+
 const trpcClient = trpc.createClient({
   links: [
     httpBatchLink({
       url: "/api/trpc",
       transformer: superjson,
+      headers() {
+        return getImpersonationHeaders();
+      },
       fetch(input, init) {
         return globalThis.fetch(input, {
           ...(init ?? {}),
