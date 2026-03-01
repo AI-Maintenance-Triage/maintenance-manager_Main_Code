@@ -824,3 +824,9 @@
 - [x] Verify job cost calculation uses plan-level platformFeePercent and perListingFee (confirmed correct)
 - [x] Implement Stripe Transfer payout trigger when job is marked Paid (already live via verifyJob approve)
 - [x] Add Stripe Customer Portal link for companies on billing page ("Manage Billing in Stripe" button)
+
+## Session 25: Impersonation Fix + Feature Additions
+- [x] Fix missing Invite Contractor button in admin impersonation mode
+- [x] Per-job fee breakdown on job detail page (labor + parts + platform fee + listing fee = total)
+- [x] Admin fee override per company (custom fee % and listing fee independent of plan tier)
+- [x] Contractor payout history link on contractor billing page ("View Stripe Payouts" button)

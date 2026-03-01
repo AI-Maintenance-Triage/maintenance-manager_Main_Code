@@ -593,6 +593,17 @@ export async function getTransactionsByContractor(contractorProfileId: number) {
     .orderBy(desc(transactions.createdAt));
 }
 
+export async function getTransactionByJob(maintenanceRequestId: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const rows = await db
+    .select()
+    .from(transactions)
+    .where(eq(transactions.maintenanceRequestId, maintenanceRequestId))
+    .orderBy(desc(transactions.createdAt))
+    .limit(1);
+  return rows[0] ?? null;
+}
 export async function getCompanyExpenseReport(companyId: number) {
   const db = await getDb();
   if (!db) return { transactions: [], monthlyTotals: [], propertyTotals: [] };
@@ -1603,6 +1614,18 @@ export async function getEffectivePlanForCompany(companyId: number) {
       ? parseFloat(company.planPriceOverride)
       : parseFloat(plan.priceMonthly ?? "0"),
     planNotes: company.planNotes ?? null,
+    // Apply per-company fee overrides (highest priority — overrides plan defaults)
+    platformFeePercent: company.feeOverridePercent != null
+      ? company.feeOverridePercent
+      : plan.platformFeePercent,
+    perListingFeeEnabled: company.feeOverridePerListingEnabled != null
+      ? company.feeOverridePerListingEnabled
+      : plan.perListingFeeEnabled,
+    perListingFeeAmount: company.feeOverridePerListingAmount != null
+      ? company.feeOverridePerListingAmount
+      : plan.perListingFeeAmount,
+    // Expose override flags so UI can show "custom" badge
+    hasFeeOverride: company.feeOverridePercent != null || company.feeOverridePerListingEnabled != null || company.feeOverridePerListingAmount != null,
   };
 }
 

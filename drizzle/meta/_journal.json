@@ -176,6 +176,13 @@
       "when": 1772386144787,
       "tag": "0024_wealthy_sheva_callister",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "5",
+      "when": 1772389967421,
+      "tag": "0025_purple_legion",
+      "breakpoints": true
     }
   ]
 }

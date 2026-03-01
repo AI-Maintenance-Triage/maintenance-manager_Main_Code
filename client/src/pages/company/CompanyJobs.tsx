@@ -11,8 +11,9 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { useViewAs } from "@/contexts/ViewAsContext";
-import { Plus, Zap, Clock, CheckCircle, AlertTriangle, Globe, X, Route, DollarSign, FileDown, Star, MessageSquare } from "lucide-react";
+import { Plus, Zap, Clock, CheckCircle, AlertTriangle, Globe, X, Route, DollarSign, FileDown, Star, MessageSquare, ChevronDown, ChevronUp } from "lucide-react";
 import { useState } from "react";
+import { JobCostBreakdown } from "@/components/JobCostBreakdown";
 import { toast } from "sonner";
 import { RouteReplayDialog } from "@/components/RouteReplayDialog";
 import { RateContractorDialog } from "@/components/RateContractorDialog";
@@ -58,6 +59,7 @@ export default function CompanyJobs() {
   const [replayJob, setReplayJob] = useState<{ id: number; title: string } | null>(null);
   const [rateJob, setRateJob] = useState<{ id: number; contractorName?: string } | null>(null);
   const [commentsJob, setCommentsJob] = useState<{ id: number; title: string } | null>(null);
+  const [expandedBreakdown, setExpandedBreakdown] = useState<number | null>(null);
   const utils = trpc.useUtils();
 
   const currentTab = FILTER_TABS.find(t => t.value === activeTab) ?? FILTER_TABS[0];
@@ -215,6 +217,7 @@ export default function CompanyJobs() {
             const partsCost = parseFloat(job.totalPartsCost ?? "0");
             const totalCost = laborCost + partsCost;
             const isPaid = job.status === "paid" || job.status === "verified" || job.status === "payment_pending_ach";
+            const isBreakdownOpen = expandedBreakdown === job.id;
 
             return (
               <Card key={job.id} className="bg-card border-border hover:border-primary/30 transition-colors">
@@ -285,6 +288,18 @@ export default function CompanyJobs() {
                           <FileDown className="h-3 w-3" /> Invoice
                         </Button>
                       )}
+                      {/* Cost Breakdown toggle for paid/verified jobs */}
+                      {isPaid && totalCost > 0 && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="text-xs gap-1 h-7 text-muted-foreground hover:text-foreground"
+                          onClick={() => setExpandedBreakdown(isBreakdownOpen ? null : job.id)}
+                        >
+                          {isBreakdownOpen ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+                          {isBreakdownOpen ? "Hide" : "Breakdown"}
+                        </Button>
+                      )}
                       {/* Rate contractor button for paid/verified jobs */}
                       {(job.status === "verified" || job.status === "paid") && job.assignedContractorId && (
                         <Button
@@ -331,6 +346,10 @@ export default function CompanyJobs() {
                       )}
                     </div>
                   </div>
+                  {/* Inline cost breakdown */}
+                  {isBreakdownOpen && isPaid && (
+                    <JobCostBreakdown jobId={job.id} />
+                  )}
                 </CardContent>
               </Card>
             );

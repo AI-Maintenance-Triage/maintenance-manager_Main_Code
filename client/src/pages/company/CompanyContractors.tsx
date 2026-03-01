@@ -29,10 +29,8 @@ export default function CompanyContractors() {
   const contractors = isViewingAsCompany ? viewAsContractors.data : regularContractors.data;
   const isLoading = isViewingAsCompany ? viewAsContractors.isLoading : regularContractors.isLoading;
 
-  // Invites
-  const { data: invitesData, isLoading: invitesLoading } = trpc.invites.list.useQuery(undefined, {
-    enabled: !isViewingAsCompany,
-  });
+  // Invites — always enabled (backend uses getEffectiveCompanyId which handles impersonation)
+  const { data: invitesData, isLoading: invitesLoading } = trpc.invites.list.useQuery();
   const pendingInvites = (invitesData?.invites ?? []).filter((i) => i.status === "pending");
 
   // Mutations
@@ -95,15 +93,13 @@ export default function CompanyContractors() {
             {isViewingAsCompany ? `Viewing contractors for ${viewAs.companyName}` : "Manage your contractor relationships"}
           </p>
         </div>
-        {!isViewingAsCompany && (
-          <Button onClick={() => setInviteOpen(true)} className="gap-2">
+        <Button onClick={() => setInviteOpen(true)} className="gap-2">
             <UserPlus className="h-4 w-4" /> Invite Contractor
           </Button>
-        )}
       </div>
 
       {/* Pending Invites */}
-      {!isViewingAsCompany && pendingInvites.length > 0 && (
+      {pendingInvites.length > 0 && (
         <Card className="bg-card border-border">
           <CardHeader className="pb-3">
             <CardTitle className="text-base flex items-center gap-2">
@@ -164,11 +160,9 @@ export default function CompanyContractors() {
                 ? "No contractors connected to this company yet."
                 : "No contractors connected yet. Invite contractors directly or they can request to join through the platform."}
             </p>
-            {!isViewingAsCompany && (
-              <Button onClick={() => setInviteOpen(true)} variant="outline" className="gap-2">
+            <Button onClick={() => setInviteOpen(true)} variant="outline" className="gap-2">
                 <UserPlus className="h-4 w-4" /> Invite Your First Contractor
               </Button>
-            )}
           </CardContent>
         </Card>
       ) : (
@@ -198,8 +192,7 @@ export default function CompanyContractors() {
                       )}
                     </div>
                   </div>
-                  {!isViewingAsCompany && (
-                    <div className="flex gap-2 shrink-0">
+                  <div className="flex gap-2 shrink-0">
                       {c.status === "pending" && (
                         <>
                           <Button size="sm" variant="outline" className="gap-1 text-green-400 border-green-500/30 hover:bg-green-500/10"
@@ -219,7 +212,6 @@ export default function CompanyContractors() {
                         </Button>
                       )}
                     </div>
-                  )}
                 </div>
               </CardContent>
             </Card>

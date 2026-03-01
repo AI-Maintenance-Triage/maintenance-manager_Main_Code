@@ -57,6 +57,10 @@ export const companies = mysqlTable("companies", {
   // Per-company overrides (null = use plan defaults)
   planPriceOverride: decimal("planPriceOverride", { precision: 10, scale: 2 }),
   planNotes: text("planNotes"),
+  // Fee overrides — null means use plan/global defaults
+  feeOverridePercent: decimal("feeOverridePercent", { precision: 5, scale: 2 }),
+  feeOverridePerListingEnabled: boolean("feeOverridePerListingEnabled"),
+  feeOverridePerListingAmount: decimal("feeOverridePerListingAmount", { precision: 8, scale: 2 }),
   // Plan lifecycle
   planStatus: mysqlEnum("planStatus", ["active", "trialing", "expired", "canceled"]).default("trialing").notNull(),
   planAssignedAt: bigint("planAssignedAt", { mode: "number" }),

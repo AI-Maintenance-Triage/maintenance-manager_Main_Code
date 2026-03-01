@@ -1,11 +1,217 @@
 import { trpc } from "@/lib/trpc";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Building2, Users, ClipboardList, Calendar } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+import { Separator } from "@/components/ui/separator";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Building2, Calendar, Settings, Percent, Receipt, X, AlertCircle } from "lucide-react";
+import { useState } from "react";
+import { toast } from "sonner";
+
+interface FeeOverrideDialogProps {
+  company: any;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onSaved: () => void;
+}
+
+function FeeOverrideDialog({ company, open, onOpenChange, onSaved }: FeeOverrideDialogProps) {
+  const utils = trpc.useUtils();
+
+  // Load company + effective plan
+  const { data, isLoading } = trpc.platform.getCompany.useQuery(
+    { companyId: company.id },
+    { enabled: open }
+  );
+
+  const [feePercent, setFeePercent] = useState<string>("");
+  const [perListingEnabled, setPerListingEnabled] = useState<boolean>(false);
+  const [perListingAmount, setPerListingAmount] = useState<string>("");
+  const [hasOverride, setHasOverride] = useState(false);
+
+  // Populate form when data loads
+  const [initialized, setInitialized] = useState(false);
+  if (data && !initialized) {
+    const c = data.company as any;
+    setHasOverride(
+      c.feeOverridePercent != null ||
+      c.feeOverridePerListingEnabled != null ||
+      c.feeOverridePerListingAmount != null
+    );
+    setFeePercent(c.feeOverridePercent != null ? String(parseFloat(c.feeOverridePercent)) : "");
+    setPerListingEnabled(c.feeOverridePerListingEnabled ?? false);
+    setPerListingAmount(c.feeOverridePerListingAmount != null ? String(parseFloat(c.feeOverridePerListingAmount)) : "");
+    setInitialized(true);
+  }
+
+  const setOverride = trpc.platform.setCompanyFeeOverride.useMutation({
+    onSuccess: () => {
+      toast.success("Fee override saved");
+      utils.platform.companies.invalidate();
+      utils.platform.getCompany.invalidate({ companyId: company.id });
+      onSaved();
+      onOpenChange(false);
+    },
+    onError: (err: any) => toast.error(err.message),
+  });
+
+  const handleSave = () => {
+    setOverride.mutate({
+      companyId: company.id,
+      feeOverridePercent: feePercent !== "" ? parseFloat(feePercent) : null,
+      feeOverridePerListingEnabled: hasOverride ? perListingEnabled : null,
+      feeOverridePerListingAmount: perListingAmount !== "" ? parseFloat(perListingAmount) : null,
+    });
+  };
+
+  const handleClearOverride = () => {
+    setOverride.mutate({
+      companyId: company.id,
+      feeOverridePercent: null,
+      feeOverridePerListingEnabled: null,
+      feeOverridePerListingAmount: null,
+    });
+    setFeePercent("");
+    setPerListingEnabled(false);
+    setPerListingAmount("");
+    setHasOverride(false);
+  };
+
+  const planFeePercent = data?.plan ? parseFloat(String(data.plan.platformFeePercent ?? "0")) : null;
+  const planListingEnabled = data?.plan?.perListingFeeEnabled ?? false;
+  const planListingAmount = data?.plan ? parseFloat(String(data.plan.perListingFeeAmount ?? "0")) : null;
+
+  return (
+    <Dialog open={open} onOpenChange={(v) => { if (!v) setInitialized(false); onOpenChange(v); }}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Settings className="h-5 w-5 text-primary" />
+            Manage: {company.name}
+          </DialogTitle>
+        </DialogHeader>
+
+        {isLoading ? (
+          <div className="space-y-3 py-4">
+            <Skeleton className="h-8 w-full" />
+            <Skeleton className="h-8 w-3/4" />
+          </div>
+        ) : (
+          <div className="space-y-5 py-2">
+            {/* Plan info */}
+            <div className="rounded-lg bg-muted/40 border border-border p-3 text-sm space-y-1">
+              <p className="font-medium text-foreground">
+                Current Plan: <span className="text-primary">{data?.plan?.name ?? "No plan assigned"}</span>
+              </p>
+              {data?.plan && (
+                <p className="text-muted-foreground text-xs">
+                  Plan defaults: {planFeePercent}% service charge
+                  {planListingEnabled ? ` + $${planListingAmount?.toFixed(2)} per listing` : " · No listing fee"}
+                </p>
+              )}
+            </div>
+
+            <Separator />
+
+            {/* Fee Override Section */}
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h4 className="text-sm font-semibold text-foreground">Custom Fee Override</h4>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Override this company's fees independent of their plan tier. Leave blank to use plan defaults.
+                  </p>
+                </div>
+                {hasOverride && (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="text-xs text-destructive hover:text-destructive gap-1"
+                    onClick={handleClearOverride}
+                    disabled={setOverride.isPending}
+                  >
+                    <X className="h-3 w-3" /> Clear Override
+                  </Button>
+                )}
+              </div>
+
+              {/* Platform Fee % Override */}
+              <div className="space-y-1.5">
+                <Label className="text-sm flex items-center gap-1.5">
+                  <Percent className="h-3.5 w-3.5 text-purple-400" />
+                  Platform Service Charge (%)
+                </Label>
+                <Input
+                  type="number"
+                  min="0"
+                  max="100"
+                  step="0.1"
+                  placeholder={planFeePercent != null ? `Plan default: ${planFeePercent}%` : "e.g. 5.0"}
+                  value={feePercent}
+                  onChange={(e) => { setFeePercent(e.target.value); setHasOverride(true); }}
+                  className="h-9"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Charged as a % on top of the job cost (labor + parts). Leave blank to use plan default.
+                </p>
+              </div>
+
+              {/* Per-Listing Fee Override */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <Label className="text-sm flex items-center gap-1.5">
+                    <Receipt className="h-3.5 w-3.5 text-orange-400" />
+                    Enable Per-Listing Fee Override
+                  </Label>
+                  <Switch
+                    checked={perListingEnabled}
+                    onCheckedChange={(v) => { setPerListingEnabled(v); setHasOverride(true); }}
+                  />
+                </div>
+                {perListingEnabled && (
+                  <div className="space-y-1.5">
+                    <Label className="text-xs text-muted-foreground">Per-Listing Fee Amount ($)</Label>
+                    <Input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      placeholder={planListingAmount != null ? `Plan default: $${planListingAmount.toFixed(2)}` : "e.g. 2.50"}
+                      value={perListingAmount}
+                      onChange={(e) => setPerListingAmount(e.target.value)}
+                      className="h-9"
+                    />
+                  </div>
+                )}
+              </div>
+
+              {hasOverride && (
+                <div className="flex items-start gap-2 rounded-md bg-amber-500/10 border border-amber-500/20 p-2.5 text-xs text-amber-400">
+                  <AlertCircle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+                  <span>This company has custom fee overrides that take precedence over their plan defaults.</span>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        <DialogFooter>
+          <Button variant="outline" onClick={() => { setInitialized(false); onOpenChange(false); }}>Cancel</Button>
+          <Button onClick={handleSave} disabled={setOverride.isPending || isLoading}>
+            {setOverride.isPending ? "Saving..." : "Save Override"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
 
 export default function AdminCompanies() {
-  const { data: companies, isLoading } = trpc.platform.companies.useQuery();
+  const { data: companies, isLoading, refetch } = trpc.platform.companies.useQuery();
+  const [managingCompany, setManagingCompany] = useState<any | null>(null);
 
   return (
     <div className="space-y-6">
@@ -31,43 +237,78 @@ export default function AdminCompanies() {
         </Card>
       ) : (
         <div className="space-y-3">
-          {companies.map((company: any) => (
-            <Card key={company.id} className="bg-card border-border hover:border-primary/30 transition-colors">
-              <CardContent className="p-5">
-                <div className="flex items-start justify-between gap-4">
-                  <div className="min-w-0 flex-1 space-y-2">
-                    <div className="flex items-center gap-3">
-                      <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-                        <Building2 className="h-5 w-5 text-primary" />
+          {companies.map((company: any) => {
+            const hasFeeOverride = company.feeOverridePercent != null || company.feeOverridePerListingEnabled != null || company.feeOverridePerListingAmount != null;
+            return (
+              <Card key={company.id} className="bg-card border-border hover:border-primary/30 transition-colors">
+                <CardContent className="p-5">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="min-w-0 flex-1 space-y-2">
+                      <div className="flex items-center gap-3">
+                        <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                          <Building2 className="h-5 w-5 text-primary" />
+                        </div>
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2">
+                            <h3 className="font-semibold text-card-foreground truncate">{company.name}</h3>
+                            {hasFeeOverride && (
+                              <Badge variant="outline" className="text-xs border-amber-500/40 text-amber-400 bg-amber-500/10">
+                                Custom Fee
+                              </Badge>
+                            )}
+                          </div>
+                          {company.email && (
+                            <p className="text-xs text-muted-foreground truncate">{company.email}</p>
+                          )}
+                        </div>
                       </div>
-                      <div className="min-w-0">
-                        <h3 className="font-semibold text-card-foreground truncate">{company.name}</h3>
-                        {company.contactEmail && (
-                          <p className="text-xs text-muted-foreground truncate">{company.contactEmail}</p>
+                      <div className="flex items-center gap-4 text-xs text-muted-foreground flex-wrap">
+                        <span className="flex items-center gap-1">
+                          <Calendar className="h-3 w-3" />
+                          Joined {new Date(company.createdAt).toLocaleDateString()}
+                        </span>
+                        {company.phone && <span>{company.phone}</span>}
+                        {hasFeeOverride && company.feeOverridePercent != null && (
+                          <span className="text-amber-400">
+                            Override: {parseFloat(company.feeOverridePercent)}% fee
+                            {company.feeOverridePerListingEnabled && company.feeOverridePerListingAmount != null
+                              ? ` + $${parseFloat(company.feeOverridePerListingAmount).toFixed(2)}/listing`
+                              : ""}
+                          </span>
                         )}
                       </div>
                     </div>
-                    <div className="flex items-center gap-4 text-xs text-muted-foreground flex-wrap">
-                      <span className="flex items-center gap-1">
-                        <Calendar className="h-3 w-3" />
-                        Joined {new Date(company.createdAt).toLocaleDateString()}
-                      </span>
-                      {company.contactPhone && (
-                        <span>{company.contactPhone}</span>
-                      )}
+                    <div className="flex flex-col items-end gap-2 shrink-0">
+                      <Badge
+                        variant={company.subscriptionStatus === "active" ? "default" : "secondary"}
+                        className={company.subscriptionStatus === "active" ? "bg-green-600/20 text-green-400 border-green-600/30" : ""}
+                      >
+                        {company.subscriptionStatus || "No subscription"}
+                      </Badge>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="text-xs gap-1 h-7"
+                        onClick={() => setManagingCompany(company)}
+                      >
+                        <Settings className="h-3 w-3" /> Manage
+                      </Button>
                     </div>
                   </div>
-                  <Badge
-                    variant={company.subscriptionStatus === "active" ? "default" : "secondary"}
-                    className={company.subscriptionStatus === "active" ? "bg-green-600/20 text-green-400 border-green-600/30" : ""}
-                  >
-                    {company.subscriptionStatus || "No subscription"}
-                  </Badge>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
+      )}
+
+      {managingCompany && (
+        <FeeOverrideDialog
+          company={managingCompany}
+          open={!!managingCompany}
+          onOpenChange={(v) => { if (!v) setManagingCompany(null); }}
+          onSaved={() => refetch()}
+        />
       )}
     </div>
   );

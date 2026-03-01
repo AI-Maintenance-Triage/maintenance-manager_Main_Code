@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { useLocation } from "wouter";
+import { useLocation, Link } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -11,7 +11,7 @@ import {
   Receipt, DollarSign, TrendingUp, Briefcase, Calendar, Download,
   Check, X, ClipboardList, Building2, ArrowUpRight, Zap,
   Star, Shield, Crown, CheckCircle2, AlertCircle, XCircle, CreditCard,
-  Link2, ExternalLink, RefreshCw, Clock, FileText,
+  Link2, ExternalLink, RefreshCw, Clock, FileText, Banknote,
 } from "lucide-react";
 
 const CONTRACTOR_FEATURE_LABELS: Record<string, string> = {
@@ -646,7 +646,14 @@ export default function ContractorBilling() {
 
       {/* Job Earnings History */}
       <div>
-        <h2 className="text-lg font-semibold text-foreground mb-4">Job Earnings History</h2>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-semibold text-foreground">Job Earnings History</h2>
+          <Link href="/contractor/payouts">
+            <Button variant="outline" size="sm" className="text-xs gap-1.5 h-8">
+              <Banknote className="h-3.5 w-3.5" /> View Stripe Payouts
+            </Button>
+          </Link>
+        </div>
         <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-6">
           {[
             { icon: DollarSign, color: "text-green-400", label: "Total Earned", value: fmt(totalEarned), sub: `${rawTxns.length} paid jobs` },

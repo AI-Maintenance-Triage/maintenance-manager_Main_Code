@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import {
   CheckCircle, XCircle, Clock, Image, Loader2, AlertTriangle,
-  ClipboardCheck, DollarSign, Timer, Package, CreditCard, Map,
+  ClipboardCheck, DollarSign, Timer, Package, CreditCard, Map, Receipt,
 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -53,6 +53,8 @@ export default function CompanyVerification() {
 
   const { data: platformFeeData } = trpc.platform.getFee.useQuery();
   const platformFeePercent = platformFeeData?.platformFeePercent ?? 5;
+  const perListingFeeEnabled = platformFeeData?.perListingFeeEnabled ?? false;
+  const perListingFeeAmount = platformFeeData?.perListingFeeAmount ?? 0;
 
   const [selected, setSelected] = useState<any | null>(null);
   const [action, setAction] = useState<"approve" | "dispute" | null>(null);
@@ -87,7 +89,8 @@ export default function CompanyVerification() {
   const partsCost = parseFloat(job?.totalPartsCost ?? "0");
   const subtotal = laborCost + partsCost;
   const platformFeeAmount = subtotal > 0 ? subtotal * (platformFeePercent / 100) : 0;
-  const totalCost = subtotal + platformFeeAmount;
+  const listingFeeAmount = perListingFeeEnabled ? perListingFeeAmount : 0;
+  const totalCost = subtotal + platformFeeAmount + listingFeeAmount;
   const laborMinutes = job?.totalLaborMinutes ?? 0;
   const hourlyRate = parseFloat(job?.hourlyRate ?? "0");
   const sessionCount = selected?.job?.sessionCount ?? 0;
@@ -247,6 +250,19 @@ export default function CompanyVerification() {
                     </span>
                   </div>
 
+                  {/* Per-Listing Fee */}
+                  {perListingFeeEnabled && (
+                    <div className="flex items-center justify-between text-sm">
+                      <div className="flex items-center gap-2 text-muted-foreground">
+                        <Receipt className="h-4 w-4 text-orange-400" />
+                        <span>Per-Listing Fee</span>
+                      </div>
+                      <span className="font-medium text-foreground">
+                        {listingFeeAmount > 0 ? `$${listingFeeAmount.toFixed(2)}` : <span className="text-muted-foreground text-xs">$0.00</span>}
+                      </span>
+                    </div>
+                  )}
+
                   <Separator />
 
                   {/* Total */}
@@ -268,7 +284,7 @@ export default function CompanyVerification() {
                 <div className="text-xs text-green-300 space-y-0.5">
                   <p className="font-medium">By clicking "Approve & Pay" you authorize this charge.</p>
                   <p className="text-green-300/70">
-                    The contractor receives the full job cost (labor + parts). The {platformFeePercent}% platform service fee is added on top and charged to you. This action cannot be undone.
+                    The contractor receives the full job cost (labor + parts). The {platformFeePercent}% platform service fee{perListingFeeEnabled ? ` + $${perListingFeeAmount.toFixed(2)} listing fee` : ""} is added on top and charged to you. This action cannot be undone.
                   </p>
                 </div>
               </div>

@@ -1276,6 +1276,11 @@ const integrationsRouter = router({
 
 // ─── Transactions Router ────────────────────────────────────────────────────
 const transactionsRouter = router({
+  getByJob: companyAdminProcedure
+    .input(z.object({ jobId: z.number() }))
+    .query(async ({ input }) => {
+      return db.getTransactionByJob(input.jobId);
+    }),
   listByCompany: companyAdminProcedure.query(async ({ ctx }) => {
     if (!getEffectiveCompanyId(ctx)) throw new TRPCError({ code: "NOT_FOUND" });
     return db.getTransactionsByCompany(getEffectiveCompanyId(ctx));
@@ -1992,6 +1997,32 @@ const platformRouter = router({
   companies: adminProcedure.query(async () => {
     return db.listCompanies();
   }),
+  // Admin: set per-company fee overrides (null clears the override, reverting to plan defaults)
+  setCompanyFeeOverride: adminProcedure
+    .input(z.object({
+      companyId: z.number(),
+      feeOverridePercent: z.number().min(0).max(100).nullable(),
+      feeOverridePerListingEnabled: z.boolean().nullable(),
+      feeOverridePerListingAmount: z.number().min(0).nullable(),
+    }))
+    .mutation(async ({ input }) => {
+      const { companyId, feeOverridePercent, feeOverridePerListingEnabled, feeOverridePerListingAmount } = input;
+      await db.updateCompany(companyId, {
+        feeOverridePercent: feeOverridePercent != null ? feeOverridePercent.toFixed(2) : null,
+        feeOverridePerListingEnabled: feeOverridePerListingEnabled,
+        feeOverridePerListingAmount: feeOverridePerListingAmount != null ? feeOverridePerListingAmount.toFixed(2) : null,
+      } as any);
+      return { success: true };
+    }),
+  // Admin: get a single company with its effective plan (for edit dialog)
+  getCompany: adminProcedure
+    .input(z.object({ companyId: z.number() }))
+    .query(async ({ input }) => {
+      const company = await db.getCompanyById(input.companyId);
+      if (!company) throw new TRPCError({ code: "NOT_FOUND" });
+      const plan = await db.getEffectivePlanForCompany(input.companyId);
+      return { company, plan };
+    }),
   // Company-aware: returns plan-specific fee if company is on a plan, otherwise global default
   getFee: protectedProcedure.query(async ({ ctx }) => {
     const companyId = ctx.user.companyId ?? ctx.impersonatedCompanyId;
