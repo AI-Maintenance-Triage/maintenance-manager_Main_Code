@@ -1745,6 +1745,18 @@ export async function listSubscriptionPlansByType(planType: "company" | "contrac
     .orderBy(subscriptionPlans.sortOrder, subscriptionPlans.name);
 }
 
+/** Returns the free contractor plan (priceMonthly=0, planType="contractor"), or null if none exists. */
+export async function getFreeContractorPlan() {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db
+    .select()
+    .from(subscriptionPlans)
+    .where(and(eq(subscriptionPlans.planType, "contractor"), eq(subscriptionPlans.priceMonthly, "0.00")))
+    .limit(1);
+  return result[0] ?? null;
+}
+
 // ─── Plan Feature Enforcement Helpers ────────────────────────────────────────
 
 /**
@@ -2177,4 +2189,25 @@ export async function getPmsWebhookEvents(options: { companyId?: number; limit?:
     return db.select().from(pmsWebhookEvents).where(eq(pmsWebhookEvents.companyId, companyId)).orderBy(desc(pmsWebhookEvents.createdAt)).limit(limit).offset(offset);
   }
   return db.select().from(pmsWebhookEvents).orderBy(desc(pmsWebhookEvents.createdAt)).limit(limit).offset(offset);
+}
+
+// ─── Subscriber Migration Helpers ─────────────────────────────────────────
+/** Returns all companies currently assigned to a specific plan. */
+export async function getCompaniesByPlanId(planId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db
+    .select()
+    .from(companies)
+    .where(eq(companies.planId, planId));
+}
+
+/** Returns all contractor profiles currently assigned to a specific plan. */
+export async function getContractorsByPlanId(planId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db
+    .select()
+    .from(contractorProfiles)
+    .where(eq(contractorProfiles.planId, planId));
 }

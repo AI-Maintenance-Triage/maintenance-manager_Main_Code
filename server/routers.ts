@@ -296,6 +296,13 @@ const contractorRouter = router({
       } else {
         profileId = await db.createContractorProfile({ userId: ctx.user.id, ...profileData });
         await db.updateUserRole(ctx.user.id, "contractor", undefined, profileId);
+        // Auto-assign the Free contractor plan on first registration
+        try {
+          const freePlan = await db.getFreeContractorPlan();
+          if (freePlan) await db.assignContractorPlan(profileId, freePlan.id, null, null, "active");
+        } catch (e) {
+          console.warn("[contractor.setup] Could not auto-assign free plan:", e);
+        }
       }
       // Auto-geocode contractor base ZIP
       const zip = profileData.serviceAreaZips?.[0];

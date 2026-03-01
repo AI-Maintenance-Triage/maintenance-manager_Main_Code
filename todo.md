@@ -805,3 +805,9 @@
 - [x] Contractor billing page (/contractor/billing) — Free vs Pro plan cards, 20-min early access badge, subscribe button, Stripe invoice history
 - [x] Plan deactivation Stripe sync — archive Stripe product when admin toggles plan to Inactive
 - [x] Price-change warning dialog — warn admin when editing price on a plan that has active subscribers
+
+## Session 22
+- [x] Bug fix: admin plan edit dialog shows stale form state when switching between plans
+- [x] Plan enforcement gates — property limit with upgrade prompt for company plans
+- [x] Auto-assign Free Contractor plan to new contractors on registration
+- [x] Admin subscriber migration tool — move all subscribers from one plan to another

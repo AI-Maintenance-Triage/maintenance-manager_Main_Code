@@ -3,22 +3,27 @@ import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useViewAs } from "@/contexts/ViewAsContext";
-import { Plus, MapPin, Trash2, Building } from "lucide-react";
+import { Plus, MapPin, Trash2, Building, ArrowUpRight } from "lucide-react";
 import { useState } from "react";
+import { useLocation } from "wouter";
 import { toast } from "sonner";
 import AddressAutocomplete from "@/components/AddressAutocomplete";
 
 export default function CompanyProperties() {
   const { user } = useAuth();
   const viewAs = useViewAs();
+  const [, setLocation] = useLocation();
   const isAdmin = user?.role === "admin";
   const isImpersonating = isAdmin && viewAs.mode === "company" && !!viewAs.companyId;
 
   const [open, setOpen] = useState(false);
+  const [limitDialogOpen, setLimitDialogOpen] = useState(false);
+  const [limitMessage, setLimitMessage] = useState("");
   const utils = trpc.useUtils();
 
   // Queries — use adminViewAs when impersonating, regular otherwise
@@ -34,8 +39,6 @@ export default function CompanyProperties() {
   const emptyForm = { name: "", address: "", city: "", state: "", zipCode: "", units: "", lat: "", lng: "" };
   const [form, setForm] = useState(emptyForm);
 
-  // Single mutation — works for both regular users and admin impersonation
-  // (admin sends x-impersonate-company-id header automatically via tRPC client)
   const createProperty = trpc.properties.create.useMutation({
     onSuccess: () => {
       toast.success("Property added!");
@@ -44,7 +47,19 @@ export default function CompanyProperties() {
       setOpen(false);
       setForm(emptyForm);
     },
-    onError: (err: any) => toast.error(err.message),
+    onError: (err: any) => {
+      // Show upgrade dialog for plan limit errors
+      if (
+        err?.data?.code === "FORBIDDEN" ||
+        err?.message?.toLowerCase().includes("maximum") ||
+        err?.message?.toLowerCase().includes("plan")
+      ) {
+        setLimitMessage(err.message);
+        setLimitDialogOpen(true);
+      } else {
+        toast.error(err.message);
+      }
+    },
   });
 
   const deleteProperty = trpc.properties.delete.useMutation({
@@ -64,7 +79,6 @@ export default function CompanyProperties() {
       state: form.state || undefined,
       zipCode: form.zipCode || undefined,
       units: form.units ? Number(form.units) : undefined,
-      // Pass coordinates if autocomplete already resolved them
       latitude: form.lat || undefined,
       longitude: form.lng || undefined,
     });
@@ -137,6 +151,35 @@ export default function CompanyProperties() {
           </DialogContent>
         </Dialog>
       </div>
+
+      {/* Plan limit upgrade dialog */}
+      <AlertDialog open={limitDialogOpen} onOpenChange={setLimitDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <ArrowUpRight className="h-5 w-5 text-primary" /> Property Limit Reached
+            </AlertDialogTitle>
+            <AlertDialogDescription className="space-y-2">
+              <span className="block">{limitMessage}</span>
+              <span className="block text-muted-foreground text-xs">
+                Upgrade your plan to add more properties and unlock additional features.
+              </span>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Not Now</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                setLimitDialogOpen(false);
+                setOpen(false);
+                setLocation("/company/billing");
+              }}
+            >
+              <ArrowUpRight className="h-4 w-4 mr-2" /> View Plans & Upgrade
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {isLoading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

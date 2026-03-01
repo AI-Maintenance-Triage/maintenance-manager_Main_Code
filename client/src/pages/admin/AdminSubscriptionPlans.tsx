@@ -12,7 +12,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
-import { Plus, Pencil, Trash2, CreditCard, Check, X, Users, Building2, Infinity, DollarSign, ClipboardList, Zap, HardHat } from "lucide-react";
+import { Plus, Pencil, Trash2, CreditCard, Check, X, Users, Building2, Infinity, DollarSign, ClipboardList, Zap, HardHat, ArrowRightLeft } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 // ─── Feature definitions ────────────────────────────────────────────────────
 const COMPANY_FEATURE_FLAGS = [
@@ -324,10 +325,10 @@ function PlanFormDialog({
 
 // ─── Plan Card ───────────────────────────────────────────────────────────────
 function PlanCard({
-  plan, planType, onEdit, onDelete, companiesCount,
+  plan, planType, onEdit, onDelete, onMigrate, companiesCount,
 }: {
   plan: any; planType: "company" | "contractor";
-  onEdit: () => void; onDelete: () => void; companiesCount: number;
+  onEdit: () => void; onDelete: () => void; onMigrate: () => void; companiesCount: number;
 }) {
   const flags = planType === "company" ? COMPANY_FEATURE_FLAGS : CONTRACTOR_FEATURE_FLAGS;
   const f = plan.features ?? {};
@@ -365,6 +366,9 @@ function PlanCard({
             {plan.description && <CardDescription className="mt-1">{plan.description}</CardDescription>}
           </div>
           <div className="flex items-center gap-1 shrink-0">
+            <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary" onClick={onMigrate} title="Migrate subscribers to another plan">
+              <ArrowRightLeft className="h-3.5 w-3.5" />
+            </Button>
             <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground" onClick={onEdit}>
               <Pencil className="h-3.5 w-3.5" />
             </Button>
@@ -459,6 +463,10 @@ function PlansTab({ planType }: { planType: "company" | "contractor" }) {
   // Price-change warning state
   const [pendingUpdate, setPendingUpdate] = useState<{ id: number; payload: any } | null>(null);
   const [priceWarnOpen, setPriceWarnOpen] = useState(false);
+  // Subscriber migration state
+  const [migrateOpen, setMigrateOpen] = useState(false);
+  const [migrateFromPlan, setMigrateFromPlan] = useState<any>(null);
+  const [migrateToPlanId, setMigrateToPlanId] = useState<string>("");
 
   const invalidate = () => {
     utils.adminViewAs.listCompanyPlans.invalidate();
@@ -492,6 +500,14 @@ function PlansTab({ planType }: { planType: "company" | "contractor" }) {
   };
   const deletePlan = trpc.adminViewAs.deletePlan.useMutation({
     onSuccess: () => { toast.success("Plan deleted."); invalidate(); },
+    onError: err => toast.error(err.message),
+  });
+  const migrateSubscribers = trpc.adminViewAs.migrateSubscribers.useMutation({
+    onSuccess: (result) => {
+      toast.success(`Migrated ${result.movedCount} subscriber${result.movedCount !== 1 ? "s" : ""} successfully.`);
+      if (result.errors.length > 0) toast.error(`${result.errors.length} error(s): ${result.errors[0]}`);
+      setMigrateOpen(false); setMigrateFromPlan(null); setMigrateToPlanId(""); invalidate();
+    },
     onError: err => toast.error(err.message),
   });
 
@@ -537,6 +553,7 @@ function PlansTab({ planType }: { planType: "company" | "contractor" }) {
               companiesCount={countForPlan(plan.id)}
               onEdit={() => { setEditTarget(plan); setEditOpen(true); }}
               onDelete={() => deletePlan.mutate({ id: plan.id })}
+              onMigrate={() => { setMigrateFromPlan(plan); setMigrateToPlanId(""); setMigrateOpen(true); }}
             />
           ))}
         </div>
@@ -551,9 +568,10 @@ function PlansTab({ planType }: { planType: "company" | "contractor" }) {
         isPending={createPlan.isPending} planType={planType}
       />
 
-      {/* Edit Dialog */}
+      {/* Edit Dialog — key forces remount when editTarget changes so form state resets */}
       {editTarget && (
         <PlanFormDialog
+          key={editTarget.id}
           open={editOpen} onOpenChange={setEditOpen}
           title={`Edit Plan: ${editTarget.name}`}
           initialForm={planToForm(editTarget, planType)}
@@ -561,6 +579,58 @@ function PlansTab({ planType }: { planType: "company" | "contractor" }) {
           isPending={updatePlan.isPending} planType={planType}
         />
       )}
+
+      {/* Subscriber Migration Dialog */}
+      <Dialog open={migrateOpen} onOpenChange={setMigrateOpen}>
+        <DialogContent className="bg-card border-border sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-card-foreground flex items-center gap-2">
+              <ArrowRightLeft className="h-4 w-4 text-primary" /> Migrate Subscribers
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 pt-2">
+            <p className="text-sm text-muted-foreground">
+              Move all active subscribers from <strong className="text-foreground">{migrateFromPlan?.name}</strong> to another plan.
+              Stripe subscriptions will be updated to the new plan's monthly price.
+            </p>
+            <div className="space-y-2">
+              <Label>Migrate to Plan</Label>
+              <Select value={migrateToPlanId} onValueChange={setMigrateToPlanId}>
+                <SelectTrigger className="bg-secondary border-border">
+                  <SelectValue placeholder="Select target plan..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {(plans ?? []).filter((p: any) => p.id !== migrateFromPlan?.id).map((p: any) => (
+                    <SelectItem key={p.id} value={String(p.id)}>{p.name} (${parseFloat(p.priceMonthly ?? "0").toFixed(0)}/mo)</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="bg-amber-500/10 border border-amber-500/20 rounded-md p-3 text-xs text-amber-400">
+              This will update all active Stripe subscriptions to the new plan's price immediately with no proration.
+              Existing subscribers will be billed the new amount on their next renewal date.
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setMigrateOpen(false)}>Cancel</Button>
+              <Button
+                disabled={!migrateToPlanId || migrateSubscribers.isPending}
+                onClick={() => {
+                  if (!migrateFromPlan || !migrateToPlanId) return;
+                  migrateSubscribers.mutate({
+                    fromPlanId: migrateFromPlan.id,
+                    toPlanId: parseInt(migrateToPlanId),
+                    planType,
+                  });
+                }}
+                className="gap-2"
+              >
+                <ArrowRightLeft className="h-4 w-4" />
+                {migrateSubscribers.isPending ? "Migrating..." : "Migrate Subscribers"}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Price-change warning dialog */}
       <AlertDialog open={priceWarnOpen} onOpenChange={setPriceWarnOpen}>

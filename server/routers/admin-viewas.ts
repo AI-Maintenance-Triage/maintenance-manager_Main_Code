@@ -689,9 +689,71 @@ export const adminViewAsRouter = router({
       return results;
     }),
 
-  // ─── Plan Distribution Analytics ─────────────────────────────────────────
+  // ─── Plan Distribution Analytics ────────────────────────────────────────────
   getPlanDistribution: adminProcedure
     .query(async () => {
       return db.getPlanDistributionStats();
+    }),
+
+  // ─── Subscriber Migration Tool ────────────────────────────────────────────
+  /** Move all active subscribers from one plan to another (companies or contractors). */
+  migrateSubscribers: adminProcedure
+    .input(z.object({
+      fromPlanId: z.number(),
+      toPlanId: z.number(),
+      planType: z.enum(["company", "contractor"]),
+    }))
+    .mutation(async ({ input }) => {
+      const { fromPlanId, toPlanId, planType } = input;
+      const toPlan = await db.getSubscriptionPlanById(toPlanId);
+      if (!toPlan) throw new Error("Target plan not found");
+
+      let movedCount = 0;
+      const errors: string[] = [];
+
+      if (planType === "company") {
+        const subs = await db.getCompaniesByPlanId(fromPlanId);
+        for (const company of subs) {
+          try {
+            // Update Stripe subscription to new price if both plans have Stripe prices
+            if (company.stripeSubscriptionId && toPlan.stripePriceIdMonthly) {
+              const stripeSub = await stripe.subscriptions.retrieve(company.stripeSubscriptionId);
+              const item = stripeSub.items.data[0];
+              if (item) {
+                await stripe.subscriptions.update(company.stripeSubscriptionId, {
+                  items: [{ id: item.id, price: toPlan.stripePriceIdMonthly }],
+                  proration_behavior: "none",
+                });
+              }
+            }
+            await db.updateCompany(company.id, { planId: toPlanId });
+            movedCount++;
+          } catch (e: any) {
+            errors.push(`company ${company.id}: ${e.message}`);
+          }
+        }
+      } else {
+        const subs = await db.getContractorsByPlanId(fromPlanId);
+        for (const contractor of subs) {
+          try {
+            if (contractor.stripeSubscriptionId && toPlan.stripePriceIdMonthly) {
+              const stripeSub = await stripe.subscriptions.retrieve(contractor.stripeSubscriptionId);
+              const item = stripeSub.items.data[0];
+              if (item) {
+                await stripe.subscriptions.update(contractor.stripeSubscriptionId, {
+                  items: [{ id: item.id, price: toPlan.stripePriceIdMonthly }],
+                  proration_behavior: "none",
+                });
+              }
+            }
+            await db.assignContractorPlan(contractor.id, toPlanId, null, null, contractor.planStatus ?? "active");
+            movedCount++;
+          } catch (e: any) {
+            errors.push(`contractor ${contractor.id}: ${e.message}`);
+          }
+        }
+      }
+
+      return { movedCount, errors };
     }),
 });
