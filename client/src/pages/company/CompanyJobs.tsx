@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent } from "@/components/ui/dropdown-menu";
 import { useViewAs } from "@/contexts/ViewAsContext";
 import { Plus, Zap, Clock, CheckCircle, AlertTriangle, Globe, X, Route, DollarSign, FileDown, Star, MessageSquare, ChevronDown, ChevronUp, Lock, Unlock, Pencil, MoreVertical, Trash2, Edit, History, RefreshCcw } from "lucide-react";
 import { useState } from "react";
@@ -137,6 +137,10 @@ export default function CompanyJobs() {
   const [commentsJob, setCommentsJob] = useState<{ id: number; title: string } | null>(null);
   const [expandedBreakdown, setExpandedBreakdown] = useState<number | null>(null);
   const [expandedHistory, setExpandedHistory] = useState<number | null>(null);
+
+  // Override priority / skill-tier dialog state (used by 3-dot menu)
+  const [overridePriorityJob, setOverridePriorityJob] = useState<any | null>(null);
+  const [overrideSkillTierJob, setOverrideSkillTierJob] = useState<any | null>(null);
 
   // Edit / delete / reopen state
   const [editJob, setEditJob] = useState<any | null>(null);
@@ -442,23 +446,7 @@ export default function CompanyJobs() {
                             )}
                           </span>
                         )}
-                        {/* Priority override dropdown — only on open/assigned/in_progress jobs */}
-                        {(job.status === "open" || job.status === "assigned" || job.status === "in_progress") && (
-                          <Select
-                            value={job.overridePriority ?? job.aiPriority ?? ""}
-                            onValueChange={(val) => overridePriority.mutate({ jobId: job.id, priority: val as any })}
-                          >
-                            <SelectTrigger className="h-5 text-xs border-border/50 bg-transparent w-auto px-1.5 gap-1 [&>svg]:h-3 [&>svg]:w-3">
-                              <SelectValue placeholder="Set priority" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="low"><span className="text-green-400">● Low</span></SelectItem>
-                              <SelectItem value="medium"><span className="text-yellow-400">● Medium</span></SelectItem>
-                              <SelectItem value="high"><span className="text-orange-400">● High</span></SelectItem>
-                              <SelectItem value="emergency"><span className="text-red-400">● Emergency</span></SelectItem>
-                            </SelectContent>
-                          </Select>
-                        )}
+
                         {/* Effective skill tier name */}
                         {(job.effectiveSkillTierName || job.aiSkillTier) && (
                           <span className="text-primary">
@@ -468,24 +456,7 @@ export default function CompanyJobs() {
                             )}
                           </span>
                         )}
-                        {/* Skill tier override dropdown — only on open/assigned/in_progress jobs */}
-                        {(job.status === "open" || job.status === "assigned" || job.status === "in_progress") && skillTiers.data && skillTiers.data.length > 0 && (
-                          <Select
-                            value={job.overrideSkillTierId ? String(job.overrideSkillTierId) : (job.skillTierId ? String(job.skillTierId) : "")}
-                            onValueChange={(val) => overrideSkillTier.mutate({ jobId: job.id, skillTierId: Number(val) })}
-                          >
-                            <SelectTrigger className="h-5 text-xs border-border/50 bg-transparent w-auto px-1.5 gap-1 [&>svg]:h-3 [&>svg]:w-3 max-w-[130px]">
-                              <SelectValue placeholder="Set tier" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {skillTiers.data.map((tier: any) => (
-                                <SelectItem key={tier.id} value={String(tier.id)}>
-                                  {tier.name} — ${tier.hourlyRate}/hr
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        )}
+
                         {/* Hourly rate */}
                         {job.hourlyRate && (
                           <span className={(job.overridePriority || job.overrideSkillTierId) ? "text-amber-400 font-medium" : ""}>
@@ -536,25 +507,74 @@ export default function CompanyJobs() {
                             <RefreshCcw className="h-3.5 w-3.5" />
                           </Button>
                         )}
-                        {/* 3-dot menu — only for open jobs */}
-                        {isEditable && (
+                        {/* 3-dot menu — open jobs get edit/delete; all non-paid jobs get priority/tier overrides */}
+                        {(isEditable || job.status === "assigned" || job.status === "in_progress" || job.status === "pending_verification") && (
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                               <Button size="sm" variant="ghost" className="h-6 w-6 p-0 text-muted-foreground hover:text-foreground">
                                 <MoreVertical className="h-4 w-4" />
                               </Button>
                             </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="w-36">
-                              <DropdownMenuItem onClick={() => openEditDialog(job)} className="gap-2 cursor-pointer">
-                                <Edit className="h-3.5 w-3.5" /> Edit Job
-                              </DropdownMenuItem>
-                              <DropdownMenuSeparator />
-                              <DropdownMenuItem
-                                onClick={() => setDeleteConfirmJob(job)}
-                                className="gap-2 cursor-pointer text-red-400 focus:text-red-400"
-                              >
-                                <Trash2 className="h-3.5 w-3.5" /> Delete Job
-                              </DropdownMenuItem>
+                            <DropdownMenuContent align="end" className="w-48">
+                              {isEditable && (
+                                <>
+                                  <DropdownMenuItem onClick={() => openEditDialog(job)} className="gap-2 cursor-pointer">
+                                    <Edit className="h-3.5 w-3.5" /> Edit Job
+                                  </DropdownMenuItem>
+                                  <DropdownMenuSeparator />
+                                </>
+                              )}
+                              {/* Priority override sub-menu */}
+                              <DropdownMenuSub>
+                                <DropdownMenuSubTrigger className="gap-2 cursor-pointer">
+                                  <Pencil className="h-3.5 w-3.5" /> Override Priority
+                                </DropdownMenuSubTrigger>
+                                <DropdownMenuSubContent>
+                                  {["low", "medium", "high", "emergency"].map((p) => (
+                                    <DropdownMenuItem
+                                      key={p}
+                                      className="gap-2 cursor-pointer"
+                                      onClick={() => overridePriority.mutate({ jobId: job.id, priority: p as any })}
+                                    >
+                                      <span className={p === "low" ? "text-green-400" : p === "medium" ? "text-yellow-400" : p === "high" ? "text-orange-400" : "text-red-400"}>●</span>
+                                      <span className="capitalize">{p}</span>
+                                      {(job.overridePriority ?? job.aiPriority) === p && <span className="ml-auto text-primary text-xs">✓</span>}
+                                    </DropdownMenuItem>
+                                  ))}
+                                </DropdownMenuSubContent>
+                              </DropdownMenuSub>
+                              {/* Skill tier override sub-menu */}
+                              {skillTiers.data && skillTiers.data.length > 0 && (
+                                <DropdownMenuSub>
+                                  <DropdownMenuSubTrigger className="gap-2 cursor-pointer">
+                                    <Zap className="h-3.5 w-3.5" /> Override Skill Tier
+                                  </DropdownMenuSubTrigger>
+                                  <DropdownMenuSubContent>
+                                    {skillTiers.data.map((tier: any) => (
+                                      <DropdownMenuItem
+                                        key={tier.id}
+                                        className="gap-2 cursor-pointer"
+                                        onClick={() => overrideSkillTier.mutate({ jobId: job.id, skillTierId: tier.id })}
+                                      >
+                                        <span>{tier.name}</span>
+                                        <span className="text-muted-foreground text-xs ml-1">${tier.hourlyRate}/hr</span>
+                                        {(job.overrideSkillTierId ?? job.skillTierId) === tier.id && <span className="ml-auto text-primary text-xs">✓</span>}
+                                      </DropdownMenuItem>
+                                    ))}
+                                  </DropdownMenuSubContent>
+                                </DropdownMenuSub>
+                              )}
+                              {isEditable && (
+                                <>
+                                  <DropdownMenuSeparator />
+                                  <DropdownMenuItem
+                                    onClick={() => setDeleteConfirmJob(job)}
+                                    className="gap-2 cursor-pointer text-red-400 focus:text-red-400"
+                                  >
+                                    <Trash2 className="h-3.5 w-3.5" /> Delete Job
+                                  </DropdownMenuItem>
+                                </>
+                              )}
                             </DropdownMenuContent>
                           </DropdownMenu>
                         )}

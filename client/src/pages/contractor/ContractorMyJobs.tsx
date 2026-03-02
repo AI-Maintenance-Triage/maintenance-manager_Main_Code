@@ -8,9 +8,11 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 import {
   Clock, CheckCircle, Play, Square, AlertCircle, Camera, CheckCheck,
-  XCircle, Loader2, Navigation2, MapPin, Wifi, WifiOff, MessageSquare, FileDown,
+  XCircle, Loader2, Navigation2, MapPin, Wifi, MessageSquare, FileDown,
+  Plus, Trash2, Receipt,
 } from "lucide-react";
 import { useState, useRef, useEffect, useCallback } from "react";
 import { toast } from "sonner";
@@ -162,6 +164,24 @@ function JobCard({ row, onUpdate, readOnly = false }: { row: any; onUpdate: () =
   const [showResubmitDialog, setShowResubmitDialog] = useState(false);
   const [resubmitNote, setResubmitNote] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const receiptFileInputRef = useRef<HTMLInputElement>(null);
+
+  // ── Materials / parts reimbursement state ────────────────────────────────
+  type MaterialLine = { description: string; price: string };
+  const [materialLines, setMaterialLines] = useState<MaterialLine[]>([]);
+  const [receiptPhotoUrl, setReceiptPhotoUrl] = useState<string | null>(null);
+  const [uploadingReceipt, setUploadingReceipt] = useState(false);
+
+  // ── Restore active session from server on mount ──────────────────────────
+  const { data: activeSessionData } = trpc.timeTracking.getActiveSessionForJob.useQuery(
+    { jobId: job.id },
+    { enabled: job.status === "in_progress" && activeSessionId === null, staleTime: 0 }
+  );
+  useEffect(() => {
+    if (activeSessionData && activeSessionId === null) {
+      setActiveSessionId(activeSessionData.id);
+    }
+  }, [activeSessionData, activeSessionId]);
 
   // ── Continuous GPS tracking state ────────────────────────────────────────
   const [isTracking, setIsTracking] = useState(false);
@@ -206,12 +226,30 @@ function JobCard({ row, onUpdate, readOnly = false }: { row: any; onUpdate: () =
 
   const addPing = trpc.timeTracking.addPing.useMutation();
 
+  const createReceipt = trpc.receipts.create.useMutation();
+
   const markComplete = trpc.contractor.markComplete.useMutation({
-    onSuccess: () => {
+    onSuccess: async (_, vars) => {
+      // Submit material receipts if any
+      const validLines = materialLines.filter(l => l.description.trim() && l.price.trim());
+      if (validLines.length > 0) {
+        const totalAmount = validLines.reduce((sum, l) => sum + parseFloat(l.price || "0"), 0).toFixed(2);
+        const descriptionText = validLines.map(l => `${l.description}: $${l.price}`).join("; ");
+        try {
+          await createReceipt.mutateAsync({
+            jobId: vars.jobId,
+            description: descriptionText,
+            amount: totalAmount,
+            receiptImageUrl: receiptPhotoUrl ?? undefined,
+          });
+        } catch { /* non-critical */ }
+      }
       toast.success("Job marked as complete! Awaiting company verification.");
       setShowCompleteDialog(false);
       setCompletionNotes("");
       setPhotoUrls([]);
+      setMaterialLines([]);
+      setReceiptPhotoUrl(null);
       onUpdate();
     },
     onError: (err: any) => toast.error(err.message),
@@ -352,6 +390,11 @@ function JobCard({ row, onUpdate, readOnly = false }: { row: any; onUpdate: () =
     );
   };
 
+  // ── Clock-out helper (can be called with or without location) ───────────
+  const doClockOut = useCallback((sessionId: number, lat: string, lng: string, method: "manual" | "auto_geofence" | "auto_timeout" = "manual") => {
+    clockOut.mutate({ sessionId, latitude: lat, longitude: lng, method });
+  }, [clockOut]);
+
   // ── Manual clock-out ──────────────────────────────────────────────────────
   const handleClockOut = () => {
     if (!activeSessionId) return;
@@ -369,21 +412,73 @@ function JobCard({ row, onUpdate, readOnly = false }: { row: any; onUpdate: () =
       () => {
         setGettingLocation(false);
         // Clock out without GPS if location fails
-        clockOut.mutate({
-          sessionId: activeSessionId,
-          latitude: "0",
-          longitude: "0",
-          method: "manual",
-        });
+        doClockOut(activeSessionId, "0", "0", "manual");
       },
       { enableHighAccuracy: true, timeout: 8000 }
     );
+  };
+
+  // ── Handle complete job: auto-clock-out first if still clocked in ─────────
+  const handleMarkComplete = () => {
+    setShowCompleteDialog(true);
+  };
+
+  const handleSubmitComplete = () => {
+    const validLines = materialLines.filter(l => l.description.trim() && l.price.trim());
+    const hasMaterials = validLines.length > 0;
+    if (hasMaterials && !receiptPhotoUrl) {
+      toast.error("Please upload a receipt photo for your materials.");
+      return;
+    }
+    // If still clocked in, clock out first then mark complete
+    if (activeSessionId) {
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          (pos) => {
+            doClockOut(activeSessionId, String(pos.coords.latitude), String(pos.coords.longitude), "manual");
+            markComplete.mutate({ jobId: job.id, completionNotes, completionPhotoUrls: photoUrls });
+          },
+          () => {
+            doClockOut(activeSessionId, "0", "0", "manual");
+            markComplete.mutate({ jobId: job.id, completionNotes, completionPhotoUrls: photoUrls });
+          },
+          { enableHighAccuracy: true, timeout: 5000 }
+        );
+      } else {
+        doClockOut(activeSessionId, "0", "0", "manual");
+        markComplete.mutate({ jobId: job.id, completionNotes, completionPhotoUrls: photoUrls });
+      }
+    } else {
+      markComplete.mutate({ jobId: job.id, completionNotes, completionPhotoUrls: photoUrls });
+    }
   };
 
   // ── Cleanup on unmount ────────────────────────────────────────────────────
   useEffect(() => {
     return () => stopTracking();
   }, [stopTracking]);
+
+  // ── Receipt photo upload ──────────────────────────────────────────────────
+  const handleReceiptUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 16 * 1024 * 1024) { toast.error("Receipt photo must be under 16 MB"); return; }
+    setUploadingReceipt(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const res = await fetch("/api/upload", { method: "POST", body: formData });
+      if (!res.ok) throw new Error("Upload failed");
+      const { url } = await res.json();
+      setReceiptPhotoUrl(url);
+      toast.success("Receipt uploaded");
+    } catch {
+      toast.error("Receipt upload failed. Please try again.");
+    } finally {
+      setUploadingReceipt(false);
+      if (receiptFileInputRef.current) receiptFileInputRef.current.value = "";
+    }
+  };
 
   const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -534,7 +629,7 @@ function JobCard({ row, onUpdate, readOnly = false }: { row: any; onUpdate: () =
               </div>
               {!readOnly && (
               <div className="flex flex-col gap-2 shrink-0">
-                {job.status === "assigned" && !activeSessionId && (
+                {job.status === "assigned" && !activeSessionId && activeSessionData === null && (
                   <Button
                     onClick={handleClockIn}
                     disabled={clockIn.isPending || gettingLocation}
@@ -548,7 +643,7 @@ function JobCard({ row, onUpdate, readOnly = false }: { row: any; onUpdate: () =
                   <>
                     <Button
                       onClick={handleClockOut}
-                      disabled={clockOut.isPending || gettingLocation}
+                      disabled={clockOut.isPending || gettingLocation || !activeSessionId}
                       variant="destructive"
                       className="gap-2"
                     >
@@ -558,7 +653,7 @@ function JobCard({ row, onUpdate, readOnly = false }: { row: any; onUpdate: () =
                       {gettingLocation ? "Getting GPS..." : "Clock Out"}
                     </Button>
                     <Button
-                      onClick={() => setShowCompleteDialog(true)}
+                      onClick={handleMarkComplete}
                       variant="outline"
                       className="gap-2 border-green-500/50 text-green-400 hover:bg-green-500/10"
                     >
@@ -569,7 +664,7 @@ function JobCard({ row, onUpdate, readOnly = false }: { row: any; onUpdate: () =
                 )}
                 {job.status === "assigned" && (
                   <Button
-                    onClick={() => setShowCompleteDialog(true)}
+                    onClick={handleMarkComplete}
                     variant="outline"
                     className="gap-2 border-green-500/50 text-green-400 hover:bg-green-500/10"
                   >
@@ -583,12 +678,21 @@ function JobCard({ row, onUpdate, readOnly = false }: { row: any; onUpdate: () =
         </CardContent>
       </Card>
 
-      <Dialog open={showCompleteDialog} onOpenChange={setShowCompleteDialog}>
-        <DialogContent className="sm:max-w-md">
+      <Dialog open={showCompleteDialog} onOpenChange={(open) => {
+        setShowCompleteDialog(open);
+        if (!open) { setMaterialLines([]); setReceiptPhotoUrl(null); }
+      }}>
+        <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Mark Job Complete</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4 py-2">
+          <div className="space-y-5 py-2">
+            {activeSessionId && (
+              <div className="flex items-start gap-2 p-3 rounded-lg bg-blue-500/10 border border-blue-500/20">
+                <Clock className="h-4 w-4 text-blue-400 mt-0.5 shrink-0" />
+                <p className="text-xs text-blue-300">You are currently clocked in. Submitting will automatically clock you out and record your time.</p>
+              </div>
+            )}
             <div className="space-y-2">
               <Label htmlFor="completion-notes">Work Summary <span className="text-destructive">*</span></Label>
               <Textarea
@@ -623,11 +727,91 @@ function JobCard({ row, onUpdate, readOnly = false }: { row: any; onUpdate: () =
               <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handlePhotoUpload} />
               <p className="text-xs text-muted-foreground">Photos help the company verify the completed work.</p>
             </div>
+
+            {/* Materials / Parts reimbursement */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <Label className="flex items-center gap-1.5">
+                  <Receipt className="h-3.5 w-3.5 text-amber-400" />
+                  Materials Purchased
+                </Label>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="h-7 text-xs gap-1"
+                  onClick={() => setMaterialLines(prev => [...prev, { description: "", price: "" }])}
+                >
+                  <Plus className="h-3 w-3" /> Add Material
+                </Button>
+              </div>
+              {materialLines.length > 0 && (
+                <div className="space-y-2">
+                  {materialLines.map((line, i) => (
+                    <div key={i} className="flex gap-2 items-center">
+                      <Input
+                        placeholder="Description (e.g. PVC pipe)"
+                        value={line.description}
+                        onChange={(e) => setMaterialLines(prev => prev.map((l, idx) => idx === i ? { ...l, description: e.target.value } : l))}
+                        className="flex-1 h-8 text-sm"
+                      />
+                      <Input
+                        placeholder="$0.00"
+                        value={line.price}
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        onChange={(e) => setMaterialLines(prev => prev.map((l, idx) => idx === i ? { ...l, price: e.target.value } : l))}
+                        className="w-24 h-8 text-sm"
+                      />
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="ghost"
+                        className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive"
+                        onClick={() => setMaterialLines(prev => prev.filter((_, idx) => idx !== i))}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                  ))}
+                  {/* Receipt photo — required when materials are listed */}
+                  <div className="pt-1 space-y-2">
+                    <p className="text-xs font-medium text-amber-400 flex items-center gap-1">
+                      <Receipt className="h-3 w-3" />
+                      Receipt Photo <span className="text-destructive">*</span>
+                      <span className="text-muted-foreground font-normal">(required for reimbursement)</span>
+                    </p>
+                    {receiptPhotoUrl ? (
+                      <div className="relative group w-fit">
+                        <img src={receiptPhotoUrl} alt="Receipt" className="h-20 w-20 object-cover rounded-lg border border-amber-500/30" />
+                        <button
+                          onClick={() => setReceiptPhotoUrl(null)}
+                          className="absolute -top-1 -right-1 bg-destructive text-white rounded-full w-4 h-4 text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                        >×</button>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => receiptFileInputRef.current?.click()}
+                        disabled={uploadingReceipt}
+                        className="h-16 w-40 rounded-lg border-2 border-dashed border-amber-500/40 flex flex-col items-center justify-center gap-1 text-amber-400/70 hover:border-amber-400 hover:text-amber-400 transition-colors disabled:opacity-50"
+                      >
+                        {uploadingReceipt ? <Loader2 className="h-5 w-5 animate-spin" /> : <><Camera className="h-5 w-5" /><span className="text-xs">Upload Receipt</span></>}
+                      </button>
+                    )}
+                    <input ref={receiptFileInputRef} type="file" accept="image/*" className="hidden" onChange={handleReceiptUpload} />
+                  </div>
+                </div>
+              )}
+              {materialLines.length === 0 && (
+                <p className="text-xs text-muted-foreground">Did you purchase any materials? Click "Add Material" to request reimbursement.</p>
+              )}
+            </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowCompleteDialog(false)}>Cancel</Button>
+            <Button variant="outline" onClick={() => { setShowCompleteDialog(false); setMaterialLines([]); setReceiptPhotoUrl(null); }}>Cancel</Button>
             <Button
-              onClick={() => markComplete.mutate({ jobId: job.id, completionNotes, completionPhotoUrls: photoUrls })}
+              onClick={handleSubmitComplete}
               disabled={markComplete.isPending || !completionNotes.trim()}
               className="gap-2 bg-green-600 hover:bg-green-700 text-white"
             >

@@ -14,6 +14,7 @@ import {
 import { useState } from "react";
 import { toast } from "sonner";
 import { RouteReplayDialog } from "@/components/RouteReplayDialog";
+import { RateContractorDialog } from "@/components/RateContractorDialog";
 import PaymentMethodManager from "@/components/PaymentMethodManager";
 
 export default function CompanyVerification() {
@@ -21,6 +22,24 @@ export default function CompanyVerification() {
   const { data: pendingJobs, isLoading } = trpc.jobs.pendingVerification.useQuery(undefined, {
     refetchInterval: 30000,
   });
+
+  const { data: platformFeeData } = trpc.platform.getFee.useQuery();
+  const platformFeePercent = platformFeeData?.platformFeePercent ?? 5;
+  const perListingFeeEnabled = platformFeeData?.perListingFeeEnabled ?? false;
+  const perListingFeeAmount = platformFeeData?.perListingFeeAmount ?? 0;
+
+  const [selected, setSelected] = useState<any | null>(null);
+  const [action, setAction] = useState<"approve" | "dispute" | null>(null);
+  const [notes, setNotes] = useState("");
+  const [step, setStep] = useState<"notes" | "confirm">("notes");
+  const [viewingPhotos, setViewingPhotos] = useState<string[] | null>(null);
+  const [replayJobId, setReplayJobId] = useState<number | null>(null);
+  const [selectedPaymentMethodId, setSelectedPaymentMethodId] = useState<string | null>(null);
+  const [pendingRatingJob, setPendingRatingJob] = useState<{ id: number; contractorName?: string } | null>(null);
+
+  // Check if contractorRatings feature is enabled for this company
+  const { data: planData } = trpc.company.getMyPlan.useQuery();
+  const hasRatingsFeature = !!(planData?.plan?.features as any)?.contractorRatings;
 
   const verifyJob = trpc.jobs.verifyJob.useMutation({
     onSuccess: (data, vars) => {
@@ -45,25 +64,27 @@ export default function CompanyVerification() {
       }
       utils.jobs.pendingVerification.invalidate();
       utils.jobs.list.invalidate();
-      setSelected(null);
-      setAction(null);
-      setStep("notes");
+      // After a successful payment approval, prompt the company to rate the contractor (if feature is enabled)
+      if (vars.action === "approve" && hasRatingsFeature) {
+        const jobForRating = selected;
+        setSelected(null);
+        setAction(null);
+        setStep("notes");
+        // Slight delay so the payment toast is visible before the rating dialog opens
+        setTimeout(() => {
+          setPendingRatingJob({
+            id: jobForRating?.job?.id,
+            contractorName: jobForRating?.job?.contractorName ?? jobForRating?.job?.assignedContractorName ?? undefined,
+          });
+        }, 800);
+      } else {
+        setSelected(null);
+        setAction(null);
+        setStep("notes");
+      }
     },
     onError: (err: any) => toast.error(err.message),
   });
-
-  const { data: platformFeeData } = trpc.platform.getFee.useQuery();
-  const platformFeePercent = platformFeeData?.platformFeePercent ?? 5;
-  const perListingFeeEnabled = platformFeeData?.perListingFeeEnabled ?? false;
-  const perListingFeeAmount = platformFeeData?.perListingFeeAmount ?? 0;
-
-  const [selected, setSelected] = useState<any | null>(null);
-  const [action, setAction] = useState<"approve" | "dispute" | null>(null);
-  const [notes, setNotes] = useState("");
-  const [step, setStep] = useState<"notes" | "confirm">("notes");
-  const [viewingPhotos, setViewingPhotos] = useState<string[] | null>(null);
-  const [replayJobId, setReplayJobId] = useState<number | null>(null);
-  const [selectedPaymentMethodId, setSelectedPaymentMethodId] = useState<string | null>(null);
 
   const openDialog = (job: any, act: "approve" | "dispute") => {
     setSelected(job);
@@ -358,6 +379,20 @@ export default function CompanyVerification() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Mandatory Contractor Rating Dialog (shown after payment approval, gated by contractorRatings plan feature) */}
+      {pendingRatingJob && (
+        <RateContractorDialog
+          open={!!pendingRatingJob}
+          onOpenChange={(open) => { if (!open) setPendingRatingJob(null); }}
+          maintenanceRequestId={pendingRatingJob.id}
+          contractorName={pendingRatingJob.contractorName}
+          onRated={() => {
+            setPendingRatingJob(null);
+            utils.jobs.list.invalidate();
+          }}
+        />
+      )}
 
       {/* Route Replay Dialog */}
       <RouteReplayDialog

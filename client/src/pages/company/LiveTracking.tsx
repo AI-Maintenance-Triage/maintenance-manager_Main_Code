@@ -521,7 +521,7 @@ export default function LiveTracking() {
                             size="sm"
                             variant="outline"
                             className="text-xs gap-1 h-7 border-blue-500/40 text-blue-400 hover:bg-blue-500/10"
-                            onClick={() => setReplaySession({ id: session.sessionId, title: session.jobTitle ?? "Job" })}
+                            onClick={() => setReplaySession({ id: session.maintenanceRequestId, title: session.jobTitle ?? "Job" })}
                           >
                             <Route className="h-3 w-3" /> View Route
                           </Button>

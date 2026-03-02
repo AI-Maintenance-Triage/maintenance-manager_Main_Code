@@ -130,14 +130,18 @@ export function RouteReplayDialog({ open, onOpenChange, jobId, jobTitle }: Route
 
   const handleMapReady = useCallback((map: google.maps.Map) => {
     mapRef.current = map;
-    if (!isLoading) drawRoute(map);
-  }, [isLoading, drawRoute]);
+    // Always store the map ref; drawRoute will be called by the effect below
+    // once data has loaded. If data is already available, draw immediately.
+    if (pings && pings.length > 0) drawRoute(map);
+  }, [pings, drawRoute]);
 
   useEffect(() => {
-    if (mapRef.current && !isLoading) {
+    // Re-draw whenever pings or session data changes (covers the case where
+    // the map was ready before data arrived).
+    if (mapRef.current && pings) {
       drawRoute(mapRef.current);
     }
-  }, [isLoading, drawRoute]);
+  }, [pings, drawRoute]);
 
   // Cleanup on close
   useEffect(() => {

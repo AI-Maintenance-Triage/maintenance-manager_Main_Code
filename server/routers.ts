@@ -1102,13 +1102,33 @@ const jobsRouter = router({
       const totalLaborCost = hourlyRate > 0 && totalLaborMinutes > 0
         ? ((totalLaborMinutes / 60) * hourlyRate).toFixed(2)
         : row.job.totalLaborCost ?? null;
+      // Enrich parts receipts total so payment dialog shows accurate parts cost
+      const receipts = await db.getPartsReceiptsByJob(row.job.id);
+      const livePartsCost = receipts.reduce((sum: number, r: any) => sum + parseFloat(r.amount ?? "0"), 0);
+      const totalPartsCost = livePartsCost > 0
+        ? livePartsCost.toFixed(2)
+        : row.job.totalPartsCost ?? null;
+      // Enrich with contractor name for the rating dialog
+      let contractorName: string | undefined;
+      if (row.job.assignedContractorId) {
+        try {
+          const contractorUserId = await db.getUserIdByContractorProfileId(row.job.assignedContractorId);
+          if (contractorUserId) {
+            const contractorUser = await db.getUserById(contractorUserId);
+            contractorName = contractorUser?.name ?? undefined;
+          }
+        } catch { /* non-critical */ }
+      }
       return {
         ...row,
         job: {
           ...row.job,
           totalLaborMinutes: totalLaborMinutes > 0 ? totalLaborMinutes : row.job.totalLaborMinutes,
           totalLaborCost,
+          totalPartsCost,
           sessionCount: completedSessions.length,
+          receipts,
+          contractorName,
         },
       };
     }));
