@@ -1367,3 +1367,11 @@
 - [x] Fix maintenance request fields: requestedByUser → RequestedByUserEntity, rental → Property
 - [x] Fix date field: createdDateTime → CreatedDateTime
 - [x] Fix markComplete endpoint to use /v1/tasks/residentrequests/{id}
+## Session 42: Reporting & Billing Fix
+- [x] Diagnose root cause: no transactions created because payment flow silently skipped
+- [x] Fix markComplete: auto-close active time sessions before calculating labor cost
+- [x] Fix verifyJob: live-check Stripe account status instead of relying on cached stripeOnboardingComplete flag
+- [x] Fix verifyJob: recalculate costs from time sessions if totalLaborCost is null at payment time
+- [x] Add retryPayment procedure for already-verified jobs with skipped payment
+- [x] Add "Retry Pay" button to CompanyJobs for verified jobs with no stripePaymentIntentId
+- [x] Confirm all reporting pages (company analytics, expense report, property reports, contractor earnings, admin revenue) correctly query transactions table

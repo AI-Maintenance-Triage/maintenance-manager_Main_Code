@@ -1,0 +1,31 @@
+{
+  "query": "SHOW TABLES LIKE '%maintenance%';\nSHOW TABLES LIKE '%transaction%';\nSHOW TABLES LIKE '%job%';",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user sHLCts4RR6iL2PA.1ead08cf1a54 --database bBuQZrfKLoBs6LmtvQ4y6E --execute SHOW TABLES LIKE '%maintenance%';\nSHOW TABLES LIKE '%transaction%';\nSHOW TABLES LIKE '%job%';",
+  "rows": [
+    {
+      "Tables_in_bBuQZrfKLoBs6LmtvQ4y6E (%maintenance%)": "maintenance_mode"
+    },
+    {
+      "Tables_in_bBuQZrfKLoBs6LmtvQ4y6E (%maintenance%)": "maintenance_requests"
+    },
+    {
+      "Tables_in_bBuQZrfKLoBs6LmtvQ4y6E (%maintenance%)": "Tables_in_bBuQZrfKLoBs6LmtvQ4y6E (%transaction%)"
+    },
+    {
+      "Tables_in_bBuQZrfKLoBs6LmtvQ4y6E (%maintenance%)": "transactions"
+    },
+    {
+      "Tables_in_bBuQZrfKLoBs6LmtvQ4y6E (%maintenance%)": "Tables_in_bBuQZrfKLoBs6LmtvQ4y6E (%job%)"
+    },
+    {
+      "Tables_in_bBuQZrfKLoBs6LmtvQ4y6E (%maintenance%)": "job_change_history"
+    },
+    {
+      "Tables_in_bBuQZrfKLoBs6LmtvQ4y6E (%maintenance%)": "job_comments"
+    }
+  ],
+  "messages": [],
+  "stdout": "Tables_in_bBuQZrfKLoBs6LmtvQ4y6E (%maintenance%)\nmaintenance_mode\nmaintenance_requests\nTables_in_bBuQZrfKLoBs6LmtvQ4y6E (%transaction%)\ntransactions\nTables_in_bBuQZrfKLoBs6LmtvQ4y6E (%job%)\njob_change_history\njob_comments\n",
+  "stderr": "",
+  "execution_time_ms": 72
+}

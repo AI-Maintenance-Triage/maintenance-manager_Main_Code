@@ -264,6 +264,15 @@ export default function CompanyJobs() {
     onError: (err: any) => toast.error(err.message),
   });
 
+  const retryPayment = trpc.jobs.retryPayment.useMutation({
+    onSuccess: () => {
+      toast.success("Payment processed successfully!");
+      invalidateJobs();
+      utils.company.dashboardStats.invalidate();
+    },
+    onError: (err: any) => toast.error(err.message ?? "Payment retry failed"),
+  });
+
   const createJob = trpc.jobs.create.useMutation({
     onSuccess: () => {
       toast.success("Job created and AI classification started!");
@@ -628,6 +637,19 @@ export default function CompanyJobs() {
                         >
                           {isBreakdownOpen ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
                           {isBreakdownOpen ? "Hide" : "Breakdown"}
+                        </Button>
+                      )}
+                      {/* Retry Payment button for verified jobs where payment was skipped */}
+                      {job.status === "verified" && !job.stripePaymentIntentId && job.assignedContractorId && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="text-xs gap-1 h-7 border-orange-500/40 text-orange-400 hover:bg-orange-500/10"
+                          disabled={retryPayment.isPending}
+                          onClick={() => retryPayment.mutate({ jobId: job.id })}
+                        >
+                          <RefreshCcw className="h-3 w-3" />
+                          {retryPayment.isPending ? "Processing..." : "Retry Pay"}
                         </Button>
                       )}
                       {/* Rate contractor button for paid/verified jobs */}

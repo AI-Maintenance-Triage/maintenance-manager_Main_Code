@@ -626,9 +626,25 @@ const contractorRouter = router({
     .mutation(async ({ ctx, input }) => {
       const profile = await getEffectiveContractorProfile(ctx);
       if (!profile) throw new TRPCError({ code: "NOT_FOUND" });
-      // Calculate labor cost from completed time sessions before marking complete
+      // Auto-close any still-active time sessions before calculating labor cost.
+      // This handles the case where a contractor forgot to clock out before marking the job done.
       const sessions = await db.getTimeSessionsByJob(input.jobId);
-      const completedSessions = sessions.filter((s: any) => s.status === "completed" && s.totalMinutes);
+      const autoCloseNow = Date.now();
+      for (const s of sessions) {
+        if ((s as any).status === "active" && (s as any).clockInTime) {
+          const mins = Math.max(1, Math.round((autoCloseNow - (s as any).clockInTime) / 60000));
+          await db.updateTimeSession((s as any).id, {
+            clockOutTime: autoCloseNow,
+            clockOutMethod: "auto_job_complete" as any,
+            status: "completed",
+            totalMinutes: mins,
+            billableMinutes: mins,
+          });
+        }
+      }
+      // Re-fetch sessions after auto-close
+      const updatedSessions = await db.getTimeSessionsByJob(input.jobId);
+      const completedSessions = updatedSessions.filter((s: any) => s.status === "completed" && s.totalMinutes);
       const totalLaborMinutes = completedSessions.reduce((sum: number, s: any) => sum + (s.totalMinutes ?? 0), 0);
       // Get job to find hourlyRate
       const jobs = await db.getContractorJobs(profile.id);
@@ -1172,8 +1188,26 @@ const jobsRouter = router({
           const contractorProfile = job.assignedContractorId
             ? await db.getContractorProfileById(job.assignedContractorId)
             : null;
-          if (!contractorProfile?.stripeAccountId || !contractorProfile.stripeOnboardingComplete) {
+          if (!contractorProfile?.stripeAccountId) {
             console.warn(`[Payment] Contractor ${job.assignedContractorId} has no Stripe account. Skipping payment for job ${input.jobId}.`);
+            return { success: true, paymentSkipped: true, reason: "contractor_no_stripe" };
+          }
+          // Live-check Stripe account status (don't rely solely on cached stripeOnboardingComplete flag)
+          let contractorStripeReady = contractorProfile.stripeOnboardingComplete;
+          if (!contractorStripeReady) {
+            try {
+              const acct = await stripe.accounts.retrieve(contractorProfile.stripeAccountId);
+              contractorStripeReady = acct.charges_enabled === true && acct.payouts_enabled === true;
+              if (contractorStripeReady) {
+                // Update cached flag so future checks are fast
+                await db.updateContractorProfile(contractorProfile.id, { stripeOnboardingComplete: true });
+              }
+            } catch (e) {
+              console.warn(`[Payment] Could not verify Stripe account for contractor ${contractorProfile.id}:`, e);
+            }
+          }
+          if (!contractorStripeReady) {
+            console.warn(`[Payment] Contractor ${job.assignedContractorId} Stripe account not ready. Skipping payment for job ${input.jobId}.`);
             return { success: true, paymentSkipped: true, reason: "contractor_no_stripe" };
           }
 
@@ -1198,9 +1232,43 @@ const jobsRouter = router({
           if (promoDiscounts.listingFeeDiscountPercent > 0) {
             perListingAmount = perListingAmount * (1 - promoDiscounts.listingFeeDiscountPercent / 100);
           }
-          // Calculate costs in cents
-          const laborCost = parseFloat(job.totalLaborCost ?? "0");
-          const partsCost = parseFloat(job.totalPartsCost ?? "0");
+          // Calculate costs in cents — recalculate from time sessions if job costs are null
+          let laborCost = parseFloat(job.totalLaborCost ?? "0");
+          let partsCost = parseFloat(job.totalPartsCost ?? "0");
+          if (laborCost === 0 && job.totalLaborCost == null) {
+            // Fallback: recalculate from time sessions
+            try {
+              const jobSessions = await db.getTimeSessionsByJob(input.jobId);
+              const autoCloseNowPay = Date.now();
+              for (const s of jobSessions) {
+                if ((s as any).status === "active" && (s as any).clockInTime) {
+                  const mins = Math.max(1, Math.round((autoCloseNowPay - (s as any).clockInTime) / 60000));
+                  await db.updateTimeSession((s as any).id, {
+                    clockOutTime: autoCloseNowPay,
+                    clockOutMethod: "auto_job_complete" as any,
+                    status: "completed",
+                    totalMinutes: mins,
+                    billableMinutes: mins,
+                  });
+                }
+              }
+              const refreshedSessions = await db.getTimeSessionsByJob(input.jobId);
+              const completedPay = refreshedSessions.filter((s: any) => s.status === "completed" && s.totalMinutes);
+              const totalMins = completedPay.reduce((sum: number, s: any) => sum + (s.totalMinutes ?? 0), 0);
+              const rate = parseFloat(job.hourlyRate ?? "0");
+              if (totalMins > 0 && rate > 0) {
+                laborCost = parseFloat(((totalMins / 60) * rate).toFixed(2));
+                // Persist recalculated cost back to the job
+                await db.updateMaintenanceRequest(input.jobId, {
+                  totalLaborMinutes: totalMins,
+                  totalLaborCost: laborCost.toFixed(2),
+                  hourlyRate: rate.toFixed(2),
+                });
+              }
+            } catch (e) {
+              console.warn(`[Payment] Could not recalculate labor cost for job ${input.jobId}:`, e);
+            }
+          }
           const jobCostDollars = laborCost + partsCost;
           const jobCostCents = Math.round(jobCostDollars * 100);
           const platformFeeCents = Math.round(jobCostDollars * (feePercent / 100) * 100);
@@ -1320,6 +1388,124 @@ const jobsRouter = router({
       }
 
       return { success: true };
+    }),
+
+  // Retry payment for a verified job that had payment skipped (e.g., contractor Stripe not ready)
+  retryPayment: companyAdminProcedure
+    .input(z.object({
+      jobId: z.number(),
+      paymentMethodId: z.string().optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const companyId = getEffectiveCompanyId(ctx);
+      const job = await db.getMaintenanceRequestById(input.jobId);
+      if (!job || job.companyId !== companyId) throw new TRPCError({ code: "NOT_FOUND" });
+      if (!['verified', 'paid_out'].includes(job.status ?? '')) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Job must be in verified status to retry payment" });
+      }
+      // Check if transaction already exists
+      const existingTxn = await db.getTransactionByJob(input.jobId);
+      if (existingTxn) throw new TRPCError({ code: "CONFLICT", message: "Payment already processed for this job" });
+
+      const company = await db.getCompanyById(companyId);
+      if (!company?.stripeCustomerId) throw new TRPCError({ code: "BAD_REQUEST", message: "No payment method on file" });
+
+      const contractorProfile = job.assignedContractorId
+        ? await db.getContractorProfileById(job.assignedContractorId)
+        : null;
+      if (!contractorProfile?.stripeAccountId) throw new TRPCError({ code: "BAD_REQUEST", message: "Contractor has no Stripe account" });
+
+      // Live-check Stripe account
+      let contractorStripeReady = contractorProfile.stripeOnboardingComplete;
+      if (!contractorStripeReady) {
+        try {
+          const acct = await stripe.accounts.retrieve(contractorProfile.stripeAccountId);
+          contractorStripeReady = acct.charges_enabled === true && acct.payouts_enabled === true;
+          if (contractorStripeReady) await db.updateContractorProfile(contractorProfile.id, { stripeOnboardingComplete: true });
+        } catch { /* ignore */ }
+      }
+      if (!contractorStripeReady) throw new TRPCError({ code: "BAD_REQUEST", message: "Contractor Stripe account is not ready to receive payments" });
+
+      // Recalculate costs if null
+      let laborCost = parseFloat(job.totalLaborCost ?? "0");
+      let partsCost = parseFloat(job.totalPartsCost ?? "0");
+      if (laborCost === 0 && job.totalLaborCost == null) {
+        const jobSessions = await db.getTimeSessionsByJob(input.jobId);
+        const autoNow = Date.now();
+        for (const s of jobSessions) {
+          if ((s as any).status === "active" && (s as any).clockInTime) {
+            const mins = Math.max(1, Math.round((autoNow - (s as any).clockInTime) / 60000));
+            await db.updateTimeSession((s as any).id, { clockOutTime: autoNow, clockOutMethod: "auto_job_complete" as any, status: "completed", totalMinutes: mins, billableMinutes: mins });
+          }
+        }
+        const refreshed = await db.getTimeSessionsByJob(input.jobId);
+        const completed = refreshed.filter((s: any) => s.status === "completed" && s.totalMinutes);
+        const totalMins = completed.reduce((sum: number, s: any) => sum + (s.totalMinutes ?? 0), 0);
+        const rate = parseFloat(job.hourlyRate ?? "0");
+        if (totalMins > 0 && rate > 0) {
+          laborCost = parseFloat(((totalMins / 60) * rate).toFixed(2));
+          await db.updateMaintenanceRequest(input.jobId, { totalLaborMinutes: totalMins, totalLaborCost: laborCost.toFixed(2), hourlyRate: rate.toFixed(2) });
+        }
+      }
+
+      const jobCostDollars = laborCost + partsCost;
+      const jobCostCents = Math.round(jobCostDollars * 100);
+      if (jobCostCents <= 0) throw new TRPCError({ code: "BAD_REQUEST", message: "Job has zero cost — cannot process payment" });
+
+      const companyPlan = await db.getEffectivePlanForCompany(companyId);
+      const globalSettings = await getPlatformSettings();
+      const feePercent = companyPlan?.platformFeePercent != null
+        ? parseFloat(String(companyPlan.platformFeePercent))
+        : parseFloat(globalSettings.platformFeePercent ?? "5");
+      const perListingEnabled = companyPlan != null ? companyPlan.perListingFeeEnabled : globalSettings.perListingFeeEnabled;
+      const perListingAmount = companyPlan != null ? parseFloat(String(companyPlan.perListingFeeAmount ?? "0")) : parseFloat(globalSettings.perListingFeeAmount ?? "0");
+      const platformFeeCents = Math.round(jobCostDollars * (feePercent / 100) * 100);
+      const perListingFeeCents = perListingEnabled ? Math.round(perListingAmount * 100) : 0;
+
+      const result = await chargeJobAndPayContractor({
+        stripeCustomerId: company.stripeCustomerId,
+        contractorStripeAccountId: contractorProfile.stripeAccountId,
+        jobCostCents,
+        platformFeeCents,
+        perListingFeeCents,
+        jobId: input.jobId,
+        companyId,
+        contractorProfileId: contractorProfile.id,
+        description: `Maintenance job #${input.jobId}: ${job.title}`,
+        paymentMethodId: input.paymentMethodId,
+      });
+
+      let isAchPayment = false;
+      try {
+        const pi = await stripe.paymentIntents.retrieve(result.paymentIntentId);
+        const pmId = pi.payment_method as string | undefined;
+        if (pmId) { const pm = await stripe.paymentMethods.retrieve(pmId); isAchPayment = pm.type === "us_bank_account"; }
+      } catch { /* non-critical */ }
+
+      const jobStatus = isAchPayment ? "payment_pending_ach" : "paid";
+      const txStatus = isAchPayment ? "escrow" : "captured";
+      await db.createTransaction({
+        maintenanceRequestId: input.jobId,
+        companyId,
+        contractorProfileId: contractorProfile.id,
+        laborCost: laborCost.toFixed(2),
+        partsCost: partsCost.toFixed(2),
+        platformFee: (result.platformFeeCents / 100).toFixed(2),
+        totalCharged: (result.totalChargeCents / 100).toFixed(2),
+        contractorPayout: (result.jobCostCents / 100).toFixed(2),
+        stripePaymentIntentId: result.paymentIntentId,
+        stripeTransferId: result.transferId,
+        status: txStatus,
+        paidAt: isAchPayment ? undefined : new Date(),
+      });
+      await db.updateMaintenanceRequest(input.jobId, {
+        stripePaymentIntentId: result.paymentIntentId,
+        status: jobStatus,
+        paidAt: isAchPayment ? undefined : new Date(),
+        platformFee: (result.platformFeeCents / 100).toFixed(2),
+        totalCost: (result.totalChargeCents / 100).toFixed(2),
+      });
+      return { success: true, status: jobStatus };
     }),
 
   // Get time sessions for a job

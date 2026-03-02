@@ -1,0 +1,118 @@
+{
+  "query": "SHOW TABLES;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user sHLCts4RR6iL2PA.1ead08cf1a54 --database bBuQZrfKLoBs6LmtvQ4y6E --execute SHOW TABLES;",
+  "rows": [
+    {
+      "Tables_in_bBuQZrfKLoBs6LmtvQ4y6E": "__drizzle_migrations"
+    },
+    {
+      "Tables_in_bBuQZrfKLoBs6LmtvQ4y6E": "account_credits"
+    },
+    {
+      "Tables_in_bBuQZrfKLoBs6LmtvQ4y6E": "account_suspensions"
+    },
+    {
+      "Tables_in_bBuQZrfKLoBs6LmtvQ4y6E": "activity_events"
+    },
+    {
+      "Tables_in_bBuQZrfKLoBs6LmtvQ4y6E": "audit_log"
+    },
+    {
+      "Tables_in_bBuQZrfKLoBs6LmtvQ4y6E": "companies"
+    },
+    {
+      "Tables_in_bBuQZrfKLoBs6LmtvQ4y6E": "company_payment_methods"
+    },
+    {
+      "Tables_in_bBuQZrfKLoBs6LmtvQ4y6E": "company_promo_redemptions"
+    },
+    {
+      "Tables_in_bBuQZrfKLoBs6LmtvQ4y6E": "company_settings"
+    },
+    {
+      "Tables_in_bBuQZrfKLoBs6LmtvQ4y6E": "contractor_companies"
+    },
+    {
+      "Tables_in_bBuQZrfKLoBs6LmtvQ4y6E": "contractor_invites"
+    },
+    {
+      "Tables_in_bBuQZrfKLoBs6LmtvQ4y6E": "contractor_profiles"
+    },
+    {
+      "Tables_in_bBuQZrfKLoBs6LmtvQ4y6E": "contractor_ratings"
+    },
+    {
+      "Tables_in_bBuQZrfKLoBs6LmtvQ4y6E": "dismissed_announcements"
+    },
+    {
+      "Tables_in_bBuQZrfKLoBs6LmtvQ4y6E": "feature_flags"
+    },
+    {
+      "Tables_in_bBuQZrfKLoBs6LmtvQ4y6E": "integration_connectors"
+    },
+    {
+      "Tables_in_bBuQZrfKLoBs6LmtvQ4y6E": "job_change_history"
+    },
+    {
+      "Tables_in_bBuQZrfKLoBs6LmtvQ4y6E": "job_comments"
+    },
+    {
+      "Tables_in_bBuQZrfKLoBs6LmtvQ4y6E": "location_pings"
+    },
+    {
+      "Tables_in_bBuQZrfKLoBs6LmtvQ4y6E": "maintenance_mode"
+    },
+    {
+      "Tables_in_bBuQZrfKLoBs6LmtvQ4y6E": "maintenance_requests"
+    },
+    {
+      "Tables_in_bBuQZrfKLoBs6LmtvQ4y6E": "notifications"
+    },
+    {
+      "Tables_in_bBuQZrfKLoBs6LmtvQ4y6E": "parts_receipts"
+    },
+    {
+      "Tables_in_bBuQZrfKLoBs6LmtvQ4y6E": "password_reset_tokens"
+    },
+    {
+      "Tables_in_bBuQZrfKLoBs6LmtvQ4y6E": "payout_holds"
+    },
+    {
+      "Tables_in_bBuQZrfKLoBs6LmtvQ4y6E": "platform_announcements"
+    },
+    {
+      "Tables_in_bBuQZrfKLoBs6LmtvQ4y6E": "platform_settings"
+    },
+    {
+      "Tables_in_bBuQZrfKLoBs6LmtvQ4y6E": "pms_integrations"
+    },
+    {
+      "Tables_in_bBuQZrfKLoBs6LmtvQ4y6E": "pms_webhook_events"
+    },
+    {
+      "Tables_in_bBuQZrfKLoBs6LmtvQ4y6E": "promo_codes"
+    },
+    {
+      "Tables_in_bBuQZrfKLoBs6LmtvQ4y6E": "properties"
+    },
+    {
+      "Tables_in_bBuQZrfKLoBs6LmtvQ4y6E": "skill_tiers"
+    },
+    {
+      "Tables_in_bBuQZrfKLoBs6LmtvQ4y6E": "subscription_plans"
+    },
+    {
+      "Tables_in_bBuQZrfKLoBs6LmtvQ4y6E": "time_sessions"
+    },
+    {
+      "Tables_in_bBuQZrfKLoBs6LmtvQ4y6E": "transactions"
+    },
+    {
+      "Tables_in_bBuQZrfKLoBs6LmtvQ4y6E": "users"
+    }
+  ],
+  "messages": [],
+  "stdout": "Tables_in_bBuQZrfKLoBs6LmtvQ4y6E\n__drizzle_migrations\naccount_credits\naccount_suspensions\nactivity_events\naudit_log\ncompanies\ncompany_payment_methods\ncompany_promo_redemptions\ncompany_settings\ncontractor_companies\ncontractor_invites\ncontractor_profiles\ncontractor_ratings\ndismissed_announcements\nfeature_flags\nintegration_connectors\njob_change_history\njob_comments\nlocation_pings\nmaintenance_mode\nmaintenance_requests\nnotifications\nparts_receipts\npassword_reset_tokens\npayout_holds\nplatform_announcements\nplatform_settings\npms_integrations\npms_webhook_events\npromo_codes\nproperties\nskill_tiers\nsubscription_plans\ntime_sessions\ntransactions\nusers\n",
+  "stderr": "",
+  "execution_time_ms": 51
+}

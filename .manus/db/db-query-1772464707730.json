@@ -1,0 +1,9 @@
+{
+  "query": "SELECT COUNT(*) as total, status, COUNT(DISTINCT companyId) as companies, COUNT(DISTINCT contractorProfileId) as contractors FROM transactions GROUP BY status;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user sHLCts4RR6iL2PA.1ead08cf1a54 --database bBuQZrfKLoBs6LmtvQ4y6E --execute SELECT COUNT(*) as total, status, COUNT(DISTINCT companyId) as companies, COUNT(DISTINCT contractorProfileId) as contractors FROM transactions GROUP BY status;",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 100
+}

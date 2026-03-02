@@ -1,0 +1,8 @@
+{
+  "query": "SELECT status, COUNT(*) as count FROM maintenanceRequests GROUP BY status;\nSELECT COUNT(*) as total_jobs, SUM(CASE WHEN assignedContractorId IS NOT NULL THEN 1 ELSE 0 END) as assigned, SUM(CASE WHEN status IN ('verified','paid','completed') THEN 1 ELSE 0 END) as completed FROM maintenanceRequests;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user sHLCts4RR6iL2PA.1ead08cf1a54 --database bBuQZrfKLoBs6LmtvQ4y6E --execute SELECT status, COUNT(*) as count FROM maintenanceRequests GROUP BY status;\nSELECT COUNT(*) as total_jobs, SUM(CASE WHEN assignedContractorId IS NOT NULL THEN 1 ELSE 0 END) as assigned, SUM(CASE WHEN status IN ('verified','paid','completed') THEN 1 ELSE 0 END) as completed FROM maintenanceRequests;",
+  "returncode": 1,
+  "logs": [
+    "ERROR 1146 (42S02) at line 1: Table 'bbuqzrfklobs6lmtvq4y6e.maintenanceRequests' doesn't exist"
+  ]
+}
