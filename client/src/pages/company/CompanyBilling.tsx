@@ -672,7 +672,19 @@ export default function CompanyBilling() {
               onClick={() => setBillingInterval("annual")}
               className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${billingInterval === "annual" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
             >
-              Annual <span className="text-green-400 ml-1">Save ~17%</span>
+                Annual
+              {(() => {
+                // Compute average discount across all active plans that have both prices
+                const plansWithDiscount = activePlans.filter(p => parseFloat(p.priceMonthly ?? "0") > 0 && parseFloat(p.priceAnnual ?? "0") > 0);
+                if (plansWithDiscount.length === 0) return null;
+                const avgPct = plansWithDiscount.reduce((sum, p) => {
+                  const mo = parseFloat(p.priceMonthly ?? "0");
+                  const yr = parseFloat(p.priceAnnual ?? "0");
+                  return sum + (1 - yr / (mo * 12)) * 100;
+                }, 0) / plansWithDiscount.length;
+                if (avgPct <= 0) return null;
+                return <span className="text-green-400 ml-1">Save {Math.round(avgPct)}%</span>;
+              })()}
             </button>
           </div>
         </div>
@@ -726,9 +738,21 @@ export default function CompanyBilling() {
                     <div className="mt-2">
                       <span className="text-3xl font-bold text-foreground">${displayPrice.toFixed(0)}</span>
                       <span className="text-sm text-muted-foreground">/mo</span>
-                      {billingInterval === "annual" && parseFloat(p.priceAnnual ?? "0") > 0 && (
-                        <p className="text-xs text-muted-foreground mt-0.5">Billed ${parseFloat(p.priceAnnual ?? "0").toFixed(0)}/yr</p>
-                      )}
+                      {billingInterval === "annual" && parseFloat(p.priceAnnual ?? "0") > 0 && (() => {
+                        const mo = parseFloat(p.priceMonthly ?? "0");
+                        const yr = parseFloat(p.priceAnnual ?? "0");
+                        const savingsPct = mo > 0 ? Math.round((1 - yr / (mo * 12)) * 100) : 0;
+                        return (
+                          <div className="flex items-center gap-2 mt-0.5">
+                            <p className="text-xs text-muted-foreground">Billed ${yr.toFixed(0)}/yr</p>
+                            {savingsPct > 0 && (
+                              <span className="inline-flex items-center text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-green-500/15 text-green-400 border border-green-500/30">
+                                Save {savingsPct}%
+                              </span>
+                            )}
+                          </div>
+                        );
+                      })()}
                     </div>
                     {/* Fee info — always shown for company plans */}
                     <div className="mt-2 flex flex-wrap gap-1.5">

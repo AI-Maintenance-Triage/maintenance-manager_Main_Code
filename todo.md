@@ -1288,3 +1288,10 @@
 - [x] Billing: show next billing date on the Current Plan card (from subscription.current_period_end)
 - [x] Skill Tiers: remove Add and Delete buttons from company view — companies can only edit prices
 - [x] Settings: remove the "Integrations" tab from CompanySettings and redirect that nav item to /company/integrations
+
+## Session 38: Annual Billing Discount Field
+
+- [x] Admin plan editor: replace "Annual Price ($)" input with "Annual Billing Discount (%)" input
+- [x] Auto-calculate annual price = monthly * 12 * (1 - discount/100), display as read-only preview below the field
+- [x] Store/send the calculated annual price (not the discount %) to the backend — no schema change needed
+- [x] Company plan selector: derive discount % from monthly/annual prices and show it in the green savings badge

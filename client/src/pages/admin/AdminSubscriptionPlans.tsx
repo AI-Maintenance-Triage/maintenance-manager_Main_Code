@@ -51,6 +51,7 @@ interface PlanFormState {
   description: string;
   priceMonthly: string;
   priceAnnual: string;
+  annualDiscountPct: string; // UI-only: drives priceAnnual = monthly * 12 * (1 - pct/100)
   maxItems1: string;   // maxProperties (company) | maxActiveJobs (contractor)
   maxItems2: string;   // maxContractors (company) | maxCompanies (contractor)
   maxItems3: string;   // maxJobsPerMonth (company) | unused (contractor)
@@ -72,7 +73,7 @@ function emptyForm(planType: "company" | "contractor"): PlanFormState {
   const flags = planType === "company" ? COMPANY_FEATURE_FLAGS : CONTRACTOR_FEATURE_FLAGS;
   return {
     name: "", description: "",
-    priceMonthly: "0", priceAnnual: "0",
+    priceMonthly: "0", priceAnnual: "0", annualDiscountPct: "0",
     maxItems1: "", maxItems2: "", maxItems3: "",
     isActive: true, sortOrder: "0",
     features: defaultFeatures(flags),
@@ -90,6 +91,13 @@ function planToForm(plan: any, planType: "company" | "contractor"): PlanFormStat
     description: plan.description ?? "",
     priceMonthly: String(parseFloat(plan.priceMonthly ?? "0")),
     priceAnnual: String(parseFloat(plan.priceAnnual ?? "0")),
+    annualDiscountPct: (() => {
+      const mo = parseFloat(plan.priceMonthly ?? "0");
+      const yr = parseFloat(plan.priceAnnual ?? "0");
+      if (mo <= 0 || yr <= 0) return "0";
+      const pct = (1 - yr / (mo * 12)) * 100;
+      return pct > 0 ? String(Math.round(pct * 10) / 10) : "0";
+    })(),
     maxItems1: planType === "company"
       ? (f.maxProperties != null ? String(f.maxProperties) : "")
       : (f.maxActiveJobs != null ? String(f.maxActiveJobs) : ""),
@@ -188,12 +196,36 @@ function PlanFormDialog({
               <div className="space-y-2">
                 <Label>Monthly Price ($)</Label>
                 <Input type="number" min="0" step="0.01" value={form.priceMonthly}
-                  onChange={e => set("priceMonthly", e.target.value)} className="bg-secondary border-border" />
+                  onChange={e => {
+                    const mo = parseFloat(e.target.value) || 0;
+                    const pct = parseFloat(form.annualDiscountPct) || 0;
+                    const calculated = mo > 0 && pct > 0 ? String(Math.round(mo * 12 * (1 - pct / 100) * 100) / 100) : form.priceAnnual;
+                    setForm(prev => ({ ...prev, priceMonthly: e.target.value, priceAnnual: calculated }));
+                  }}
+                  className="bg-secondary border-border" />
               </div>
               <div className="space-y-2">
-                <Label>Annual Price ($)</Label>
-                <Input type="number" min="0" step="0.01" value={form.priceAnnual}
-                  onChange={e => set("priceAnnual", e.target.value)} className="bg-secondary border-border" />
+                <Label className="flex items-center gap-1.5">Annual Billing Discount <span className="text-muted-foreground font-normal">(%)</span></Label>
+                <div className="relative">
+                  <Input
+                    type="number" min="0" max="100" step="0.5"
+                    value={form.annualDiscountPct}
+                    onChange={e => {
+                      const pct = e.target.value;
+                      const mo = parseFloat(form.priceMonthly) || 0;
+                      const calculated = mo > 0 ? String(Math.round(mo * 12 * (1 - parseFloat(pct || "0") / 100) * 100) / 100) : "0";
+                      setForm(prev => ({ ...prev, annualDiscountPct: pct, priceAnnual: calculated }));
+                    }}
+                    className="bg-secondary border-border pr-8"
+                  />
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">%</span>
+                </div>
+                {parseFloat(form.annualDiscountPct) > 0 && parseFloat(form.priceMonthly) > 0 && (
+                  <p className="text-xs text-emerald-400">
+                    Annual price: ${(parseFloat(form.priceMonthly) * 12 * (1 - parseFloat(form.annualDiscountPct) / 100)).toFixed(2)}/yr
+                    &nbsp;·&nbsp;${(parseFloat(form.priceMonthly) * (1 - parseFloat(form.annualDiscountPct) / 100)).toFixed(2)}/mo equivalent
+                  </p>
+                )}
               </div>
               <div className="space-y-2">
                 <Label>Sort Order</Label>
