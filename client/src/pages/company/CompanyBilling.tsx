@@ -660,21 +660,23 @@ export default function CompanyBilling() {
             <h2 className="text-lg font-semibold text-foreground">Available Plans</h2>
             <p className="text-sm text-muted-foreground">Choose the plan that best fits your portfolio size</p>
           </div>
-          {/* Billing interval toggle */}
-          <div className="flex items-center gap-1 bg-secondary rounded-lg p-1">
-            <button
-              onClick={() => setBillingInterval("monthly")}
-              className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${billingInterval === "monthly" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
-            >
-              Monthly
-            </button>
-            <button
-              onClick={() => setBillingInterval("annual")}
-              className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${billingInterval === "annual" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
-            >
-              Annual <span className="text-green-400 ml-1">Save</span>
-            </button>
-          </div>
+          {/* Billing interval toggle — only show if at least one plan has annual pricing */}
+          {activePlans.some(p => parseFloat(p.priceAnnual ?? "0") > 0) && (
+            <div className="flex items-center gap-1 bg-secondary rounded-lg p-1">
+              <button
+                onClick={() => setBillingInterval("monthly")}
+                className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${billingInterval === "monthly" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
+              >
+                Monthly
+              </button>
+              <button
+                onClick={() => setBillingInterval("annual")}
+                className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${billingInterval === "annual" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
+              >
+                Annual <span className="text-green-400 ml-1">Save</span>
+              </button>
+            </div>
+          )}
         </div>
 
         {plansLoading ? (
@@ -694,14 +696,34 @@ export default function CompanyBilling() {
           </Card>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {activePlans.map((p, idx) => {
+            {(() => {
+              // Compute Best Value: plan with highest savings % when in annual mode (must be >= 2pp above avg)
+              const plansWithAnnual = activePlans.filter(p => parseFloat(p.priceMonthly ?? "0") > 0 && parseFloat(p.priceAnnual ?? "0") > 0);
+              const savingsPctMap = new Map(plansWithAnnual.map(p => {
+                const mo = parseFloat(p.priceMonthly ?? "0");
+                const yr = parseFloat(p.priceAnnual ?? "0");
+                return [p.id, Math.round((1 - yr / (mo * 12)) * 100)];
+              }));
+              const avgSavings = plansWithAnnual.length > 0
+                ? Array.from(savingsPctMap.values()).reduce((a, b) => a + b, 0) / plansWithAnnual.length
+                : 0;
+              const maxSavings = plansWithAnnual.length > 0 ? Math.max(...Array.from(savingsPctMap.values())) : 0;
+              const bestValueId = billingInterval === "annual" && maxSavings > 0 && (maxSavings - avgSavings) >= 2
+                ? plansWithAnnual.find(p => savingsPctMap.get(p.id) === maxSavings)?.id
+                : null;
+
+              return activePlans.map((p, idx) => {
               const isCurrent = plan?.id === p.id;
+              const isBestValue = p.id === bestValueId;
               const PlanIcon = PLAN_ICONS[idx % PLAN_ICONS.length];
-              const displayPrice = billingInterval === "annual"
+              const hasAnnualPrice = parseFloat(p.priceAnnual ?? "0") > 0;
+              // If viewing annual but this plan has no annual price, fall back to monthly display
+              const effectiveInterval = billingInterval === "annual" && !hasAnnualPrice ? "monthly" : billingInterval;
+              const displayPrice = effectiveInterval === "annual"
                 ? parseFloat(p.priceAnnual ?? "0") / 12
                 : parseFloat(p.priceMonthly ?? "0");
               const features = (p.features as any) ?? {};
-              const hasStripePrice = billingInterval === "annual" ? !!p.stripePriceIdAnnual : !!p.stripePriceIdMonthly;
+              const hasStripePrice = effectiveInterval === "annual" ? !!p.stripePriceIdAnnual : !!p.stripePriceIdMonthly;
 
               return (
                 <Card
@@ -713,6 +735,11 @@ export default function CompanyBilling() {
                   {isCurrent && (
                     <div className="absolute -top-3 left-1/2 -translate-x-1/2">
                       <span className="bg-primary text-primary-foreground text-xs font-semibold px-3 py-1 rounded-full">Current Plan</span>
+                    </div>
+                  )}
+                  {isBestValue && !isCurrent && (
+                    <div className="absolute -top-3 right-4">
+                      <span className="bg-amber-500 text-black text-[10px] font-bold px-2.5 py-1 rounded-full tracking-wide">★ Best Value</span>
                     </div>
                   )}
                   <CardHeader className="pb-3">
@@ -821,7 +848,7 @@ export default function CompanyBilling() {
                   </CardContent>
                 </Card>
               );
-            })}
+            })})()}
           </div>
         )}
       </div>

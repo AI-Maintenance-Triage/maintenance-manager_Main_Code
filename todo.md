@@ -1295,3 +1295,11 @@
 - [x] Auto-calculate annual price = monthly * 12 * (1 - discount/100), display as read-only preview below the field
 - [x] Store/send the calculated annual price (not the discount %) to the backend — no schema change needed
 - [x] Company plan selector: derive discount % from monthly/annual prices and show it in the green savings badge
+
+## Session 39: No Annual Billing Toggle + Best Value Badge
+
+- [x] Admin plan editor: add "No annual billing" checkbox that zeroes priceAnnual and disables the discount field
+- [x] Store annualBillingEnabled flag on the plan (use priceAnnual === 0 as the signal — no schema change needed)
+- [x] Company billing page: hide the annual toggle entirely if ALL active plans have no annual price; hide per-plan annual option if that plan has priceAnnual === 0
+- [x] Company billing page: add "Best Value" badge to the plan card with the highest savings % when annual toggle is selected
+- [x] "Best Value" only shows if that plan's savings % is meaningfully higher (>= 2pp above average) than the others

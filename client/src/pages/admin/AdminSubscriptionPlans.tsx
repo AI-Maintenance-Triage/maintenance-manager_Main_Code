@@ -52,6 +52,7 @@ interface PlanFormState {
   priceMonthly: string;
   priceAnnual: string;
   annualDiscountPct: string; // UI-only: drives priceAnnual = monthly * 12 * (1 - pct/100)
+  noAnnualBilling: boolean;  // UI-only: when true, priceAnnual is sent as 0
   maxItems1: string;   // maxProperties (company) | maxActiveJobs (contractor)
   maxItems2: string;   // maxContractors (company) | maxCompanies (contractor)
   maxItems3: string;   // maxJobsPerMonth (company) | unused (contractor)
@@ -73,7 +74,7 @@ function emptyForm(planType: "company" | "contractor"): PlanFormState {
   const flags = planType === "company" ? COMPANY_FEATURE_FLAGS : CONTRACTOR_FEATURE_FLAGS;
   return {
     name: "", description: "",
-    priceMonthly: "0", priceAnnual: "0", annualDiscountPct: "0",
+    priceMonthly: "0", priceAnnual: "0", annualDiscountPct: "0", noAnnualBilling: false,
     maxItems1: "", maxItems2: "", maxItems3: "",
     isActive: true, sortOrder: "0",
     features: defaultFeatures(flags),
@@ -91,6 +92,7 @@ function planToForm(plan: any, planType: "company" | "contractor"): PlanFormStat
     description: plan.description ?? "",
     priceMonthly: String(parseFloat(plan.priceMonthly ?? "0")),
     priceAnnual: String(parseFloat(plan.priceAnnual ?? "0")),
+    noAnnualBilling: parseFloat(plan.priceAnnual ?? "0") === 0,
     annualDiscountPct: (() => {
       const mo = parseFloat(plan.priceMonthly ?? "0");
       const yr = parseFloat(plan.priceAnnual ?? "0");
@@ -132,7 +134,7 @@ function formToMutationInput(form: PlanFormState, planType: "company" | "contrac
     name: form.name.trim(),
     description: form.description.trim() || undefined,
     priceMonthly: parseFloat(form.priceMonthly) || 0,
-    priceAnnual: parseFloat(form.priceAnnual) || 0,
+    priceAnnual: form.noAnnualBilling ? 0 : (parseFloat(form.priceAnnual) || 0),
     isActive: form.isActive,
     sortOrder: parseInt(form.sortOrder) || 0,
     features: featuresBase,
@@ -210,22 +212,33 @@ function PlanFormDialog({
                   <Input
                     type="number" min="0" max="100" step="0.5"
                     value={form.annualDiscountPct}
+                    disabled={form.noAnnualBilling}
                     onChange={e => {
                       const pct = e.target.value;
                       const mo = parseFloat(form.priceMonthly) || 0;
                       const calculated = mo > 0 ? String(Math.round(mo * 12 * (1 - parseFloat(pct || "0") / 100) * 100) / 100) : "0";
                       setForm(prev => ({ ...prev, annualDiscountPct: pct, priceAnnual: calculated }));
                     }}
-                    className="bg-secondary border-border pr-8"
+                    className={`bg-secondary border-border pr-8 ${form.noAnnualBilling ? "opacity-40 cursor-not-allowed" : ""}`}
                   />
                   <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">%</span>
                 </div>
-                {parseFloat(form.annualDiscountPct) > 0 && parseFloat(form.priceMonthly) > 0 && (
+                {!form.noAnnualBilling && parseFloat(form.annualDiscountPct) > 0 && parseFloat(form.priceMonthly) > 0 && (
                   <p className="text-xs text-emerald-400">
                     Annual price: ${(parseFloat(form.priceMonthly) * 12 * (1 - parseFloat(form.annualDiscountPct) / 100)).toFixed(2)}/yr
                     &nbsp;·&nbsp;${(parseFloat(form.priceMonthly) * (1 - parseFloat(form.annualDiscountPct) / 100)).toFixed(2)}/mo equivalent
                   </p>
                 )}
+                <div className="flex items-center gap-2 pt-1">
+                  <Switch
+                    id="no-annual"
+                    checked={form.noAnnualBilling}
+                    onCheckedChange={v => setForm(prev => ({ ...prev, noAnnualBilling: v, priceAnnual: v ? "0" : prev.priceAnnual, annualDiscountPct: v ? "0" : prev.annualDiscountPct }))}
+                  />
+                  <label htmlFor="no-annual" className="text-xs text-muted-foreground cursor-pointer select-none">
+                    No annual billing (monthly only)
+                  </label>
+                </div>
               </div>
               <div className="space-y-2">
                 <Label>Sort Order</Label>
