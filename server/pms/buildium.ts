@@ -10,11 +10,12 @@ const BASE_URL = "https://api.buildium.com/v1";
 
 async function buildiumFetch(credentials: PmsCredentials, path: string, options: RequestInit = {}) {
   const url = `${BASE_URL}${path}`;
+  // Buildium uses HTTP Basic Auth: Authorization: Basic base64(clientId:clientSecret)
+  const basicToken = Buffer.from(`${credentials.clientId ?? ""}:${credentials.clientSecret ?? ""}`).toString("base64");
   const res = await fetch(url, {
     ...options,
     headers: {
-      "x-buildium-client-id": credentials.clientId ?? "",
-      "x-buildium-client-secret": credentials.clientSecret ?? "",
+      "Authorization": `Basic ${basicToken}`,
       "Content-Type": "application/json",
       ...(options.headers ?? {}),
     },
