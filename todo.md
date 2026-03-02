@@ -1343,3 +1343,18 @@
 - [ ] Dialog cannot be dismissed without submitting a rating (1–5 stars + optional comment)
 - [ ] Save rating to contractorRatings table linked to the transaction
 - [ ] Only skip if a rating already exists for this transaction
+
+## Session 40: Buildium Webhook Secret Flow Fix + Integration Polish
+### Buildium Webhook Secret Flow
+- [x] Fix: Buildium generates its own signing secret — our platform must receive and store it (not supply one)
+- [x] Backend: pms.list now exposes isSandbox flag by decoding credentialsJson
+- [x] Backend: pms-webhook.ts now checks pmsIntegrations table first for HMAC verification (then falls back to legacy integrationConnectors table)
+- [x] Frontend: post-connect dialog for Buildium now shows 3-step flow: (1) copy endpoint URL, (2) configure in Buildium, (3) paste Buildium's signing secret back
+- [x] Frontend: Buildium integration card shows inline "Paste Buildium's signing secret" input when no secret is saved yet
+- [x] Frontend: Buildium integration card shows "Update" button to replace an existing secret
+- [x] Frontend: updateWebhookSecret mutation wired to pms.updateWebhookSecret procedure
+- [x] Frontend: Buildium setup instructions updated to reflect correct flow (Buildium generates secret, user pastes it back)
+### Integration Card Polish
+- [x] Sandbox badge (amber FlaskConical icon) shown on connected integration cards when isSandbox=true
+- [x] Last synced timestamp already present on integration cards
+- [x] Connect dialog description updated for Buildium to explain the correct webhook flow

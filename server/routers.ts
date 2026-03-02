@@ -3038,17 +3038,21 @@ const pmsRouter = router({
   list: companyAdminProcedure.query(async ({ ctx }) => {
     const companyId = getEffectiveCompanyId(ctx);
     const integrations = await db.listPmsIntegrations(companyId);
-    // Strip credentials from the response
-    return integrations.map(i => ({
-      id: i.id,
-      provider: i.provider,
-      authType: i.authType,
-      status: i.status,
-      lastSyncAt: i.lastSyncAt,
-      lastErrorMessage: i.lastErrorMessage,
-      webhookSecret: i.webhookSecret,
-      createdAt: i.createdAt,
-    }));
+    // Strip credentials from the response (but expose isSandbox flag)
+    return integrations.map(i => {
+      const creds = decodeCredentials(i.credentialsJson ?? "");
+      return {
+        id: i.id,
+        provider: i.provider,
+        authType: i.authType,
+        status: i.status,
+        lastSyncAt: i.lastSyncAt,
+        lastErrorMessage: i.lastErrorMessage,
+        webhookSecret: i.webhookSecret,
+        isSandbox: creds.isSandbox ?? false,
+        createdAt: i.createdAt,
+      };
+    });
   }),
 
   // Connect a new PMS integration
@@ -3119,6 +3123,19 @@ const pmsRouter = router({
     .query(async ({ ctx, input }) => {
       const companyId = getEffectiveCompanyId(ctx);
       return db.listPmsWebhookEvents(companyId, input.limit);
+    }),
+  // Update the webhook secret for an integration.
+  // Used when the PMS generates its own signing secret (e.g. Buildium) and the company
+  // needs to paste it back into our platform so we can verify incoming webhook signatures.
+  updateWebhookSecret: companyAdminProcedure
+    .input(z.object({
+      id: z.number(),
+      webhookSecret: z.string().min(1),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const companyId = getEffectiveCompanyId(ctx);
+      await db.updatePmsIntegration(input.id, companyId, { webhookSecret: input.webhookSecret });
+      return { success: true };
     }),
 });
 

@@ -30,7 +30,7 @@
 import { createHmac, timingSafeEqual } from "crypto";
 import { Request, Response, Router } from "express";
 import * as db from "./db";
-import { pmsWebhookEvents, integrationConnectors } from "../drizzle/schema";
+import { pmsWebhookEvents, integrationConnectors, pmsIntegrations } from "../drizzle/schema";
 import { getDb } from "./db";
 import { eq, and } from "drizzle-orm";
 import { invokeLLM } from "./_core/llm";
@@ -271,33 +271,55 @@ async function handlePmsWebhook(req: Request, res: Response) {
   const authHeader = req.headers.authorization ?? "";
   const bearerToken = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : authHeader;
 
-  let connector: typeof integrationConnectors.$inferSelect | undefined;
+  // rawBody is available because we registered the route with express.raw()
+  const rawBody: Buffer = (req as any).rawBody ?? Buffer.from(JSON.stringify(req.body));
 
   // Check if there's a signature header for this provider
   const sigHeaderName = getSignatureHeader(provider);
   const incomingSignature = req.headers[sigHeaderName] as string | undefined;
 
+  // Resolved company ID — set by whichever auth path succeeds
+  let companyId: number | undefined;
+
   if (incomingSignature) {
-    // HMAC path: find connectors for this provider that have a webhookSecret
-    const candidates = await database
-      .select()
-      .from(integrationConnectors)
-      .where(and(eq(integrationConnectors.provider, provider), eq(integrationConnectors.isActive, true)))
+    // ── HMAC path ──────────────────────────────────────────────────────────
+    // Check pmsIntegrations first (new table used by the connect flow)
+    const pmsRows = await database
+      .select({ id: pmsIntegrations.id, companyId: pmsIntegrations.companyId, webhookSecret: pmsIntegrations.webhookSecret })
+      .from(pmsIntegrations)
+      .where(and(eq(pmsIntegrations.provider, provider), eq(pmsIntegrations.status, "connected")))
       .limit(50);
 
-    // rawBody is available because we registered the route with express.raw()
-    const rawBody: Buffer = (req as any).rawBody ?? Buffer.from(JSON.stringify(req.body));
-
-    connector = candidates.find((c) => {
-      if (!c.webhookSecret) return false;
-      return verifyHmacSignature(c.webhookSecret, rawBody, incomingSignature);
+    const matchedPms = pmsRows.find((r) => {
+      if (!r.webhookSecret) return false;
+      return verifyHmacSignature(r.webhookSecret, rawBody, incomingSignature);
     });
 
-    if (!connector) {
+    if (matchedPms) {
+      companyId = matchedPms.companyId;
+    } else {
+      // Fall back to legacy integrationConnectors table
+      const legacyCandidates = await database
+        .select()
+        .from(integrationConnectors)
+        .where(and(eq(integrationConnectors.provider, provider), eq(integrationConnectors.isActive, true)))
+        .limit(50);
+
+      const matchedLegacy = legacyCandidates.find((c) => {
+        if (!c.webhookSecret) return false;
+        return verifyHmacSignature(c.webhookSecret, rawBody, incomingSignature);
+      });
+
+      if (matchedLegacy) {
+        companyId = matchedLegacy.companyId;
+      }
+    }
+
+    if (!companyId) {
       return res.status(401).json({ error: "Invalid webhook signature" });
     }
   } else {
-    // Bearer token fallback
+    // ── Bearer token fallback ───────────────────────────────────────────────
     if (!bearerToken) {
       return res.status(401).json({ error: "Missing Authorization header or webhook signature" });
     }
@@ -315,10 +337,8 @@ async function handlePmsWebhook(req: Request, res: Response) {
     if (!found) {
       return res.status(401).json({ error: "Invalid API key or integration not active" });
     }
-    connector = found;
+    companyId = found.companyId;
   }
-
-  const companyId = connector.companyId;
   const rawPayload = req.body as Record<string, unknown>;
 
   // Log the inbound event
