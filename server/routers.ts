@@ -3061,6 +3061,7 @@ const pmsRouter = router({
         clientSecret: z.string().optional(),
         accessToken: z.string().optional(),
         baseUrl: z.string().optional(),
+        isSandbox: z.boolean().optional(),
       }),
     }))
     .mutation(async ({ ctx, input }) => {

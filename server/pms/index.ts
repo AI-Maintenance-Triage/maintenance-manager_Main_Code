@@ -35,6 +35,7 @@ export const SUPPORTED_PROVIDERS = [
     fields: [
       { key: "clientId", label: "Client ID", type: "text", required: true },
       { key: "clientSecret", label: "Client Secret", type: "password", required: true },
+      { key: "isSandbox", label: "Use Sandbox environment (for testing)", type: "checkbox", required: false },
     ],
     supportsPropertyImport: true,
     supportsRequestSync: true,

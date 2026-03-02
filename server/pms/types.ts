@@ -34,6 +34,7 @@ export interface PmsCredentials {
   accessToken?: string;
   refreshToken?: string;
   baseUrl?: string;
+  isSandbox?: boolean;
 }
 
 export interface PmsAdapter {

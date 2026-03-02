@@ -4,6 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -115,7 +116,7 @@ export default function CompanyIntegrations() {
   const { data: webhookEvents = [] } = trpc.pms.webhookEvents.useQuery({ limit: 50 });
 
   const [connectingProvider, setConnectingProvider] = useState<string | null>(null);
-  const [credentials, setCredentials] = useState<Record<string, string>>({});
+  const [credentials, setCredentials] = useState<Record<string, string | boolean>>({});
   const [newIntegration, setNewIntegration] = useState<{ webhookSecret: string; provider: string } | null>(null);
   const [expandedInstructions, setExpandedInstructions] = useState<number | null>(null);
 
@@ -157,7 +158,11 @@ export default function CompanyIntegrations() {
 
   function handleConnect() {
     if (!connectingProvider) return;
-    connectMutation.mutate({ provider: connectingProvider, credentials });
+    const sanitized: Record<string, string | boolean> = {};
+    for (const [k, v] of Object.entries(credentials)) {
+      sanitized[k] = k === "isSandbox" ? Boolean(v) : v;
+    }
+    connectMutation.mutate({ provider: connectingProvider, credentials: sanitized as any });
   }
 
   function copyToClipboard(text: string) {
@@ -454,15 +459,28 @@ export default function CompanyIntegrations() {
           {(providerConfig as any)?.authType === "api_key" && (
             <div className="space-y-3">
               {([...((providerConfig as any).fields ?? [])] as Array<{ key: string; label: string; type: string; required: boolean }>).map(field => (
-                <div key={field.key} className="space-y-1.5">
-                  <Label htmlFor={field.key}>{field.label}{field.required && <span className="text-destructive ml-1">*</span>}</Label>
-                  <Input
-                    id={field.key}
-                    type={field.type === "password" ? "password" : "text"}
-                    value={credentials[field.key] ?? ""}
-                    onChange={e => setCredentials(prev => ({ ...prev, [field.key]: e.target.value }))}
-                    placeholder={field.type === "password" ? "••••••••••••" : `Enter ${field.label.toLowerCase()}`}
-                  />
+                <div key={field.key} className={field.type === "checkbox" ? "flex items-center gap-2 pt-1" : "space-y-1.5"}>
+                  {field.type === "checkbox" ? (
+                    <>
+                      <Checkbox
+                        id={field.key}
+                        checked={Boolean(credentials[field.key])}
+                        onCheckedChange={checked => setCredentials(prev => ({ ...prev, [field.key]: Boolean(checked) }))}
+                      />
+                      <Label htmlFor={field.key} className="cursor-pointer font-normal">{field.label}</Label>
+                    </>
+                  ) : (
+                    <>
+                      <Label htmlFor={field.key}>{field.label}{field.required && <span className="text-destructive ml-1">*</span>}</Label>
+                      <Input
+                        id={field.key}
+                        type={field.type === "password" ? "password" : "text"}
+                        value={String(credentials[field.key] ?? "")}
+                        onChange={e => setCredentials(prev => ({ ...prev, [field.key]: e.target.value }))}
+                        placeholder={field.type === "password" ? "••••••••••••" : `Enter ${field.label.toLowerCase()}`}
+                      />
+                    </>
+                  )}
                 </div>
               ))}
             </div>

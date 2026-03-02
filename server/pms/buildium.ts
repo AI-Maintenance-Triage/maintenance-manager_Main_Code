@@ -6,16 +6,21 @@
 
 import type { PmsAdapter, PmsCredentials, PmsProperty, PmsMaintenanceRequest } from "./types";
 
-const BASE_URL = "https://api.buildium.com/v1";
+const PROD_BASE_URL = "https://api.buildium.com/v1";
+const SANDBOX_BASE_URL = "https://apisandbox.buildium.com/v1";
+
+function getBaseUrl(credentials: PmsCredentials): string {
+  return credentials.isSandbox ? SANDBOX_BASE_URL : PROD_BASE_URL;
+}
 
 async function buildiumFetch(credentials: PmsCredentials, path: string, options: RequestInit = {}) {
-  const url = `${BASE_URL}${path}`;
-  // Buildium uses HTTP Basic Auth: Authorization: Basic base64(clientId:clientSecret)
-  const basicToken = Buffer.from(`${credentials.clientId ?? ""}:${credentials.clientSecret ?? ""}`).toString("base64");
+  const url = `${getBaseUrl(credentials)}${path}`;
+  // Buildium uses custom API key headers (per official docs)
   const res = await fetch(url, {
     ...options,
     headers: {
-      "Authorization": `Basic ${basicToken}`,
+      "x-buildium-client-id": credentials.clientId ?? "",
+      "x-buildium-client-secret": credentials.clientSecret ?? "",
       "Content-Type": "application/json",
       ...(options.headers ?? {}),
     },
