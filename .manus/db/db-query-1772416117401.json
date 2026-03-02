@@ -1,0 +1,120 @@
+{
+  "query": "SELECT * FROM skill_tiers LIMIT 10;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user sHLCts4RR6iL2PA.1ead08cf1a54 --database bBuQZrfKLoBs6LmtvQ4y6E --execute SELECT * FROM skill_tiers LIMIT 10;",
+  "rows": [
+    {
+      "id": "1",
+      "companyId": "1",
+      "name": "General",
+      "description": "Basic handyman, minor fixes, cosmetic repairs",
+      "hourlyRate": "35.00",
+      "emergencyMultiplier": "1.50",
+      "sortOrder": "1",
+      "createdAt": "2026-03-01 00:05:54",
+      "updatedAt": "2026-03-01 00:05:54"
+    },
+    {
+      "id": "2",
+      "companyId": "1",
+      "name": "Skilled",
+      "description": "Moderate plumbing, basic electrical, carpentry",
+      "hourlyRate": "50.00",
+      "emergencyMultiplier": "1.50",
+      "sortOrder": "2",
+      "createdAt": "2026-03-01 00:05:54",
+      "updatedAt": "2026-03-01 00:05:54"
+    },
+    {
+      "id": "3",
+      "companyId": "1",
+      "name": "Specialty",
+      "description": "Licensed HVAC, electrical, plumbing",
+      "hourlyRate": "80.00",
+      "emergencyMultiplier": "1.50",
+      "sortOrder": "3",
+      "createdAt": "2026-03-01 00:05:54",
+      "updatedAt": "2026-03-01 00:05:54"
+    },
+    {
+      "id": "4",
+      "companyId": "1",
+      "name": "Emergency",
+      "description": "Any trade, after-hours emergency response",
+      "hourlyRate": "120.00",
+      "emergencyMultiplier": "1.50",
+      "sortOrder": "4",
+      "createdAt": "2026-03-01 00:05:54",
+      "updatedAt": "2026-03-01 00:05:54"
+    },
+    {
+      "id": "5",
+      "companyId": "2",
+      "name": "General",
+      "description": "Basic handyman, minor fixes, cosmetic repairs",
+      "hourlyRate": "35.00",
+      "emergencyMultiplier": "1.50",
+      "sortOrder": "1",
+      "createdAt": "2026-03-01 00:37:49",
+      "updatedAt": "2026-03-01 00:37:49"
+    },
+    {
+      "id": "6",
+      "companyId": "2",
+      "name": "Skilled",
+      "description": "Moderate plumbing, basic electrical, carpentry",
+      "hourlyRate": "50.00",
+      "emergencyMultiplier": "1.50",
+      "sortOrder": "2",
+      "createdAt": "2026-03-01 00:37:49",
+      "updatedAt": "2026-03-01 00:37:49"
+    },
+    {
+      "id": "7",
+      "companyId": "2",
+      "name": "Specialty",
+      "description": "Licensed HVAC, electrical, plumbing",
+      "hourlyRate": "80.00",
+      "emergencyMultiplier": "1.50",
+      "sortOrder": "3",
+      "createdAt": "2026-03-01 00:37:49",
+      "updatedAt": "2026-03-01 00:37:49"
+    },
+    {
+      "id": "8",
+      "companyId": "2",
+      "name": "Emergency",
+      "description": "Any trade, after-hours emergency response",
+      "hourlyRate": "120.00",
+      "emergencyMultiplier": "1.50",
+      "sortOrder": "4",
+      "createdAt": "2026-03-01 00:37:49",
+      "updatedAt": "2026-03-01 00:37:49"
+    },
+    {
+      "id": "9",
+      "companyId": "3",
+      "name": "General",
+      "description": "Basic handyman, minor fixes, cosmetic repairs",
+      "hourlyRate": "35.00",
+      "emergencyMultiplier": "1.50",
+      "sortOrder": "1",
+      "createdAt": "2026-03-01 01:11:59",
+      "updatedAt": "2026-03-01 01:11:59"
+    },
+    {
+      "id": "10",
+      "companyId": "3",
+      "name": "Skilled",
+      "description": "Moderate plumbing, basic electrical, carpentry",
+      "hourlyRate": "50.00",
+      "emergencyMultiplier": "1.50",
+      "sortOrder": "2",
+      "createdAt": "2026-03-01 01:11:59",
+      "updatedAt": "2026-03-01 01:11:59"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tcompanyId\tname\tdescription\thourlyRate\temergencyMultiplier\tsortOrder\tcreatedAt\tupdatedAt\n1\t1\tGeneral\tBasic handyman, minor fixes, cosmetic repairs\t35.00\t1.50\t1\t2026-03-01 00:05:54\t2026-03-01 00:05:54\n2\t1\tSkilled\tModerate plumbing, basic electrical, carpentry\t50.00\t1.50\t2\t2026-03-01 00:05:54\t2026-03-01 00:05:54\n3\t1\tSpecialty\tLicensed HVAC, electrical, plumbing\t80.00\t1.50\t3\t2026-03-01 00:05:54\t2026-03-01 00:05:54\n4\t1\tEmergency\tAny trade, after-hours emergency response\t120.00\t1.50\t4\t2026-03-01 00:05:54\t2026-03-01 00:05:54\n5\t2\tGeneral\tBasic handyman, minor fixes, cosmetic repairs\t35.00\t1.50\t1\t2026-03-01 00:37:49\t2026-03-01 00:37:49\n6\t2\tSkilled\tModerate plumbing, basic electrical, carpentry\t50.00\t1.50\t2\t2026-03-01 00:37:49\t2026-03-01 00:37:49\n7\t2\tSpecialty\tLicensed HVAC, electrical, plumbing\t80.00\t1.50\t3\t2026-03-01 00:37:49\t2026-03-01 00:37:49\n8\t2\tEmergency\tAny trade, after-hours emergency response\t120.00\t1.50\t4\t2026-03-01 00:37:49\t2026-03-01 00:37:49\n9\t3\tGeneral\tBasic handyman, minor fixes, cosmetic repairs\t35.00\t1.50\t1\t2026-03-01 01:11:59\t2026-03-01 01:11:59\n10\t3\tSkilled\tModerate plumbing, basic electrical, carpentry\t50.00\t1.50\t2\t2026-03-01 01:11:59\t2026-03-01 01:11:59\n",
+  "stderr": "",
+  "execution_time_ms": 58
+}

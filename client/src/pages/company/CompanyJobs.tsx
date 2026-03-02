@@ -181,8 +181,13 @@ export default function CompanyJobs() {
   );
   const properties = isViewingAsCompany ? viewAsProperties.data : regularProperties.data;
 
-  // Skill tiers for override dropdown
-  const skillTiers = trpc.skillTiers.list.useQuery(undefined, { enabled: !isViewingAsCompany });
+  // Skill tiers for override dropdown — use adminViewAs path when impersonating a company
+  const skillTiersRegular = trpc.skillTiers.list.useQuery(undefined, { enabled: !isViewingAsCompany });
+  const skillTiersViewAs = trpc.adminViewAs.companySkillTiers.useQuery(
+    { companyId: viewAs.companyId! },
+    { enabled: !!isViewingAsCompany }
+  );
+  const skillTiers = isViewingAsCompany ? skillTiersViewAs : skillTiersRegular;
 
   const [form, setForm] = useState({
     propertyId: "", title: "", description: "", tenantName: "", tenantPhone: "", unitNumber: "",
