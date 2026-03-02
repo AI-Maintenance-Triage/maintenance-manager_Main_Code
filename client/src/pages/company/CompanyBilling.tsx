@@ -672,19 +672,7 @@ export default function CompanyBilling() {
               onClick={() => setBillingInterval("annual")}
               className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${billingInterval === "annual" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
             >
-                Annual
-              {(() => {
-                // Compute average discount across all active plans that have both prices
-                const plansWithDiscount = activePlans.filter(p => parseFloat(p.priceMonthly ?? "0") > 0 && parseFloat(p.priceAnnual ?? "0") > 0);
-                if (plansWithDiscount.length === 0) return null;
-                const avgPct = plansWithDiscount.reduce((sum, p) => {
-                  const mo = parseFloat(p.priceMonthly ?? "0");
-                  const yr = parseFloat(p.priceAnnual ?? "0");
-                  return sum + (1 - yr / (mo * 12)) * 100;
-                }, 0) / plansWithDiscount.length;
-                if (avgPct <= 0) return null;
-                return <span className="text-green-400 ml-1">Save {Math.round(avgPct)}%</span>;
-              })()}
+              Annual <span className="text-green-400 ml-1">Save</span>
             </button>
           </div>
         </div>
