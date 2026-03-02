@@ -35,6 +35,9 @@ export function registerStripeWebhookRoute(app: Express) {
 
       console.log(`[Stripe Webhook] Event: ${event.type} (${event.id})`);
 
+      // Wrap entire handler — a DB error must never crash the server.
+      // We always return 200 to avoid Stripe retrying indefinitely on permanent errors.
+      try {
       switch (event.type) {
         case "payment_intent.succeeded": {
           const pi = event.data.object as { id: string; metadata?: Record<string, string> };
@@ -150,6 +153,7 @@ export function registerStripeWebhookRoute(app: Express) {
             cancel_at_period_end?: boolean;
             metadata?: Record<string, string>;
             customer?: string;
+            items?: { data?: Array<{ price?: { id: string } }> };
           };
           const db = await getDb();
           if (db) {
@@ -160,17 +164,39 @@ export function registerStripeWebhookRoute(app: Express) {
             else if (["past_due", "unpaid", "incomplete_expired"].includes(sub.status)) planStatus = "expired";
             const expiresAt = sub.current_period_end ? sub.current_period_end * 1000 : null;
 
+            // Resolve planId from the subscription's current price so plan upgrades
+            // (new checkout for existing subscriber) are reflected in the DB.
+            let resolvedPlanId: number | null = null;
+            const priceId = sub.items?.data?.[0]?.price?.id ?? null;
+            if (priceId) {
+              const allPlans = await db.select().from(subscriptionPlans);
+              const matched = allPlans.find(
+                (p) => p.stripePriceIdMonthly === priceId || p.stripePriceIdAnnual === priceId
+              );
+              if (matched) resolvedPlanId = matched.id;
+            }
+
             // Try company first
             const companyRows = await db.select().from(companies).where(eq(companies.stripeSubscriptionId, sub.id)).limit(1);
             if (companyRows.length > 0) {
-              await db.update(companies).set({ planStatus, planExpiresAt: expiresAt }).where(eq(companies.id, companyRows[0].id));
-              console.log(`[Stripe Webhook] Company subscription ${sub.id} updated → ${planStatus}`);
+              const updatePayload: Record<string, unknown> = { planStatus, planExpiresAt: expiresAt };
+              if (resolvedPlanId !== null) {
+                updatePayload.planId = resolvedPlanId;
+                updatePayload.planAssignedAt = Date.now();
+              }
+              await db.update(companies).set(updatePayload as any).where(eq(companies.id, companyRows[0].id));
+              console.log(`[Stripe Webhook] Company subscription ${sub.id} updated → ${planStatus}${resolvedPlanId ? ` (planId=${resolvedPlanId})` : ''}`);
             } else {
               // Try contractor
               const contractorRows = await db.select().from(contractorProfiles).where(eq(contractorProfiles.stripeSubscriptionId, sub.id)).limit(1);
               if (contractorRows.length > 0) {
-                await db.update(contractorProfiles).set({ planStatus, planExpiresAt: expiresAt }).where(eq(contractorProfiles.id, contractorRows[0].id));
-                console.log(`[Stripe Webhook] Contractor subscription ${sub.id} updated → ${planStatus}`);
+                const updatePayload: Record<string, unknown> = { planStatus, planExpiresAt: expiresAt };
+                if (resolvedPlanId !== null) {
+                  updatePayload.planId = resolvedPlanId;
+                  updatePayload.planAssignedAt = Date.now();
+                }
+                await db.update(contractorProfiles).set(updatePayload as any).where(eq(contractorProfiles.id, contractorRows[0].id));
+                console.log(`[Stripe Webhook] Contractor subscription ${sub.id} updated → ${planStatus}${resolvedPlanId ? ` (planId=${resolvedPlanId})` : ''}`);
               }
             }
           }
@@ -254,6 +280,11 @@ export function registerStripeWebhookRoute(app: Express) {
             break;
           }
           console.log(`[Stripe Webhook] Unhandled event type: ${event.type}`);
+      }
+      } catch (err: unknown) {
+        // Log but do NOT crash the server — return 200 so Stripe doesn't retry indefinitely.
+        const message = err instanceof Error ? err.message : String(err);
+        console.error(`[Stripe Webhook] Error processing event ${event.type} (${event.id}):`, message);
       }
 
       res.json({ received: true });

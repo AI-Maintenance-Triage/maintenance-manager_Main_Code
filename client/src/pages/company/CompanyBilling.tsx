@@ -372,7 +372,15 @@ export default function CompanyBilling() {
 
   const createCheckout = trpc.stripePayments.createPlanCheckout.useMutation({
     onSuccess: (data) => {
-      if (data.checkoutUrl) {
+      if ((data as any).upgraded) {
+        // Direct subscription upgrade — no checkout needed, plan updated immediately in DB
+        toast.success("Plan upgraded!", { description: "Your subscription has been updated successfully." });
+        setTimeout(() => {
+          utils.company.getMyPlan.invalidate();
+          utils.company.listAvailablePlans.invalidate();
+          utils.stripePayments.getInvoices.invalidate();
+        }, 1000);
+      } else if (data.checkoutUrl) {
         window.open(data.checkoutUrl, "_blank");
         toast.success("Redirecting to checkout", { description: "A new tab has been opened for payment." });
       }

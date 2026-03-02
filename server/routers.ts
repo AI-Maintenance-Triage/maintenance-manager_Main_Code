@@ -2025,6 +2025,41 @@ const stripeRouter = router({
 
       const customerId = await getOrCreateStripeCustomer(companyId, user.email ?? "", company.name);
 
+      // If the company already has an active Stripe subscription, upgrade/downgrade it
+      // directly via the Stripe API rather than creating a new checkout session.
+      // This prevents a duplicate subscription and updates the plan in the DB immediately.
+      if (company.stripeSubscriptionId && (company.planStatus === "active" || company.planStatus === "trialing")) {
+        try {
+          const existingSub = await stripe.subscriptions.retrieve(company.stripeSubscriptionId);
+          if (existingSub && existingSub.status !== "canceled") {
+            const itemId = existingSub.items.data[0]?.id;
+            if (itemId) {
+              await stripe.subscriptions.update(company.stripeSubscriptionId, {
+                items: [{ id: itemId, price: stripePriceId }],
+                proration_behavior: "create_prorations",
+                metadata: {
+                  company_id: companyId.toString(),
+                  plan_id: input.planId.toString(),
+                  billing_interval: input.billingInterval,
+                },
+              });
+              // Update the DB immediately — don't wait for the webhook
+              const { companies: companiesTable } = await import("../drizzle/schema");
+              await drizzleDb.update(companiesTable).set({
+                planId: input.planId,
+                planStatus: "active",
+                planAssignedAt: Date.now(),
+                planExpiresAt: null,
+              }).where(eq(companiesTable.id, companyId));
+              return { checkoutUrl: null, upgraded: true };
+            }
+          }
+        } catch (subErr: any) {
+          // If retrieval/update fails (e.g. sub was deleted in Stripe), fall through to checkout
+          console.warn(`[createPlanCheckout] Could not update existing subscription: ${subErr.message}`);
+        }
+      }
+
       const session = await stripe.checkout.sessions.create({
         mode: "subscription",
         customer: customerId,
@@ -2041,8 +2076,7 @@ const stripeRouter = router({
           customer_name: user.name ?? "",
         },
       });
-
-      return { checkoutUrl: session.url };
+      return { checkoutUrl: session.url, upgraded: false };
     }),
 
   // Company: cancel their current subscription
