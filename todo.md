@@ -1375,3 +1375,10 @@
 - [x] Add retryPayment procedure for already-verified jobs with skipped payment
 - [x] Add "Retry Pay" button to CompanyJobs for verified jobs with no stripePaymentIntentId
 - [x] Confirm all reporting pages (company analytics, expense report, property reports, contractor earnings, admin revenue) correctly query transactions table
+## Session 43: Route Replay Map Black Screen Fix
+- [x] Diagnose root cause: map initialized before dialog animation completes (container had 0 dimensions)
+- [x] Rewrite RouteReplayDialog: delay map init 350ms after dialog opens so container has non-zero size
+- [x] Add google.maps.event.trigger resize after init to force correct fill
+- [x] Always keep map container div in DOM (not conditionally rendered) so ref is available
+- [x] Add proper loading/error/no-pings states as z-index overlays instead of conditional renders
+- [x] Deduplicate Maps script loading with module-level singleton promise

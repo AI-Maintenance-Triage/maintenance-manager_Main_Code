@@ -3,14 +3,16 @@
  *
  * Shows the full GPS breadcrumb trail for a completed job session on a Google Map.
  * Opens from a "View Route" button on job cards in CompanyJobs / CompanyVerification.
+ *
+ * Fix: Map is initialized only after the dialog animation completes (300ms delay)
+ * and a resize event is triggered to ensure the container has non-zero dimensions.
  */
 import { trpc } from "@/lib/trpc";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { MapView } from "@/components/Map";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Clock, MapPin, Navigation2, Route } from "lucide-react";
-import { useRef, useCallback, useEffect } from "react";
+import { useRef, useCallback, useEffect, useState } from "react";
 
 interface RouteReplayDialogProps {
   open: boolean;
@@ -33,10 +35,36 @@ function formatTime(ts: number): string {
   return new Date(ts).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 }
 
+const API_KEY = import.meta.env.VITE_FRONTEND_FORGE_API_KEY;
+const FORGE_BASE_URL =
+  import.meta.env.VITE_FRONTEND_FORGE_API_URL || "https://forge.butterfly-effect.dev";
+const MAPS_PROXY_URL = `${FORGE_BASE_URL}/v1/maps/proxy`;
+
+let mapsScriptLoaded = false;
+let mapsScriptLoading: Promise<void> | null = null;
+
+function loadMapsScript(): Promise<void> {
+  if (mapsScriptLoaded) return Promise.resolve();
+  if (mapsScriptLoading) return mapsScriptLoading;
+  mapsScriptLoading = new Promise((resolve, reject) => {
+    const script = document.createElement("script");
+    script.src = `${MAPS_PROXY_URL}/maps/api/js?key=${API_KEY}&v=weekly&libraries=marker,places,geocoding,geometry`;
+    script.async = true;
+    script.crossOrigin = "anonymous";
+    script.onload = () => { mapsScriptLoaded = true; resolve(); };
+    script.onerror = () => reject(new Error("Failed to load Google Maps"));
+    document.head.appendChild(script);
+  });
+  return mapsScriptLoading;
+}
+
 export function RouteReplayDialog({ open, onOpenChange, jobId, jobTitle }: RouteReplayDialogProps) {
+  const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<google.maps.Map | null>(null);
   const polylineRef = useRef<google.maps.Polyline | null>(null);
   const markersRef = useRef<google.maps.marker.AdvancedMarkerElement[]>([]);
+  const [mapReady, setMapReady] = useState(false);
+  const [mapError, setMapError] = useState<string | null>(null);
 
   // Fetch all sessions for this job
   const { data: sessions, isLoading: sessionsLoading } = trpc.jobs.timeSessions.useQuery(
@@ -44,7 +72,7 @@ export function RouteReplayDialog({ open, onOpenChange, jobId, jobTitle }: Route
     { enabled: open }
   );
 
-  // Use the first completed session (most recent)
+  // Use the first completed session (most recent), fall back to any session
   const session = sessions?.find((s: any) => s.status === "completed") ?? sessions?.[0];
 
   // Fetch location pings for the session
@@ -54,6 +82,8 @@ export function RouteReplayDialog({ open, onOpenChange, jobId, jobTitle }: Route
   );
 
   const isLoading = sessionsLoading || pingsLoading;
+  const pingCount = pings?.length ?? 0;
+  const firstPing = pings?.[0];
 
   const clearMap = useCallback(() => {
     if (polylineRef.current) {
@@ -64,16 +94,17 @@ export function RouteReplayDialog({ open, onOpenChange, jobId, jobTitle }: Route
     markersRef.current = [];
   }, []);
 
-  const drawRoute = useCallback((map: google.maps.Map) => {
+  const drawRoute = useCallback(() => {
+    const map = mapRef.current;
+    if (!map || !session || !pings || pings.length === 0) return;
     clearMap();
-    if (!session || !pings || pings.length === 0) return;
 
     const path = pings.map((p: any) => ({
       lat: parseFloat(p.latitude),
       lng: parseFloat(p.longitude),
     }));
 
-    // Draw the polyline
+    // Draw the polyline trail
     polylineRef.current = new google.maps.Polyline({
       path,
       geodesic: true,
@@ -92,16 +123,13 @@ export function RouteReplayDialog({ open, onOpenChange, jobId, jobTitle }: Route
       display: flex; align-items: center; justify-content: center;
     `;
     clockInEl.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5"><polygon points="5 3 19 12 5 21 5 3"/></svg>`;
-    clockInEl.title = `Clock-in: ${formatTime(session.clockInTime)}`;
-    const clockInMarker = new google.maps.marker.AdvancedMarkerElement({
-      map,
-      position: path[0],
+    markersRef.current.push(new google.maps.marker.AdvancedMarkerElement({
+      map, position: path[0],
       title: `Clock-in: ${formatTime(session.clockInTime)}`,
       content: clockInEl,
-    });
-    markersRef.current.push(clockInMarker);
+    }));
 
-    // Clock-out marker (red) — only if session is complete
+    // Clock-out marker (red) — only if session is complete and has >1 point
     if (session.clockOutTime && path.length > 1) {
       const clockOutEl = document.createElement("div");
       clockOutEl.style.cssText = `
@@ -111,46 +139,73 @@ export function RouteReplayDialog({ open, onOpenChange, jobId, jobTitle }: Route
         display: flex; align-items: center; justify-content: center;
       `;
       clockOutEl.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>`;
-      clockOutEl.title = `Clock-out: ${formatTime(session.clockOutTime)}`;
-      const clockOutMarker = new google.maps.marker.AdvancedMarkerElement({
-        map,
-        position: path[path.length - 1],
+      markersRef.current.push(new google.maps.marker.AdvancedMarkerElement({
+        map, position: path[path.length - 1],
         title: `Clock-out: ${formatTime(session.clockOutTime)}`,
         content: clockOutEl,
-      });
-      markersRef.current.push(clockOutMarker);
+      }));
     }
 
-    // Fit map to the route
+    // Fit map to the route bounds
     const bounds = new google.maps.LatLngBounds();
     path.forEach(p => bounds.extend(p));
     map.fitBounds(bounds, { top: 60, right: 60, bottom: 60, left: 60 });
     if (path.length === 1) map.setZoom(15);
   }, [session, pings, clearMap]);
 
-  const handleMapReady = useCallback((map: google.maps.Map) => {
-    mapRef.current = map;
-    // Always store the map ref; drawRoute will be called by the effect below
-    // once data has loaded. If data is already available, draw immediately.
-    if (pings && pings.length > 0) drawRoute(map);
-  }, [pings, drawRoute]);
-
+  // Initialize the map after the dialog animation completes
   useEffect(() => {
-    // Re-draw whenever pings or session data changes (covers the case where
-    // the map was ready before data arrived).
-    if (mapRef.current && pings) {
-      drawRoute(mapRef.current);
+    if (!open) {
+      // Clean up when dialog closes
+      clearMap();
+      mapRef.current = null;
+      setMapReady(false);
+      setMapError(null);
+      return;
     }
-  }, [pings, drawRoute]);
 
-  // Cleanup on close
+    // Delay map init to let the dialog CSS transition finish (~300ms)
+    // so the container has non-zero dimensions when google.maps.Map() is called
+    const timer = setTimeout(async () => {
+      if (!mapContainerRef.current) return;
+      try {
+        await loadMapsScript();
+        if (!mapContainerRef.current) return; // dialog may have closed
+
+        const center = firstPing
+          ? { lat: parseFloat(firstPing.latitude), lng: parseFloat(firstPing.longitude) }
+          : { lat: 39.8283, lng: -98.5795 };
+
+        mapRef.current = new window.google.maps.Map(mapContainerRef.current, {
+          zoom: 14,
+          center,
+          mapTypeControl: true,
+          fullscreenControl: true,
+          zoomControl: true,
+          streetViewControl: false,
+          mapId: "DEMO_MAP_ID",
+        });
+
+        // Trigger resize to ensure the map fills the container correctly
+        google.maps.event.trigger(mapRef.current, "resize");
+        mapRef.current.setCenter(center);
+
+        setMapReady(true);
+      } catch (err: any) {
+        setMapError(err?.message ?? "Failed to load map");
+      }
+    }, 350);
+
+    return () => clearTimeout(timer);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
+
+  // Draw route once both map and pings are ready
   useEffect(() => {
-    if (!open) clearMap();
-  }, [open, clearMap]);
-
-  const pingCount = pings?.length ?? 0;
-  const firstPing = pings?.[0];
-  const lastPing = pings?.[pingCount - 1];
+    if (mapReady && pings && !pingsLoading) {
+      drawRoute();
+    }
+  }, [mapReady, pings, pingsLoading, drawRoute]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -191,46 +246,60 @@ export function RouteReplayDialog({ open, onOpenChange, jobId, jobTitle }: Route
           </div>
         )}
 
-        {/* Map area */}
-        <div className="flex-1 relative" style={{ minHeight: 400 }}>
-          {isLoading ? (
-            <div className="absolute inset-0 flex items-center justify-center bg-muted/20">
+        {/* Map area — always render the container div so the ref is available */}
+        <div className="flex-1 relative" style={{ minHeight: 420 }}>
+
+          {/* Loading overlay */}
+          {(isLoading || (open && !mapReady && !mapError)) && (
+            <div className="absolute inset-0 z-10 flex items-center justify-center bg-muted/40">
               <div className="text-center space-y-2">
                 <Skeleton className="h-8 w-8 rounded-full mx-auto" />
                 <p className="text-sm text-muted-foreground">Loading route data…</p>
               </div>
             </div>
-          ) : !session ? (
-            <div className="absolute inset-0 flex items-center justify-center">
+          )}
+
+          {/* No session state */}
+          {!isLoading && !session && (
+            <div className="absolute inset-0 z-10 flex items-center justify-center">
               <div className="text-center space-y-2">
                 <Route className="h-10 w-10 text-muted-foreground mx-auto" />
                 <p className="text-sm text-muted-foreground">No GPS session found for this job.</p>
               </div>
             </div>
-          ) : pingCount === 0 ? (
-            <div className="absolute inset-0 flex items-center justify-center">
+          )}
+
+          {/* No GPS pings state */}
+          {!isLoading && session && pingCount === 0 && mapReady && (
+            <div className="absolute inset-0 z-10 flex items-center justify-center">
               <div className="text-center space-y-2">
                 <MapPin className="h-10 w-10 text-muted-foreground mx-auto" />
                 <p className="text-sm text-muted-foreground">No GPS pings recorded for this session.</p>
                 <p className="text-xs text-muted-foreground">The contractor may have clocked in without an active GPS signal.</p>
               </div>
             </div>
-          ) : (
-            <MapView
-              className="w-full h-full"
-              initialCenter={
-                firstPing
-                  ? { lat: parseFloat(firstPing.latitude), lng: parseFloat(firstPing.longitude) }
-                  : { lat: 39.8283, lng: -98.5795 }
-              }
-              initialZoom={14}
-              onMapReady={handleMapReady}
-            />
           )}
 
+          {/* Map error state */}
+          {mapError && (
+            <div className="absolute inset-0 z-10 flex items-center justify-center">
+              <div className="text-center space-y-2">
+                <MapPin className="h-10 w-10 text-red-400 mx-auto" />
+                <p className="text-sm text-muted-foreground">{mapError}</p>
+              </div>
+            </div>
+          )}
+
+          {/* Map container — always in DOM so ref is available for init */}
+          <div
+            ref={mapContainerRef}
+            className="w-full h-full"
+            style={{ minHeight: 420 }}
+          />
+
           {/* Legend */}
-          {!isLoading && session && pingCount > 0 && (
-            <div className="absolute top-3 right-3 bg-background/90 backdrop-blur border border-border rounded-lg px-3 py-2 text-xs space-y-1.5">
+          {mapReady && session && pingCount > 0 && (
+            <div className="absolute top-3 right-3 z-20 bg-background/90 backdrop-blur border border-border rounded-lg px-3 py-2 text-xs space-y-1.5">
               <div className="flex items-center gap-2">
                 <div className="h-4 w-4 rounded-full bg-green-500 border-2 border-white flex items-center justify-center">
                   <svg width="6" height="6" viewBox="0 0 24 24" fill="white"><polygon points="5 3 19 12 5 21 5 3"/></svg>
