@@ -151,7 +151,13 @@ export default function ContractorMyJobs() {
 }
 
 function JobCard({ row, onUpdate, readOnly = false }: { row: any; onUpdate: () => void; readOnly?: boolean }) {
-  const { job, property } = row;
+  const { job, property, companySettings } = row;
+  const geofenceRadiusFeet: number = companySettings?.geofenceRadiusFeet ?? 500;
+  const billableTimePolicy: string = companySettings?.billableTimePolicy ?? "on_site_only";
+  // ── Geofence proximity state ─────────────────────────────────────────────
+  // null = not yet checked, true = inside, false = outside
+  const [geofenceStatus, setGeofenceStatus] = useState<"inside" | "outside" | "unknown" | "checking">("unknown");
+  const [distanceToPropertyFt, setDistanceToPropertyFt] = useState<number | null>(null);
   const [showComments, setShowComments] = useState(false);
 
   // ── Clock-in/out session state ───────────────────────────────────────────────
@@ -268,7 +274,14 @@ function JobCard({ row, onUpdate, readOnly = false }: { row: any; onUpdate: () =
       toast.success("Clocked in! Live GPS tracking started.");
       onUpdate();
     },
-    onError: (err: any) => toast.error(err.message),
+    onError: (err: any) => {
+      if (err?.message?.startsWith("GEOFENCE_REQUIRED:")) {
+        const feet = err.message.split(":")[1];
+        toast.error(`You must be within ${feet} ft of the property to clock in.`, { duration: 6000 });
+      } else {
+        toast.error(err.message);
+      }
+    },
   });
 
   const clockOut = trpc.timeTracking.clockOut.useMutation({
@@ -428,6 +441,43 @@ function JobCard({ row, onUpdate, readOnly = false }: { row: any; onUpdate: () =
     },
     [handlePositionUpdate]
   );
+
+  // ── Check proximity to property ──────────────────────────────────────────
+  const checkProximity = useCallback(() => {
+    if (!navigator.geolocation || !property?.latitude || !property?.longitude) {
+      setGeofenceStatus("unknown");
+      return;
+    }
+    setGeofenceStatus("checking");
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const R = 6371000;
+        const lat1 = parseFloat(String(property.latitude));
+        const lng1 = parseFloat(String(property.longitude));
+        const lat2 = pos.coords.latitude;
+        const lng2 = pos.coords.longitude;
+        const dLat = ((lat2 - lat1) * Math.PI) / 180;
+        const dLng = ((lng2 - lng1) * Math.PI) / 180;
+        const a = Math.sin(dLat / 2) ** 2 +
+          Math.cos((lat1 * Math.PI) / 180) * Math.cos((lat2 * Math.PI) / 180) * Math.sin(dLng / 2) ** 2;
+        const distMeters = R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        const distFt = Math.round(distMeters * 3.28084);
+        setDistanceToPropertyFt(distFt);
+        const radiusMeters = geofenceRadiusFeet * 0.3048;
+        setGeofenceStatus(distMeters <= radiusMeters ? "inside" : "outside");
+      },
+      () => setGeofenceStatus("unknown"),
+      { enableHighAccuracy: true, timeout: 8000 }
+    );
+  }, [property?.latitude, property?.longitude, geofenceRadiusFeet]);
+
+  // Auto-check proximity when job is idle (assigned, not yet clocked in)
+  useEffect(() => {
+    if (clockState !== "idle" || billableTimePolicy !== "on_site_only") return;
+    checkProximity();
+    const interval = setInterval(checkProximity, 15000);
+    return () => clearInterval(interval);
+  }, [clockState, billableTimePolicy, checkProximity]);
 
   // ── Clock-in: get initial position then start watch ───────────────────────
   const handleClockIn = () => {
@@ -753,16 +803,49 @@ function JobCard({ row, onUpdate, readOnly = false }: { row: any; onUpdate: () =
 
                 {/* STATE 1: Assigned, not yet clocked in */}
                 {clockState === "idle" && (
-                  <Button
-                    onClick={handleClockIn}
-                    disabled={clockIn.isPending || gettingLocation}
-                    className="gap-2 bg-green-600 hover:bg-green-700 text-white"
-                  >
-                    {gettingLocation || clockIn.isPending
-                      ? <Loader2 className="h-4 w-4 animate-spin" />
-                      : <Play className="h-4 w-4" />}
-                    {gettingLocation ? "Getting GPS..." : clockIn.isPending ? "Starting..." : "Clock In & Start Job"}
-                  </Button>
+                  <div className="flex flex-col gap-2">
+                    {/* Geofence banner — shown when on_site_only and contractor is outside radius */}
+                    {billableTimePolicy === "on_site_only" && geofenceStatus === "outside" && (
+                      <div className="flex flex-col gap-1.5 px-3 py-2 rounded-md bg-amber-500/10 border border-amber-500/30">
+                        <div className="flex items-center gap-1.5">
+                          <MapPin className="h-3.5 w-3.5 text-amber-400 shrink-0" />
+                          <span className="text-xs text-amber-300 font-medium">
+                            Proceed to the property to clock in
+                          </span>
+                        </div>
+                        <p className="text-xs text-amber-400/80 leading-snug">
+                          You will be able to clock in when you are within{" "}
+                          <span className="font-semibold text-amber-300">{geofenceRadiusFeet.toLocaleString()} ft</span>{" "}
+                          of the property.{distanceToPropertyFt !== null && (
+                            <> You are currently <span className="font-semibold">{distanceToPropertyFt.toLocaleString()} ft</span> away.</>
+                          )}
+                        </p>
+                        <button
+                          onClick={checkProximity}
+                          className="text-xs text-amber-400 underline underline-offset-2 text-left w-fit"
+                        >
+                          Check again
+                        </button>
+                      </div>
+                    )}
+                    {/* Normal clock-in button — disabled when outside geofence */}
+                    <Button
+                      onClick={handleClockIn}
+                      disabled={
+                        clockIn.isPending ||
+                        gettingLocation ||
+                        (billableTimePolicy === "on_site_only" && geofenceStatus === "outside")
+                      }
+                      className="gap-2 bg-green-600 hover:bg-green-700 text-white disabled:opacity-50"
+                    >
+                      {gettingLocation || clockIn.isPending
+                        ? <Loader2 className="h-4 w-4 animate-spin" />
+                        : geofenceStatus === "checking"
+                        ? <Loader2 className="h-4 w-4 animate-spin" />
+                        : <Play className="h-4 w-4" />}
+                      {gettingLocation ? "Getting GPS..." : clockIn.isPending ? "Starting..." : "Clock In & Start Job"}
+                    </Button>
+                  </div>
                 )}
 
                 {/* STATE 2: In progress, currently clocked in */}

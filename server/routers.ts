@@ -1541,6 +1541,35 @@ const timeTrackingRouter = router({
       if (!job) throw new TRPCError({ code: "NOT_FOUND" });
       if (job.assignedContractorId !== profile.id) throw new TRPCError({ code: "FORBIDDEN" });
 
+      // ─── Geofence enforcement ─────────────────────────────────────────────
+      // If the company's billable time policy is "on_site_only", reject clock-in
+      // if the contractor is outside the configured geofence radius.
+      const clockInSettings = await db.getCompanySettings(job.companyId);
+      const billablePolicy = clockInSettings?.billableTimePolicy ?? "on_site_only";
+      if (billablePolicy === "on_site_only" && job.propertyId) {
+        const property = await db.getPropertyByIdOnly(job.propertyId);
+        if (property?.latitude && property?.longitude) {
+          const radiusFeet = clockInSettings?.geofenceRadiusFeet ?? 500;
+          const radiusMeters = radiusFeet * 0.3048;
+          const R = 6371000;
+          const lat1 = parseFloat(String(property.latitude));
+          const lng1 = parseFloat(String(property.longitude));
+          const lat2 = parseFloat(input.latitude);
+          const lng2 = parseFloat(input.longitude);
+          const dLat = ((lat2 - lat1) * Math.PI) / 180;
+          const dLng = ((lng2 - lng1) * Math.PI) / 180;
+          const a = Math.sin(dLat / 2) ** 2 +
+            Math.cos((lat1 * Math.PI) / 180) * Math.cos((lat2 * Math.PI) / 180) * Math.sin(dLng / 2) ** 2;
+          const distanceMeters = R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+          if (distanceMeters > radiusMeters) {
+            throw new TRPCError({
+              code: "PRECONDITION_FAILED",
+              message: `GEOFENCE_REQUIRED:${radiusFeet}`,
+            });
+          }
+        }
+      }
+
       // Check for existing active session
       const existing = await db.getActiveTimeSession(input.jobId, profile.id);
       if (existing) throw new TRPCError({ code: "BAD_REQUEST", message: "Already clocked in" });

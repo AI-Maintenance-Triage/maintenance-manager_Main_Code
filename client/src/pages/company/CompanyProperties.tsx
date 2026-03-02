@@ -4,15 +4,18 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useViewAs } from "@/contexts/ViewAsContext";
-import { Plus, MapPin, Trash2, Building, ArrowUpRight } from "lucide-react";
+import { Plus, MapPin, Trash2, Building, ArrowUpRight, MoreVertical, Pencil } from "lucide-react";
 import { useState } from "react";
 import { useLocation } from "wouter";
 import { toast } from "sonner";
 import AddressAutocomplete from "@/components/AddressAutocomplete";
+
+const emptyForm = { name: "", address: "", city: "", state: "", zipCode: "", units: "", lat: "", lng: "" };
 
 export default function CompanyProperties() {
   const { user } = useAuth();
@@ -24,6 +27,16 @@ export default function CompanyProperties() {
   const [open, setOpen] = useState(false);
   const [limitDialogOpen, setLimitDialogOpen] = useState(false);
   const [limitMessage, setLimitMessage] = useState("");
+
+  // Edit state
+  const [editOpen, setEditOpen] = useState(false);
+  const [editingProp, setEditingProp] = useState<any>(null);
+  const [editForm, setEditForm] = useState(emptyForm);
+
+  // Delete confirm state
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [deletingPropId, setDeletingPropId] = useState<number | null>(null);
+
   const utils = trpc.useUtils();
 
   // Queries — use adminViewAs when impersonating, regular otherwise
@@ -36,19 +49,21 @@ export default function CompanyProperties() {
   const properties = isImpersonating ? viewAsProps.data : regularProps.data;
   const isLoading = isImpersonating ? viewAsProps.isLoading : regularProps.isLoading;
 
-  const emptyForm = { name: "", address: "", city: "", state: "", zipCode: "", units: "", lat: "", lng: "" };
   const [form, setForm] = useState(emptyForm);
+
+  const invalidateProps = () => {
+    utils.properties.list.invalidate();
+    utils.adminViewAs.companyProperties.invalidate();
+  };
 
   const createProperty = trpc.properties.create.useMutation({
     onSuccess: () => {
       toast.success("Property added!");
-      utils.properties.list.invalidate();
-      utils.adminViewAs.companyProperties.invalidate();
+      invalidateProps();
       setOpen(false);
       setForm(emptyForm);
     },
     onError: (err: any) => {
-      // Show upgrade dialog for plan limit errors
       if (
         err?.data?.code === "FORBIDDEN" ||
         err?.message?.toLowerCase().includes("maximum") ||
@@ -62,11 +77,23 @@ export default function CompanyProperties() {
     },
   });
 
+  const updateProperty = trpc.properties.update.useMutation({
+    onSuccess: () => {
+      toast.success("Property updated!");
+      invalidateProps();
+      setEditOpen(false);
+      setEditingProp(null);
+      setEditForm(emptyForm);
+    },
+    onError: (err: any) => toast.error(err.message),
+  });
+
   const deleteProperty = trpc.properties.delete.useMutation({
     onSuccess: () => {
       toast.success("Property removed");
-      utils.properties.list.invalidate();
-      utils.adminViewAs.companyProperties.invalidate();
+      invalidateProps();
+      setDeleteConfirmOpen(false);
+      setDeletingPropId(null);
     },
     onError: (err: any) => toast.error(err.message),
   });
@@ -82,6 +109,41 @@ export default function CompanyProperties() {
       latitude: form.lat || undefined,
       longitude: form.lng || undefined,
     });
+  };
+
+  const openEdit = (prop: any) => {
+    setEditingProp(prop);
+    setEditForm({
+      name: prop.name ?? "",
+      address: prop.address ?? "",
+      city: prop.city ?? "",
+      state: prop.state ?? "",
+      zipCode: prop.zipCode ?? "",
+      units: prop.units ? String(prop.units) : "",
+      lat: prop.latitude ? String(prop.latitude) : "",
+      lng: prop.longitude ? String(prop.longitude) : "",
+    });
+    setEditOpen(true);
+  };
+
+  const handleUpdate = () => {
+    if (!editingProp) return;
+    updateProperty.mutate({
+      id: editingProp.id,
+      name: editForm.name || undefined,
+      address: editForm.address || undefined,
+      city: editForm.city || undefined,
+      state: editForm.state || undefined,
+      zipCode: editForm.zipCode || undefined,
+      units: editForm.units ? Number(editForm.units) : undefined,
+      latitude: editForm.lat || undefined,
+      longitude: editForm.lng || undefined,
+    });
+  };
+
+  const confirmDelete = (id: number) => {
+    setDeletingPropId(id);
+    setDeleteConfirmOpen(true);
   };
 
   return (
@@ -181,6 +243,90 @@ export default function CompanyProperties() {
         </AlertDialogContent>
       </AlertDialog>
 
+      {/* Edit property dialog */}
+      <Dialog open={editOpen} onOpenChange={(v) => { setEditOpen(v); if (!v) { setEditingProp(null); setEditForm(emptyForm); } }}>
+        <DialogContent className="max-w-lg bg-card">
+          <DialogHeader>
+            <DialogTitle className="text-card-foreground">Edit Property</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Property Name</Label>
+              <Input placeholder="e.g. Sunset Apartments" value={editForm.name} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} />
+            </div>
+            <div className="space-y-2">
+              <Label>Address</Label>
+              <AddressAutocomplete
+                value={editForm.address}
+                onChange={(val) => setEditForm({ ...editForm, address: val })}
+                onSelect={(result) => setEditForm({
+                  ...editForm,
+                  address: result.street || result.formattedAddress,
+                  city: result.city,
+                  state: result.state,
+                  zipCode: result.zipCode,
+                  lat: result.lat,
+                  lng: result.lng,
+                })}
+                placeholder="Start typing an address..."
+              />
+              {editForm.lat && (
+                <p className="text-xs text-emerald-500 flex items-center gap-1">
+                  <MapPin className="h-3 w-3" /> Location confirmed ({parseFloat(editForm.lat).toFixed(4)}, {parseFloat(editForm.lng).toFixed(4)})
+                </p>
+              )}
+            </div>
+            <div className="grid grid-cols-3 gap-3">
+              <div className="space-y-2">
+                <Label>City</Label>
+                <Input placeholder="Boston" value={editForm.city} onChange={(e) => setEditForm({ ...editForm, city: e.target.value })} />
+              </div>
+              <div className="space-y-2">
+                <Label>State</Label>
+                <Input placeholder="MA" value={editForm.state} onChange={(e) => setEditForm({ ...editForm, state: e.target.value })} />
+              </div>
+              <div className="space-y-2">
+                <Label>Zip</Label>
+                <Input placeholder="02101" value={editForm.zipCode} onChange={(e) => setEditForm({ ...editForm, zipCode: e.target.value })} />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label>Number of Units</Label>
+              <Input type="number" placeholder="12" value={editForm.units} onChange={(e) => setEditForm({ ...editForm, units: e.target.value })} />
+            </div>
+            <div className="flex gap-2">
+              <Button variant="outline" className="flex-1" onClick={() => { setEditOpen(false); setEditingProp(null); setEditForm(emptyForm); }}>
+                Cancel
+              </Button>
+              <Button onClick={handleUpdate} disabled={updateProperty.isPending} className="flex-1">
+                {updateProperty.isPending ? "Saving..." : "Save Changes"}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete confirmation dialog */}
+      <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove Property?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently remove the property and cannot be undone. Jobs associated with this property will not be deleted.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setDeletingPropId(null)}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => deletingPropId !== null && deleteProperty.mutate({ id: deletingPropId })}
+            >
+              <Trash2 className="h-4 w-4 mr-2" /> Remove Property
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       {isLoading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-32 w-full" />)}
@@ -211,14 +357,27 @@ export default function CompanyProperties() {
                       </p>
                     )}
                   </div>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="text-muted-foreground hover:text-destructive shrink-0"
-                    onClick={() => deleteProperty.mutate({ id: prop.id })}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
+                  {/* 3-dot menu */}
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground shrink-0">
+                        <MoreVertical className="h-4 w-4" />
+                        <span className="sr-only">Property options</span>
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-40">
+                      <DropdownMenuItem onClick={() => openEdit(prop)} className="gap-2 cursor-pointer">
+                        <Pencil className="h-4 w-4" /> Edit
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem
+                        onClick={() => confirmDelete(prop.id)}
+                        className="gap-2 cursor-pointer text-destructive focus:text-destructive"
+                      >
+                        <Trash2 className="h-4 w-4" /> Remove
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </div>
               </CardContent>
             </Card>

@@ -1382,3 +1382,20 @@
 - [x] Always keep map container div in DOM (not conditionally rendered) so ref is available
 - [x] Add proper loading/error/no-pings states as z-index overlays instead of conditional renders
 - [x] Deduplicate Maps script loading with module-level singleton promise
+## Session 44: Geofence Enforcement, Heatmap, Property Edit
+- [ ] Add property lat/lng + geofenceRadiusFeet + billableTimePolicy to allMyJobs response
+- [ ] Backend clockIn: enforce geofence if billableTimePolicy=on_site_only (reject if outside radius)
+- [ ] Frontend ContractorMyJobs: show "Proceed to property" message with exact radius when outside geofence
+- [ ] Frontend ContractorMyJobs: auto-enable clock-in when contractor enters geofence (polling)
+- [ ] Add GPS heatmap toggle to Route Replay dialog
+- [ ] Add 3-dot edit menu to each property card on company Properties page
+
+## Session 44: Heatmap, Geofence Enforcement & Property Edit
+- [x] Add GPS heatmap toggle to Route Replay dialog (uses Google Maps visualization library)
+- [x] Enforce geofence clock-in on backend: reject clockIn if billableTimePolicy=on_site_only and contractor is outside geofenceRadiusFeet
+- [x] Add proximity check to ContractorMyJobs: show "Proceed to property" banner with exact radius and current distance when outside geofence
+- [x] Auto-poll proximity every 15s so Clock In button enables automatically when contractor arrives
+- [x] Add 3-dot (MoreVertical) dropdown menu to each property card on company Properties page
+- [x] Edit property dialog: pre-fills all fields, supports address autocomplete, re-geocodes on address change
+- [x] Delete confirmation dialog: replaced direct delete with AlertDialog confirmation
+- [x] getContractorJobs enriched with property lat/lng and companySettings (geofenceRadiusFeet, billableTimePolicy)

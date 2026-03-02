@@ -1456,7 +1456,7 @@ export async function getContractorJobs(contractorProfileId: number) {
   const db = await getDb();
   if (!db) return [];
 
-  return db
+  const rows = await db
     .select({
       job: maintenanceRequests,
       property: {
@@ -1466,6 +1466,8 @@ export async function getContractorJobs(contractorProfileId: number) {
         city: properties.city,
         state: properties.state,
         zipCode: properties.zipCode,
+        latitude: properties.latitude,
+        longitude: properties.longitude,
       },
     })
     .from(maintenanceRequests)
@@ -1484,6 +1486,21 @@ export async function getContractorJobs(contractorProfileId: number) {
       )
     )
     .orderBy(desc(maintenanceRequests.assignedAt));
+
+  // Enrich each row with the company's geofence settings
+  const settingsCache = new Map<number, { geofenceRadiusFeet: number; billableTimePolicy: string }>();
+  const enriched = await Promise.all(rows.map(async (row) => {
+    const companyId = row.job.companyId;
+    if (!settingsCache.has(companyId)) {
+      const s = await getCompanySettings(companyId);
+      settingsCache.set(companyId, {
+        geofenceRadiusFeet: s?.geofenceRadiusFeet ?? 500,
+        billableTimePolicy: s?.billableTimePolicy ?? "on_site_only",
+      });
+    }
+    return { ...row, companySettings: settingsCache.get(companyId)! };
+  }));
+  return enriched;
 }
 
 // ─── Contractor Ratings ────────────────────────────────────────────────────
