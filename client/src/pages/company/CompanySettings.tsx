@@ -10,7 +10,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useViewAs } from "@/contexts/ViewAsContext";
-import { Plus, Trash2, Settings, DollarSign, MapPin, Clock, Link2, Pencil, Bell, Wallet } from "lucide-react";
+import { Plus, Trash2, Settings, DollarSign, MapPin, Clock, Link2, Pencil, Bell, Wallet, ExternalLink } from "lucide-react";
+import { useLocation } from "wouter";
 import PaymentMethodManager from "@/components/PaymentMethodManager";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
@@ -18,6 +19,7 @@ import { toast } from "sonner";
 export default function CompanySettings() {
   const { user } = useAuth();
   const viewAs = useViewAs();
+  const [, setLocation] = useLocation();
   const isAdmin = user?.role === "admin";
   const isViewingAsCompany = isAdmin && viewAs.mode === "company" && viewAs.companyId;
 
@@ -35,14 +37,13 @@ export default function CompanySettings() {
           <TabsTrigger value="rates"><DollarSign className="h-4 w-4 mr-1.5" />Skill Tiers</TabsTrigger>
           <TabsTrigger value="tracking"><MapPin className="h-4 w-4 mr-1.5" />GPS & Time</TabsTrigger>
           <TabsTrigger value="notifications"><Bell className="h-4 w-4 mr-1.5" />Notifications</TabsTrigger>
-          <TabsTrigger value="integrations"><Link2 className="h-4 w-4 mr-1.5" />Integrations</TabsTrigger>
+          <TabsTrigger value="integrations" onClick={() => setLocation("/company/integrations")}><Link2 className="h-4 w-4 mr-1.5" />Integrations <ExternalLink className="h-3 w-3 ml-1 opacity-50" /></TabsTrigger>
           <TabsTrigger value="payment-methods"><Wallet className="h-4 w-4 mr-1.5" />Payment Methods</TabsTrigger>
         </TabsList>
         <TabsContent value="general"><GeneralSettings readOnly={false} companyId={isViewingAsCompany ? viewAs.companyId! : undefined} /></TabsContent>
         <TabsContent value="rates"><SkillTiersSettings readOnly={false} isAdmin={isAdmin} companyId={isViewingAsCompany ? viewAs.companyId! : undefined} /></TabsContent>
         <TabsContent value="tracking"><TrackingSettings readOnly={false} companyId={isViewingAsCompany ? viewAs.companyId! : undefined} /></TabsContent>
         <TabsContent value="notifications"><NotificationSettings readOnly={false} companyId={isViewingAsCompany ? viewAs.companyId! : undefined} /></TabsContent>
-        <TabsContent value="integrations"><IntegrationSettings readOnly={false} companyId={isViewingAsCompany ? viewAs.companyId! : undefined} /></TabsContent>
         <TabsContent value="payment-methods">
           <Card className="bg-card border-border">
             <CardHeader>
@@ -201,7 +202,7 @@ function SkillTiersSettings({ readOnly, isAdmin, companyId }: { readOnly: boolea
             <CardTitle className="text-card-foreground">Skill Tiers & Hourly Rates</CardTitle>
             <CardDescription>Define the skill tiers and their hourly rates. The AI uses these to classify incoming jobs.</CardDescription>
           </div>
-          {!readOnly && isAdmin && (
+          {!readOnly && isAdmin && !companyId && (
             <Dialog open={open} onOpenChange={setOpen}>
               <DialogTrigger asChild><Button size="sm" className="gap-1"><Plus className="h-4 w-4" /> Add Tier</Button></DialogTrigger>
               <DialogContent className="bg-card">
@@ -239,7 +240,7 @@ function SkillTiersSettings({ readOnly, isAdmin, companyId }: { readOnly: boolea
                       <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-primary" onClick={() => { setEditForm({ id: tier.id, name: tier.name, hourlyRate: tier.hourlyRate, description: tier.description || "", emergencyMultiplier: String(tier.emergencyMultiplier) }); setEditOpen(true); }}>
                         <Pencil className="h-4 w-4" />
                       </Button>
-                      {isAdmin && (
+                      {isAdmin && !companyId && (
                         <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-destructive" onClick={() => deleteTier.mutate({ id: tier.id })}>
                           <Trash2 className="h-4 w-4" />
                         </Button>
@@ -258,9 +259,10 @@ function SkillTiersSettings({ readOnly, isAdmin, companyId }: { readOnly: boolea
         <DialogContent className="bg-card">
           <DialogHeader><DialogTitle className="text-card-foreground">Edit Skill Tier</DialogTitle></DialogHeader>
           <div className="space-y-4">
+            {/* Name and description: only editable by platform admin (not when viewing as a company) */}
             <div className="space-y-2">
               <Label>Tier Name</Label>
-              {isAdmin
+              {isAdmin && !companyId
                 ? <Input value={editForm.name} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} />
                 : <p className="text-sm font-medium text-foreground py-2">{editForm.name}</p>
               }
@@ -268,7 +270,7 @@ function SkillTiersSettings({ readOnly, isAdmin, companyId }: { readOnly: boolea
             <div className="space-y-2"><Label>Hourly Rate ($)</Label><Input type="number" value={editForm.hourlyRate} onChange={(e) => setEditForm({ ...editForm, hourlyRate: e.target.value })} /></div>
             <div className="space-y-2">
               <Label>Description</Label>
-              {isAdmin
+              {isAdmin && !companyId
                 ? <Input value={editForm.description} onChange={(e) => setEditForm({ ...editForm, description: e.target.value })} />
                 : <p className="text-sm text-muted-foreground py-1">{editForm.description || <span className="italic">No description</span>}</p>
               }

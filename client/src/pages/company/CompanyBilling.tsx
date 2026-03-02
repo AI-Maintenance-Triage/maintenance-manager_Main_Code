@@ -23,6 +23,7 @@ import {
   Check, X, Building2, Users, ClipboardList, ArrowUpRight, Zap,
   Star, Shield, Crown, CheckCircle2, AlertCircle, XCircle, ExternalLink,
   Receipt, Plus, Trash2, Star as StarIcon, Wallet, Tag, Gift, Percent, Infinity,
+  Landmark,
 } from "lucide-react";
 
 const COMPANY_FEATURE_LABELS: Record<string, string> = {
@@ -83,7 +84,14 @@ function planStatusBadge(status: string) {
   }
 }
 
-function CardBrandIcon({ brand }: { brand?: string | null }) {
+function CardBrandIcon({ brand, type }: { brand?: string | null; type?: string | null }) {
+  if (type === "us_bank_account") {
+    return (
+      <span className="inline-flex items-center justify-center w-10 h-6 rounded bg-secondary text-primary border border-border">
+        <Landmark className="h-3.5 w-3.5" />
+      </span>
+    );
+  }
   const brands: Record<string, string> = {
     visa: "VISA", mastercard: "MC", amex: "AMEX", discover: "DISC",
     jcb: "JCB", unionpay: "UP", diners: "DC",
@@ -176,7 +184,7 @@ function PaymentMethodsSection() {
                   }`}
                 >
                   <div className="flex items-center gap-3">
-                    <CardBrandIcon brand={pm.brand} />
+                    <CardBrandIcon brand={pm.brand} type={pm.type} />
                     <div>
                       <div className="flex items-center gap-2">
                         <span className="text-sm font-medium text-foreground">
@@ -443,6 +451,7 @@ export default function CompanyBilling() {
   const hasCustomFees = feeOverridePercent != null || feeOverridePerListingEnabled != null;
   const planStatus = planData?.planStatus ?? null;
   const daysRemaining = planData?.daysRemaining ?? null;
+  const nextBillingDate = planData?.nextBillingDate ?? null;
   const invoices = invoicesData?.invoices ?? [];
 
   const totalCharged = txns?.reduce((s, t) => s + parseFloat(String(t.totalCharged ?? "0")), 0) ?? 0;
@@ -557,6 +566,12 @@ export default function CompanyBilling() {
                   <div className="mt-2 flex items-center gap-2 text-sm text-yellow-400 bg-yellow-500/10 border border-yellow-500/20 rounded-md px-3 py-2">
                     <AlertCircle className="h-4 w-4 shrink-0" />
                     <span>Your subscription is set to cancel at the end of the current billing period. You can resubscribe at any time.</span>
+                  </div>
+                )}
+                {nextBillingDate && planStatus === "active" && (
+                  <div className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <Calendar className="h-3.5 w-3.5" />
+                    <span>Next billing date: <span className="text-foreground font-medium">{new Date(nextBillingDate * 1000).toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" })}</span></span>
                   </div>
                 )}
               </div>
@@ -854,12 +869,23 @@ export default function CompanyBilling() {
                           {fmtCents(inv.amountPaid, inv.currency)}
                         </td>
                         <td className="px-4 py-3 text-center">
-                          <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border ${invoiceStatusColor(inv.status)}`}>
+                            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border ${invoiceStatusColor(inv.status)}`}>
                             {inv.status ?? "unknown"}
                           </span>
                         </td>
                         <td className="px-4 py-3 text-center">
                           <div className="flex items-center justify-center gap-1">
+                            {inv.status === "open" && inv.hostedInvoiceUrl && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-7 px-2 text-xs text-amber-400 hover:text-amber-300 hover:bg-amber-500/10"
+                                onClick={() => { window.open(inv.hostedInvoiceUrl!, "_blank"); toast.info("Opening payment page..."); }}
+                              >
+                                <CreditCard className="h-3.5 w-3.5 mr-1" />
+                                Pay Now
+                              </Button>
+                            )}
                             {inv.invoicePdf && (
                               <Button
                                 variant="ghost"
@@ -871,7 +897,7 @@ export default function CompanyBilling() {
                                 PDF
                               </Button>
                             )}
-                            {inv.hostedInvoiceUrl && (
+                            {inv.hostedInvoiceUrl && inv.status !== "open" && (
                               <Button
                                 variant="ghost"
                                 size="sm"

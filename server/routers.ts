@@ -117,11 +117,22 @@ const companyRouter = router({
     const daysRemaining = planExpiresAt && planStatus === "trialing"
       ? Math.max(0, Math.ceil((planExpiresAt - now) / (1000 * 60 * 60 * 24)))
       : null;
+    // Fetch next billing date from Stripe subscription if available
+    let nextBillingDate: number | null = null;
+    if (company?.stripeSubscriptionId && (planStatus === "active" || planStatus === "trialing" || planStatus === "canceled")) {
+      try {
+        const sub = await stripe.subscriptions.retrieve(company.stripeSubscriptionId);
+        nextBillingDate = (sub as any).current_period_end ?? null;
+      } catch {
+        // Non-fatal — just don't show the date
+      }
+    }
     return {
       plan,
       planStatus,
       planExpiresAt,
       daysRemaining,
+      nextBillingDate,
       planPriceOverride: company?.planPriceOverride ?? null,
       planNotes: company?.planNotes ?? null,
       feeOverridePercent: company?.feeOverridePercent ?? null,

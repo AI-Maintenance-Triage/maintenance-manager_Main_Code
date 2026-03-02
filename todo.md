@@ -1280,3 +1280,11 @@
 
 ## Bug: Billing Page Crash
 - [x] Fix TypeError: Cannot read properties of undefined (reading 'toLowerCase') on /company/billing
+
+## Session 37: Billing UX + Skill Tier Permissions + Settings Integrations
+
+- [x] Billing: show Landmark icon for us_bank_account payment methods instead of generic card icon
+- [x] Billing: add "Pay Now" button on open Stripe invoices that opens the hosted invoice URL
+- [x] Billing: show next billing date on the Current Plan card (from subscription.current_period_end)
+- [x] Skill Tiers: remove Add and Delete buttons from company view — companies can only edit prices
+- [x] Settings: remove the "Integrations" tab from CompanySettings and redirect that nav item to /company/integrations
