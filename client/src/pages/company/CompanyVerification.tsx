@@ -514,6 +514,50 @@ function VerificationCard({ row, onApprove, onDispute, onViewPhotos, onViewRoute
           </div>
         )}
 
+        {/* Materials / Parts receipts submitted by contractor */}
+        {job.receipts && job.receipts.length > 0 && (
+          <div className="space-y-2">
+            <p className="text-xs font-medium text-amber-400 flex items-center gap-1.5">
+              <Receipt className="h-3.5 w-3.5" />
+              Materials Submitted for Reimbursement
+            </p>
+            <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 divide-y divide-amber-500/10">
+              {job.receipts.map((r: any, i: number) => (
+                <div key={i} className="flex items-center justify-between gap-3 px-3 py-2">
+                  <p className="text-sm text-foreground flex-1 truncate">{r.description ?? "Materials"}</p>
+                  <div className="flex items-center gap-3 shrink-0">
+                    {r.receiptImageUrl && (
+                      <button
+                        onClick={() => onViewPhotos([r.receiptImageUrl])}
+                        className="w-9 h-9 rounded border border-amber-500/30 overflow-hidden hover:border-amber-400 transition-colors"
+                        title="View receipt"
+                      >
+                        <img src={r.receiptImageUrl} alt="Receipt" className="w-full h-full object-cover" />
+                      </button>
+                    )}
+                    <span className="text-sm font-medium text-amber-300 min-w-[4rem] text-right">
+                      ${parseFloat(r.amount ?? "0").toFixed(2)}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+            {/* View all receipt photos button */}
+            {job.receipts.some((r: any) => r.receiptImageUrl) && (
+              <button
+                onClick={() => onViewPhotos(job.receipts.filter((r: any) => r.receiptImageUrl).map((r: any) => r.receiptImageUrl))}
+                className="flex items-center gap-1.5 text-xs text-amber-400 hover:text-amber-300 underline underline-offset-2"
+              >
+                <Image className="h-3 w-3" />
+                View Receipt Photo{job.receipts.filter((r: any) => r.receiptImageUrl).length > 1 ? "s" : ""}
+                {job.receipts.filter((r: any) => r.receiptImageUrl).length > 1
+                  ? ` (${job.receipts.filter((r: any) => r.receiptImageUrl).length})`
+                  : ""}
+              </button>
+            )}
+          </div>
+        )}
+
         {/* Disputed notes */}
         {isDisputed && job.disputeNotes && (
           <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/20">

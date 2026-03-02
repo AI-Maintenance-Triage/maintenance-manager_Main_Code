@@ -14,7 +14,7 @@ import {
   XCircle, Loader2, Navigation2, MapPin, Wifi, MessageSquare, FileDown,
   Plus, Trash2, Receipt,
 } from "lucide-react";
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { toast } from "sonner";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { JobComments } from "@/components/JobComments";
@@ -172,6 +172,32 @@ function JobCard({ row, onUpdate, readOnly = false }: { row: any; onUpdate: () =
   const [receiptPhotoUrl, setReceiptPhotoUrl] = useState<string | null>(null);
   const [uploadingReceipt, setUploadingReceipt] = useState(false);
 
+  // ── Session history (all sessions for this job) ─────────────────────────
+  const { data: allSessions } = trpc.jobs.timeSessions.useQuery(
+    { jobId: job.id },
+    { enabled: job.status === "in_progress" || job.status === "assigned", staleTime: 10_000 }
+  );
+
+  // ── Running clock timer state (declared early; useEffect wired after clockState) ───
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Total billed minutes from completed sessions
+  const completedMinutes = useMemo(() => {
+    if (!allSessions) return 0;
+    return allSessions
+      .filter((s: any) => s.status === "completed" && s.totalMinutes)
+      .reduce((sum: number, s: any) => sum + (s.totalMinutes ?? 0), 0);
+  }, [allSessions]);
+
+  const formatDuration = (totalSeconds: number) => {
+    const h = Math.floor(totalSeconds / 3600);
+    const m = Math.floor((totalSeconds % 3600) / 60);
+    const s = totalSeconds % 60;
+    if (h > 0) return `${h}h ${m.toString().padStart(2, "0")}m ${s.toString().padStart(2, "0")}s`;
+    return `${m}m ${s.toString().padStart(2, "0")}s`;
+  };
+
   // ── Restore active session from server on mount ──────────────────────────
   const { data: activeSessionData, isLoading: sessionLoading } = trpc.timeTracking.getActiveSessionForJob.useQuery(
     { jobId: job.id },
@@ -196,6 +222,23 @@ function JobCard({ row, onUpdate, readOnly = false }: { row: any; onUpdate: () =
     // in_progress but no active session → paused (clocked out temporarily)
     return "paused";
   })();
+
+  // ── Start/stop the live timer based on clockState ───────────────────────
+  useEffect(() => {
+    if (clockState === "active" && activeSessionData?.clockInTime) {
+      const startMs = activeSessionData.clockInTime;
+      const tick = () => setElapsedSeconds(Math.floor((Date.now() - startMs) / 1000));
+      tick();
+      timerRef.current = setInterval(tick, 1000);
+    } else if (clockState === "active" && activeSessionId) {
+      // session restored but clockInTime not yet loaded — tick from 0
+      timerRef.current = setInterval(() => setElapsedSeconds(s => s + 1), 1000);
+    } else {
+      if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
+      setElapsedSeconds(0);
+    }
+    return () => { if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; } };
+  }, [clockState, activeSessionId, activeSessionData]);
 
   // ── Continuous GPS tracking state ────────────────────────────────────────
   const [isTracking, setIsTracking] = useState(false);
@@ -229,10 +272,22 @@ function JobCard({ row, onUpdate, readOnly = false }: { row: any; onUpdate: () =
   });
 
   const clockOut = trpc.timeTracking.clockOut.useMutation({
-    onSuccess: () => {
+    onSuccess: (_, vars) => {
       stopTracking();
       setActiveSessionId(null);
-      toast.success("Clocked out! Time recorded.");
+      if (vars.method === "auto_geofence") {
+        toast.warning(
+          "⏸️ Billing paused — you were auto-clocked out after returning to your starting location. Clock back in to resume billing.",
+          { duration: 8000 }
+        );
+      } else if (vars.method === "auto_timeout") {
+        toast.warning(
+          "⏸️ Billing paused — session timed out. Clock back in to resume billing.",
+          { duration: 8000 }
+        );
+      } else {
+        toast.success("Clocked out! Time recorded.");
+      }
       onUpdate();
     },
     onError: (err: any) => toast.error(err.message),
@@ -629,6 +684,58 @@ function JobCard({ row, onUpdate, readOnly = false }: { row: any; onUpdate: () =
                 </div>
               )}
             </div>
+
+            {/* ── Running timer + session history (in_progress only) ──────────────── */}
+            {(job.status === "in_progress") && (
+              <div className="mt-3 space-y-2">
+                {/* Live timer */}
+                {clockState === "active" && (
+                  <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-green-500/10 border border-green-500/20">
+                    <div className="h-2 w-2 rounded-full bg-green-400 animate-pulse" />
+                    <span className="text-xs text-green-400 font-mono font-medium">
+                      {formatDuration(elapsedSeconds)}
+                    </span>
+                    <span className="text-xs text-green-400/60">billed this session</span>
+                    {completedMinutes > 0 && (
+                      <span className="ml-auto text-xs text-muted-foreground">
+                        +{Math.floor(completedMinutes / 60)}h {completedMinutes % 60}m prior
+                      </span>
+                    )}
+                  </div>
+                )}
+                {clockState === "paused" && completedMinutes > 0 && (
+                  <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-muted/30 border border-border">
+                    <Clock className="h-3.5 w-3.5 text-muted-foreground" />
+                    <span className="text-xs text-muted-foreground">
+                      {Math.floor(completedMinutes / 60)}h {completedMinutes % 60}m billed so far
+                    </span>
+                  </div>
+                )}
+                {/* Session history */}
+                {allSessions && allSessions.length > 0 && (
+                  <div className="space-y-1">
+                    <p className="text-xs text-muted-foreground font-medium">Session history</p>
+                    {allSessions.map((s: any, i: number) => (
+                      <div key={s.id} className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <span className="w-4 text-center text-muted-foreground/50">{i + 1}.</span>
+                        <span>
+                          {new Date(s.clockInTime).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                          {" – "}
+                          {s.clockOutTime
+                            ? new Date(s.clockOutTime).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+                            : <span className="text-green-400">ongoing</span>}
+                        </span>
+                        {s.totalMinutes && (
+                          <span className="ml-auto text-muted-foreground/70">
+                            {Math.floor(s.totalMinutes / 60)}h {s.totalMinutes % 60}m
+                          </span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
 
               {/* Notes button — always visible */}
               <div className="flex flex-col gap-2 shrink-0 mr-2">
