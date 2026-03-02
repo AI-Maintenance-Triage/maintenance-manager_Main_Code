@@ -2,6 +2,13 @@
  * Buildium PMS Adapter
  * Uses Buildium Open API v1 with Client ID + Client Secret (API key auth).
  * Docs: https://developer.buildium.com/
+ *
+ * Key facts from official OpenAPI spec:
+ * - Response objects use PascalCase field names (Id, Name, Title, etc.)
+ * - Pagination uses `offset` + `limit` (NOT pagelimit/pagenumber)
+ * - Maintenance requests endpoint: /v1/tasks/residentrequests
+ * - Rentals endpoint: /v1/rentals
+ * - Date filter param: `lastupdatedfrom` (all lowercase)
  */
 
 import type { PmsAdapter, PmsCredentials, PmsProperty, PmsMaintenanceRequest } from "./types";
@@ -37,7 +44,8 @@ export const buildiumAdapter: PmsAdapter = {
 
   async testConnection(credentials) {
     try {
-      await buildiumFetch(credentials, "/rentals?pagelimit=1");
+      // Use correct pagination params: offset + limit
+      await buildiumFetch(credentials, "/rentals?offset=0&limit=1");
       return { ok: true };
     } catch (e) {
       return { ok: false, error: (e as Error).message };
@@ -46,30 +54,33 @@ export const buildiumAdapter: PmsAdapter = {
 
   async importProperties(credentials) {
     const results: PmsProperty[] = [];
-    let pageNumber = 1;
-    const pageLimit = 100;
+    let offset = 0;
+    const limit = 100;
 
     while (true) {
-      const data = await buildiumFetch(credentials, `/rentals?pagelimit=${pageLimit}&pagenumber=${pageNumber}`);
+      // Buildium uses offset-based pagination; response fields are PascalCase
+      const data = await buildiumFetch(credentials, `/rentals?offset=${offset}&limit=${limit}`);
       const items: unknown[] = Array.isArray(data) ? data : (data?.items ?? []);
       if (!items.length) break;
 
       for (const item of items) {
         const r = item as Record<string, unknown>;
-        const addr = r.address as Record<string, string> | undefined;
+        // RentalMessage response: Id, Name, Address (PascalCase)
+        const addr = r.Address as Record<string, string> | undefined;
         results.push({
-          externalId: String(r.id),
-          name: String(r.name ?? r.id),
-          address: addr ? `${addr.addressLine1 ?? ""}`.trim() : "",
-          city: addr?.city,
-          state: addr?.state,
-          zipCode: addr?.postalCode,
-          units: typeof r.totalUnits === "number" ? r.totalUnits : 1,
+          externalId: String(r.Id ?? r.id),
+          name: String(r.Name ?? r.name ?? r.Id ?? r.id),
+          address: addr ? `${addr.AddressLine1 ?? addr.addressLine1 ?? ""}`.trim() : "",
+          city: addr?.City ?? addr?.city,
+          state: addr?.State ?? addr?.state,
+          zipCode: addr?.PostalCode ?? addr?.postalCode ?? addr?.ZipCode ?? addr?.zipCode,
+          units: typeof r.NumberUnits === "number" ? r.NumberUnits :
+                 typeof r.totalUnits === "number" ? r.totalUnits : 1,
         });
       }
 
-      if (items.length < pageLimit) break;
-      pageNumber++;
+      if (items.length < limit) break;
+      offset += limit;
     }
 
     return results;
@@ -77,39 +88,60 @@ export const buildiumAdapter: PmsAdapter = {
 
   async fetchNewRequests(credentials, since) {
     const results: PmsMaintenanceRequest[] = [];
-    let pageNumber = 1;
-    const pageLimit = 100;
+    let offset = 0;
+    const limit = 100;
+    // Buildium filter param is all-lowercase: lastupdatedfrom
     const sinceParam = since ? `&lastupdatedfrom=${since.toISOString().split("T")[0]}` : "";
 
     while (true) {
+      // Correct endpoint: /v1/tasks/residentrequests (NOT /v1/maintenancerequests)
       const data = await buildiumFetch(
         credentials,
-        `/maintenancerequests?pagelimit=${pageLimit}&pagenumber=${pageNumber}${sinceParam}`
+        `/tasks/residentrequests?offset=${offset}&limit=${limit}${sinceParam}`
       );
       const items: unknown[] = Array.isArray(data) ? data : (data?.items ?? []);
       if (!items.length) break;
 
       for (const item of items) {
         const r = item as Record<string, unknown>;
-        const unit = r.unit as Record<string, unknown> | undefined;
-        const tenant = r.requestedByUser as Record<string, unknown> | undefined;
-        const property = r.rental as Record<string, unknown> | undefined;
+        // ResidentRequestTaskMessage fields are PascalCase:
+        // Id, Title, Description, Property, RequestedByUserEntity, CreatedDateTime, LastUpdatedDateTime
+        const property = r.Property as Record<string, unknown> | undefined;
+        const requestedBy = r.RequestedByUserEntity as Record<string, unknown> | undefined;
+        const unitAgreement = r.UnitAgreement as Record<string, unknown> | undefined;
+
+        // Tenant name from RequestedByUserEntity
+        const tenantName = requestedBy
+          ? `${requestedBy.FirstName ?? requestedBy.firstName ?? ""} ${requestedBy.LastName ?? requestedBy.lastName ?? ""}`.trim()
+          : undefined;
+        const tenantEmail = requestedBy
+          ? String(requestedBy.Email ?? requestedBy.email ?? "")
+          : undefined;
+
+        // Unit number from UnitAgreement
+        const unitNumber = unitAgreement
+          ? String(unitAgreement.UnitNumber ?? unitAgreement.unitNumber ?? unitAgreement.Name ?? unitAgreement.name ?? "")
+          : undefined;
 
         results.push({
-          externalId: String(r.id),
-          title: String(r.subject ?? r.title ?? "Maintenance Request"),
-          description: String(r.message ?? r.description ?? ""),
-          unitNumber: unit ? String(unit.unitNumber ?? unit.name ?? "") : undefined,
-          tenantName: tenant ? `${tenant.firstName ?? ""} ${tenant.lastName ?? ""}`.trim() : undefined,
-          tenantEmail: tenant ? String(tenant.email ?? "") : undefined,
-          propertyExternalId: property ? String(property.id) : "",
-          priority: mapBuildiumPriority(r.priority as string | undefined),
-          createdAt: r.createdDateTime ? new Date(r.createdDateTime as string) : undefined,
+          externalId: String(r.Id ?? r.id),
+          title: String(r.Title ?? r.title ?? "Maintenance Request"),
+          description: String(r.Description ?? r.description ?? ""),
+          unitNumber: unitNumber || undefined,
+          tenantName: tenantName || undefined,
+          tenantEmail: tenantEmail || undefined,
+          propertyExternalId: property ? String(property.Id ?? property.id ?? "") : "",
+          priority: mapBuildiumPriority(r.Priority as string | undefined ?? r.priority as string | undefined),
+          createdAt: r.CreatedDateTime
+            ? new Date(r.CreatedDateTime as string)
+            : r.createdDateTime
+            ? new Date(r.createdDateTime as string)
+            : undefined,
         });
       }
 
-      if (items.length < pageLimit) break;
-      pageNumber++;
+      if (items.length < limit) break;
+      offset += limit;
     }
 
     return results;
@@ -117,9 +149,10 @@ export const buildiumAdapter: PmsAdapter = {
 
   async markComplete(credentials, externalId) {
     try {
-      await buildiumFetch(credentials, `/maintenancerequests/${externalId}`, {
+      // Update resident request status via PATCH on the task
+      await buildiumFetch(credentials, `/tasks/residentrequests/${externalId}`, {
         method: "PUT",
-        body: JSON.stringify({ status: "Completed" }),
+        body: JSON.stringify({ Status: "Completed" }),
       });
       return { ok: true };
     } catch (e) {

@@ -1358,3 +1358,12 @@
 - [x] Sandbox badge (amber FlaskConical icon) shown on connected integration cards when isSandbox=true
 - [x] Last synced timestamp already present on integration cards
 - [x] Connect dialog description updated for Buildium to explain the correct webhook flow
+
+## Session 41: Buildium API Sync Fix
+- [x] Fix Buildium adapter endpoint: /v1/maintenancerequests → /v1/tasks/residentrequests
+- [x] Fix pagination: pagelimit/pagenumber → offset/limit (offset-based)
+- [x] Fix response field casing: PascalCase (Id, Name, Title, Description, Address, etc.)
+- [x] Fix property fields: totalUnits → NumberUnits, addressLine1 → AddressLine1, etc.
+- [x] Fix maintenance request fields: requestedByUser → RequestedByUserEntity, rental → Property
+- [x] Fix date field: createdDateTime → CreatedDateTime
+- [x] Fix markComplete endpoint to use /v1/tasks/residentrequests/{id}
