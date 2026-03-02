@@ -865,6 +865,17 @@ const jobsRouter = router({
         if (aiEnabled && tiers.length > 0) {
           const classification = await classifyMaintenanceRequest(input.title, input.description, tiers);
           const matchedTier = tiers.find(t => t.name.toLowerCase() === classification.skillTierName.toLowerCase());
+          // Compute the effective hourly rate:
+          // - Emergency priority → baseTierRate × emergencyMultiplier
+          // - All other priorities → baseTierRate
+          let aiHourlyRate: string | null = matchedTier?.hourlyRate ?? null;
+          if (classification.priority === "emergency" && matchedTier?.emergencyMultiplier) {
+            const base = parseFloat(matchedTier.hourlyRate);
+            const mult = parseFloat(matchedTier.emergencyMultiplier);
+            if (!isNaN(base) && !isNaN(mult)) {
+              aiHourlyRate = (base * mult).toFixed(2);
+            }
+          }
           await db.updateMaintenanceRequest(id, {
             aiPriority: classification.priority,
             aiSkillTier: classification.skillTierName,
@@ -872,7 +883,7 @@ const jobsRouter = router({
             aiReasoning: classification.reasoning,
             aiClassifiedAt: new Date(),
             skillTierId: matchedTier?.id ?? null,
-            hourlyRate: matchedTier?.hourlyRate ?? null,
+            hourlyRate: aiHourlyRate,
             isEmergency: classification.priority === "emergency",
           });
         }
@@ -910,24 +921,19 @@ const jobsRouter = router({
       // Verify this job belongs to this company
       const job = await db.getMaintenanceRequestById(input.jobId);
       if (!job || job.companyId !== companyId) throw new TRPCError({ code: "NOT_FOUND" });
-      // Look up the skill tier that best matches the new priority level
-      // Priority → skill tier name mapping: emergency → Emergency, high → High Priority, medium → General, low → Basic
+      // Keep the currently assigned skill tier — priority override should ONLY change
+      // whether the emergency multiplier is applied, never swap the tier itself.
       const tiers = await db.getSkillTiers(companyId);
-      const priorityTierMap: Record<string, string[]> = {
-        emergency: ["emergency", "urgent", "after-hours"],
-        high: ["high", "priority", "specialist", "licensed"],
-        medium: ["medium", "general", "standard"],
-        low: ["low", "basic", "entry", "simple"],
-      };
-      const keywords = priorityTierMap[input.priority] ?? [];
-      const matchedTier = tiers.find(t =>
-        keywords.some(kw => t.name.toLowerCase().includes(kw))
-      ) ?? tiers[0];
-      // Apply emergency multiplier if priority is emergency
-      let newHourlyRate: string | null = matchedTier?.hourlyRate ?? null;
-      if (input.priority === "emergency" && matchedTier?.emergencyMultiplier) {
-        const base = parseFloat(matchedTier.hourlyRate);
-        const mult = parseFloat(matchedTier.emergencyMultiplier);
+      // Resolve the current effective tier (override takes precedence over AI assignment)
+      const currentTierId = (job as any).overrideSkillTierId ?? (job as any).aiSkillTierId ?? job.skillTierId;
+      const currentTier = tiers.find(t => t.id === currentTierId) ?? tiers[0];
+      // Compute the new hourly rate:
+      // - Emergency → baseTierRate × emergencyMultiplier (always from base, never compound)
+      // - Any other priority → baseTierRate (plain base rate)
+      let newHourlyRate: string | null = currentTier?.hourlyRate ?? null;
+      if (input.priority === "emergency" && currentTier?.emergencyMultiplier) {
+        const base = parseFloat(currentTier.hourlyRate);
+        const mult = parseFloat(currentTier.emergencyMultiplier);
         if (!isNaN(base) && !isNaN(mult)) {
           newHourlyRate = (base * mult).toFixed(2);
         }
@@ -938,10 +944,9 @@ const jobsRouter = router({
         overrideReason: input.reason ?? null,
         overriddenAt: new Date(),
         overriddenByUserId: ctx.user.id,
-        // Also update the live hourlyRate and isEmergency so billing uses the new rate
+        // Update live hourlyRate and isEmergency — do NOT change skillTierId
         hourlyRate: newHourlyRate,
         isEmergency: input.priority === "emergency",
-        skillTierId: matchedTier?.id ?? null,
       });
       // Log the change to audit history
       await db.addJobChangeHistory({
@@ -953,7 +958,7 @@ const jobsRouter = router({
         toValue: input.priority,
         note: input.reason ?? null,
       });
-      return { success: true, newHourlyRate, matchedTierName: matchedTier?.name ?? null };
+      return { success: true, newHourlyRate, matchedTierName: currentTier?.name ?? null };
     }),
 
   // Company: override the skill tier (and thus hourly rate) on a job
