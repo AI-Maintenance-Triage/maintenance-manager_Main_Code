@@ -45,11 +45,13 @@ function fmt(val: string | number | null | undefined) {
   return isNaN(n) ? "$0.00" : `$${n.toFixed(2)}`;
 }
 
-function fmtCents(cents: number, currency = "usd") {
-  return new Intl.NumberFormat("en-US", { style: "currency", currency: currency.toUpperCase() }).format(cents / 100);
+function fmtCents(cents: number, currency?: string | null) {
+  const cur = (currency ?? "usd").toUpperCase();
+  return new Intl.NumberFormat("en-US", { style: "currency", currency: cur }).format(cents / 100);
 }
 
-function statusColor(status: string) {
+function statusColor(status: string | null | undefined) {
+  if (!status) return "bg-secondary text-muted-foreground";
   switch (status) {
     case "captured":
     case "paid_out": return "bg-green-500/15 text-green-400 border-green-500/30";
@@ -81,14 +83,15 @@ function planStatusBadge(status: string) {
   }
 }
 
-function CardBrandIcon({ brand }: { brand: string }) {
+function CardBrandIcon({ brand }: { brand?: string | null }) {
   const brands: Record<string, string> = {
     visa: "VISA", mastercard: "MC", amex: "AMEX", discover: "DISC",
     jcb: "JCB", unionpay: "UP", diners: "DC",
   };
+  const safe = brand ?? "";
   return (
     <span className="inline-flex items-center justify-center w-10 h-6 rounded bg-secondary text-[10px] font-bold text-foreground border border-border">
-      {brands[brand.toLowerCase()] ?? brand.slice(0, 4).toUpperCase()}
+      {brands[safe.toLowerCase()] ?? (safe ? safe.slice(0, 4).toUpperCase() : <CreditCard className="h-3 w-3" />)}
     </span>
   );
 }

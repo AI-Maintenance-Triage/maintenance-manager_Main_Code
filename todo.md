@@ -1277,3 +1277,6 @@
 - [x] Vitest: report summary, monthly, property, tier shapes
 - [x] Vitest: CSV export helper (quoting, null handling, row count)
 - [x] Vitest: date range preset logic
+
+## Bug: Billing Page Crash
+- [x] Fix TypeError: Cannot read properties of undefined (reading 'toLowerCase') on /company/billing
