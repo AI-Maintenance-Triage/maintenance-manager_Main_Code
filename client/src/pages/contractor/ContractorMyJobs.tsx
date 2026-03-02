@@ -173,7 +173,7 @@ function JobCard({ row, onUpdate, readOnly = false }: { row: any; onUpdate: () =
   const [uploadingReceipt, setUploadingReceipt] = useState(false);
 
   // ── Restore active session from server on mount ──────────────────────────
-  const { data: activeSessionData } = trpc.timeTracking.getActiveSessionForJob.useQuery(
+  const { data: activeSessionData, isLoading: sessionLoading } = trpc.timeTracking.getActiveSessionForJob.useQuery(
     { jobId: job.id },
     { enabled: job.status === "in_progress" && activeSessionId === null, staleTime: 0 }
   );
@@ -182,6 +182,20 @@ function JobCard({ row, onUpdate, readOnly = false }: { row: any; onUpdate: () =
       setActiveSessionId(activeSessionData.id);
     }
   }, [activeSessionData, activeSessionId]);
+
+  // ── Derive clock state ────────────────────────────────────────────────────
+  // clockState drives which buttons to show:
+  //   "idle"    → assigned, not yet clocked in → show "Clock In & Start Job"
+  //   "active"  → in_progress, clocked in     → show "Clock Out (Temporary)" + "Finish Job & Clock Out"
+  //   "paused"  → in_progress, clocked out    → show "Clock Back In" + "Finish Job"
+  const clockState: "idle" | "active" | "paused" | "loading" = (() => {
+    if (job.status === "assigned") return "idle";
+    if (job.status !== "in_progress") return "idle";
+    if (sessionLoading && activeSessionId === null) return "loading";
+    if (activeSessionId !== null) return "active";
+    // in_progress but no active session → paused (clocked out temporarily)
+    return "paused";
+  })();
 
   // ── Continuous GPS tracking state ────────────────────────────────────────
   const [isTracking, setIsTracking] = useState(false);
@@ -629,28 +643,61 @@ function JobCard({ row, onUpdate, readOnly = false }: { row: any; onUpdate: () =
               </div>
               {!readOnly && (
               <div className="flex flex-col gap-2 shrink-0">
-                {job.status === "assigned" && !activeSessionId && activeSessionData === null && (
+
+                {/* STATE 1: Assigned, not yet clocked in */}
+                {clockState === "idle" && (
                   <Button
                     onClick={handleClockIn}
                     disabled={clockIn.isPending || gettingLocation}
                     className="gap-2 bg-green-600 hover:bg-green-700 text-white"
                   >
-                    {gettingLocation ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
-                    {gettingLocation ? "Getting GPS..." : "Clock In"}
+                    {gettingLocation || clockIn.isPending
+                      ? <Loader2 className="h-4 w-4 animate-spin" />
+                      : <Play className="h-4 w-4" />}
+                    {gettingLocation ? "Getting GPS..." : clockIn.isPending ? "Starting..." : "Clock In & Start Job"}
                   </Button>
                 )}
-                {(job.status === "in_progress" || activeSessionId) && (
+
+                {/* STATE 2: In progress, currently clocked in */}
+                {clockState === "active" && (
                   <>
                     <Button
                       onClick={handleClockOut}
-                      disabled={clockOut.isPending || gettingLocation || !activeSessionId}
-                      variant="destructive"
-                      className="gap-2"
+                      disabled={clockOut.isPending || gettingLocation}
+                      variant="outline"
+                      className="gap-2 border-amber-500/50 text-amber-400 hover:bg-amber-500/10"
                     >
                       {clockOut.isPending || gettingLocation
                         ? <Loader2 className="h-4 w-4 animate-spin" />
-                        : isTracking ? <Navigation2 className="h-4 w-4" /> : <Square className="h-4 w-4" />}
-                      {gettingLocation ? "Getting GPS..." : "Clock Out"}
+                        : <Square className="h-4 w-4" />}
+                      {gettingLocation ? "Getting GPS..." : "Clock Out (Temporary)"}
+                    </Button>
+                    <Button
+                      onClick={handleMarkComplete}
+                      className="gap-2 bg-green-600 hover:bg-green-700 text-white"
+                    >
+                      <CheckCheck className="h-4 w-4" />
+                      Finish Job & Clock Out
+                    </Button>
+                  </>
+                )}
+
+                {/* STATE 3: In progress, temporarily clocked out (paused) */}
+                {clockState === "paused" && (
+                  <>
+                    <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-amber-500/10 border border-amber-500/20">
+                      <Square className="h-3 w-3 text-amber-400" />
+                      <span className="text-xs text-amber-400 font-medium">Billing paused</span>
+                    </div>
+                    <Button
+                      onClick={handleClockIn}
+                      disabled={clockIn.isPending || gettingLocation}
+                      className="gap-2 bg-blue-600 hover:bg-blue-700 text-white"
+                    >
+                      {gettingLocation || clockIn.isPending
+                        ? <Loader2 className="h-4 w-4 animate-spin" />
+                        : <Play className="h-4 w-4" />}
+                      {gettingLocation ? "Getting GPS..." : "Clock Back In"}
                     </Button>
                     <Button
                       onClick={handleMarkComplete}
@@ -658,20 +705,18 @@ function JobCard({ row, onUpdate, readOnly = false }: { row: any; onUpdate: () =
                       className="gap-2 border-green-500/50 text-green-400 hover:bg-green-500/10"
                     >
                       <CheckCheck className="h-4 w-4" />
-                      Mark Complete
+                      Finish Job
                     </Button>
                   </>
                 )}
-                {job.status === "assigned" && (
-                  <Button
-                    onClick={handleMarkComplete}
-                    variant="outline"
-                    className="gap-2 border-green-500/50 text-green-400 hover:bg-green-500/10"
-                  >
-                    <CheckCheck className="h-4 w-4" />
-                    Mark Complete
+
+                {/* Loading state while querying active session */}
+                {clockState === "loading" && (
+                  <Button disabled variant="outline" className="gap-2">
+                    <Loader2 className="h-4 w-4 animate-spin" /> Loading...
                   </Button>
                 )}
+
               </div>
             )}
           </div>
