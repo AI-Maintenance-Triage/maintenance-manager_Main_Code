@@ -62,8 +62,33 @@ export const doorloopAdapter: PmsAdapter = {
         for (const prop of items) {
           // DoorLoop property shape
           const addr = prop.address ?? {};
+          const dlPropertyId = prop.id;
+          // Fetch individual units for this property from /units?propertyId=...
+          let unitNumbers: PmsProperty["unitNumbers"] = [];
+          try {
+            let unitCursor: string | undefined;
+            while (true) {
+              const unitUrl = unitCursor
+                ? `/units?propertyId=${dlPropertyId}&limit=100&cursor=${encodeURIComponent(unitCursor)}`
+                : `/units?propertyId=${dlPropertyId}&limit=100`;
+              const unitData = await dlFetch(unitUrl, credentials);
+              const unitItems: any[] = unitData.data ?? unitData.results ?? (Array.isArray(unitData) ? unitData : []);
+              if (!unitItems.length) break;
+              for (const u of unitItems) {
+                unitNumbers.push({
+                  externalId: `doorloop_unit_${u.id}`,
+                  unitNumber: String(u.unitNumber ?? u.name ?? u.displayName ?? u.id),
+                  bedrooms: typeof u.bedrooms === "number" ? u.bedrooms : undefined,
+                  bathrooms: typeof u.bathrooms === "number" ? u.bathrooms : undefined,
+                  sqft: typeof u.squareFeet === "number" ? u.squareFeet : typeof u.sqft === "number" ? u.sqft : undefined,
+                });
+              }
+              unitCursor = unitData.meta?.nextCursor;
+              if (!unitCursor || unitItems.length < 100) break;
+            }
+          } catch { /* non-critical */ }
           properties.push({
-            externalId: `doorloop_${prop.id}`,
+            externalId: `doorloop_${dlPropertyId}`,
             name: prop.name ?? prop.displayName ?? addr.street1 ?? "Property",
             address: [addr.street1, addr.street2].filter(Boolean).join(", "),
             city: addr.city ?? "",
@@ -71,6 +96,7 @@ export const doorloopAdapter: PmsAdapter = {
             zipCode: addr.zip ?? addr.postalCode ?? "",
             units: prop.unitCount ?? prop.numberOfUnits ?? 1,
             propertyType: mapDoorLoopPropertyType(prop.type ?? prop.propertyType ?? prop.classification),
+            unitNumbers: unitNumbers.length > 0 ? unitNumbers : undefined,
           });
         }
 

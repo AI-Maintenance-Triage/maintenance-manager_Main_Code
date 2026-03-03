@@ -1431,3 +1431,19 @@
 - [x] AppFolio adapter: map propertyType from API response (mapAppFolioPropertyType)
 - [x] Rent Manager adapter: map propertyType from API response (mapRentManagerPropertyType)
 - [x] DoorLoop adapter: map propertyType from API response (mapDoorLoopPropertyType)
+
+## Session 48: Property Units System
+- [x] Schema: add propertyUnits table (id, propertyId, companyId, unitNumber, bedrooms, bathrooms, sqft, externalId)
+- [x] DB migration pushed: property_units table live
+- [x] PmsProperty type: add unitNumbers array field
+- [x] Buildium adapter: fetch units per property from /rentals/{id}/units endpoint
+- [x] AppFolio adapter: fetch units per property from /units?property_id=... endpoint
+- [x] Rent Manager adapter: fetch units per property from /Units?PropertyID=... endpoint
+- [x] DoorLoop adapter: fetch units per property from /units?propertyId=... endpoint
+- [x] DB helpers: getUnitsByProperty, createPropertyUnit, updatePropertyUnit, deletePropertyUnit, deleteUnitsByProperty, upsertPropertyUnit
+- [x] tRPC procedures: properties.getUnits, properties.addUnit, properties.updateUnit, properties.deleteUnit
+- [x] PMS sync: upsertPropertyUnit for each unit on new and existing properties
+- [x] CompanyProperties: UnitManager component (inline unit list with add/remove) shown when propertyType=multi_family in Edit dialog
+- [x] CompanyProperties: PropertyCard shows unit number chips for multi_family properties
+- [x] CompanyProperties: "Number of Units" field hidden for single_family, shown for multi_family/commercial/other
+- [x] 0 TypeScript errors

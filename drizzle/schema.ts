@@ -147,6 +147,24 @@ export const properties = mysqlTable("properties", {
 export type Property = typeof properties.$inferSelect;
 export type InsertProperty = typeof properties.$inferInsert;
 
+// ─── Property Units (individual units within a multi-family property) ─────────
+export const propertyUnits = mysqlTable("property_units", {
+  id: int("id").autoincrement().primaryKey(),
+  propertyId: int("propertyId").notNull(),
+  companyId: int("companyId").notNull(),
+  unitNumber: varchar("unitNumber", { length: 64 }).notNull(),
+  bedrooms: int("bedrooms"),
+  bathrooms: decimal("bathrooms", { precision: 3, scale: 1 }),
+  sqft: int("sqft"),
+  /** External ID from PMS (e.g. Buildium unit ID) */
+  externalId: varchar("externalId", { length: 128 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type PropertyUnit = typeof propertyUnits.$inferSelect;
+export type InsertPropertyUnit = typeof propertyUnits.$inferInsert;
+
 // ─── Contractor Profiles ───────────────────────────────────────────────────
 export const contractorProfiles = mysqlTable("contractor_profiles", {
   id: int("id").autoincrement().primaryKey(),

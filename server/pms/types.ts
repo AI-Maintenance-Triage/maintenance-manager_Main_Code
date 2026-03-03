@@ -14,6 +14,14 @@ export interface PmsProperty {
   units?: number;
   /** Normalized property type — single_family, multi_family, commercial, or other */
   propertyType?: "single_family" | "multi_family" | "commercial" | "other";
+  /** Individual unit records from the PMS (multi-family properties) */
+  unitNumbers?: Array<{
+    externalId: string;
+    unitNumber: string;
+    bedrooms?: number;
+    bathrooms?: number;
+    sqft?: number;
+  }>;
 }
 
 export interface PmsMaintenanceRequest {

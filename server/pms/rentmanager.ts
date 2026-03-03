@@ -65,9 +65,33 @@ export const rentManagerAdapter: PmsAdapter = {
           const city = prop.City ?? "";
           const state = prop.State ?? "";
           const zip = prop.PostalCode ?? prop.ZipCode ?? "";
-
+          const rmPropertyId = prop.PropertyID ?? prop.Id;
+          // Fetch individual units for this property from /Units?PropertyID=...
+          let unitNumbers: PmsProperty["unitNumbers"] = [];
+          try {
+            let unitPage = 1;
+            while (true) {
+              const unitData = await rmFetch(
+                `/Units?PageSize=100&PageNumber=${unitPage}&PropertyID=${rmPropertyId}&EmbedLinks=false`,
+                credentials
+              );
+              const unitItems: any[] = Array.isArray(unitData) ? unitData : unitData.Items ?? unitData.Results ?? [];
+              if (!unitItems.length) break;
+              for (const u of unitItems) {
+                unitNumbers.push({
+                  externalId: `rentmanager_unit_${u.UnitID ?? u.Id}`,
+                  unitNumber: String(u.UnitNumber ?? u.Name ?? u.UnitID ?? u.Id),
+                  bedrooms: typeof u.Bedrooms === "number" ? u.Bedrooms : undefined,
+                  bathrooms: typeof u.Bathrooms === "number" ? u.Bathrooms : undefined,
+                  sqft: typeof u.SquareFeet === "number" ? u.SquareFeet : undefined,
+                });
+              }
+              if (unitItems.length < 100) break;
+              unitPage++;
+            }
+          } catch { /* non-critical */ }
           properties.push({
-            externalId: `rentmanager_${prop.PropertyID ?? prop.Id}`,
+            externalId: `rentmanager_${rmPropertyId}`,
             name: prop.Name ?? prop.PropertyName ?? address,
             address: [address, prop.Address2].filter(Boolean).join(", "),
             city,
@@ -75,6 +99,7 @@ export const rentManagerAdapter: PmsAdapter = {
             zipCode: zip,
             units: prop.UnitCount ?? prop.Units ?? 1,
             propertyType: mapRentManagerPropertyType(prop.PropertyType ?? prop.Type ?? prop.PropertyTypeName),
+            unitNumbers: unitNumbers.length > 0 ? unitNumbers : undefined,
           });
         }
 

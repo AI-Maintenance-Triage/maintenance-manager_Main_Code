@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useViewAs } from "@/contexts/ViewAsContext";
-import { Plus, MapPin, Trash2, Building, ArrowUpRight, MoreVertical, Pencil } from "lucide-react";
+import { Plus, MapPin, Trash2, Building, ArrowUpRight, MoreVertical, Pencil, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useState } from "react";
@@ -25,6 +25,94 @@ const PROPERTY_TYPE_LABELS: Record<string, { label: string; variant: "default" |
   commercial: { label: "Commercial", variant: "outline" },
   other: { label: "Other", variant: "outline" },
 };
+
+// ─── Unit Manager (shown inside Edit dialog when multi_family) ───────────────
+function UnitManager({ propertyId, companyId: _companyId }: { propertyId: number; companyId?: number }) {
+  const utils = trpc.useUtils();
+  const { data: units, isLoading } = trpc.properties.getUnits.useQuery({ propertyId });
+  const [newUnit, setNewUnit] = useState("");
+  const [addingUnit, setAddingUnit] = useState(false);
+
+  const addUnit = trpc.properties.addUnit.useMutation({
+    onSuccess: () => {
+      utils.properties.getUnits.invalidate({ propertyId });
+      setNewUnit("");
+      setAddingUnit(false);
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
+  const deleteUnit = trpc.properties.deleteUnit.useMutation({
+    onSuccess: () => utils.properties.getUnits.invalidate({ propertyId }),
+    onError: (err) => toast.error(err.message),
+  });
+
+  const handleAdd = () => {
+    const trimmed = newUnit.trim();
+    if (!trimmed) return;
+    addUnit.mutate({ propertyId, unitNumber: trimmed });
+  };
+
+  return (
+    <div className="space-y-2">
+      <Label className="text-sm font-medium">Unit Numbers</Label>
+      <div className="rounded-md border border-border bg-muted/30 p-3 space-y-2 max-h-48 overflow-y-auto">
+        {isLoading ? (
+          <p className="text-xs text-muted-foreground">Loading units...</p>
+        ) : !units || units.length === 0 ? (
+          <p className="text-xs text-muted-foreground italic">No units yet. Add unit numbers below.</p>
+        ) : (
+          <div className="flex flex-wrap gap-2">
+            {units.map((u: any) => (
+              <span
+                key={u.id}
+                className="inline-flex items-center gap-1 bg-card border border-border rounded px-2 py-0.5 text-xs text-card-foreground"
+              >
+                Unit {u.unitNumber}
+                <button
+                  type="button"
+                  onClick={() => deleteUnit.mutate({ id: u.id })}
+                  className="text-muted-foreground hover:text-destructive transition-colors ml-0.5"
+                  title="Remove unit"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </span>
+            ))}
+          </div>
+        )}
+      </div>
+      {addingUnit ? (
+        <div className="flex gap-2">
+          <Input
+            autoFocus
+            placeholder="e.g. 1A, 101, B2"
+            value={newUnit}
+            onChange={(e) => setNewUnit(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter") handleAdd(); if (e.key === "Escape") { setAddingUnit(false); setNewUnit(""); } }}
+            className="h-8 text-sm"
+          />
+          <Button size="sm" onClick={handleAdd} disabled={!newUnit.trim() || addUnit.isPending} className="h-8 px-3">
+            Add
+          </Button>
+          <Button size="sm" variant="ghost" onClick={() => { setAddingUnit(false); setNewUnit(""); }} className="h-8 px-3">
+            Cancel
+          </Button>
+        </div>
+      ) : (
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="h-8 text-xs gap-1"
+          onClick={() => setAddingUnit(true)}
+        >
+          <Plus className="h-3 w-3" /> Add Unit Number
+        </Button>
+      )}
+    </div>
+  );
+}
 
 export default function CompanyProperties() {
   const { user } = useAuth();
@@ -171,7 +259,7 @@ export default function CompanyProperties() {
           <DialogTrigger asChild>
             <Button className="gap-2"><Plus className="h-4 w-4" /> Add Property</Button>
           </DialogTrigger>
-          <DialogContent className="max-w-lg bg-card">
+          <DialogContent className="max-w-lg bg-card max-h-[90vh] overflow-y-auto">
             <DialogHeader><DialogTitle className="text-card-foreground">Add Property</DialogTitle></DialogHeader>
             <div className="space-y-4">
               <div className="space-y-2">
@@ -215,10 +303,6 @@ export default function CompanyProperties() {
                 </div>
               </div>
               <div className="space-y-2">
-                <Label>Number of Units</Label>
-                <Input type="number" placeholder="12" value={form.units} onChange={(e) => setForm({ ...form, units: e.target.value })} />
-              </div>
-              <div className="space-y-2">
                 <Label>Property Type</Label>
                 <Select value={form.propertyType} onValueChange={(v) => setForm({ ...form, propertyType: v })}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
@@ -230,6 +314,12 @@ export default function CompanyProperties() {
                   </SelectContent>
                 </Select>
               </div>
+              {form.propertyType !== "single_family" && (
+                <div className="space-y-2">
+                  <Label>Number of Units</Label>
+                  <Input type="number" placeholder="12" value={form.units} onChange={(e) => setForm({ ...form, units: e.target.value })} />
+                </div>
+              )}
               <Button onClick={handleCreate} disabled={!form.address || createProperty.isPending} className="w-full">
                 {createProperty.isPending ? "Adding..." : "Add Property"}
               </Button>
@@ -269,7 +359,7 @@ export default function CompanyProperties() {
 
       {/* Edit property dialog */}
       <Dialog open={editOpen} onOpenChange={(v) => { setEditOpen(v); if (!v) { setEditingProp(null); setEditForm(emptyForm); } }}>
-        <DialogContent className="max-w-lg bg-card">
+        <DialogContent className="max-w-lg bg-card max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-card-foreground">Edit Property</DialogTitle>
           </DialogHeader>
@@ -315,10 +405,6 @@ export default function CompanyProperties() {
               </div>
             </div>
             <div className="space-y-2">
-              <Label>Number of Units</Label>
-              <Input type="number" placeholder="12" value={editForm.units} onChange={(e) => setEditForm({ ...editForm, units: e.target.value })} />
-            </div>
-            <div className="space-y-2">
               <Label>Property Type</Label>
               <Select value={editForm.propertyType} onValueChange={(v) => setEditForm({ ...editForm, propertyType: v })}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
@@ -330,6 +416,17 @@ export default function CompanyProperties() {
                 </SelectContent>
               </Select>
             </div>
+            {/* Number of Units — only for non-single-family */}
+            {editForm.propertyType !== "single_family" && (
+              <div className="space-y-2">
+                <Label>Number of Units</Label>
+                <Input type="number" placeholder="12" value={editForm.units} onChange={(e) => setEditForm({ ...editForm, units: e.target.value })} />
+              </div>
+            )}
+            {/* Unit Numbers — only for multi_family */}
+            {editForm.propertyType === "multi_family" && editingProp && (
+              <UnitManager propertyId={editingProp.id} />
+            )}
             <div className="flex gap-2">
               <Button variant="outline" className="flex-1" onClick={() => { setEditOpen(false); setEditingProp(null); setEditForm(emptyForm); }}>
                 Cancel
@@ -377,55 +474,93 @@ export default function CompanyProperties() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {properties.map((prop: any) => (
-            <Card key={prop.id} className="bg-card border-border">
-              <CardContent className="p-4">
-                <div className="flex items-start justify-between">
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <h3 className="font-medium text-card-foreground">{prop.name}</h3>
-                      {prop.propertyType && (() => {
-                        const pt = PROPERTY_TYPE_LABELS[prop.propertyType] ?? { label: prop.propertyType, variant: "outline" as const };
-                        return <Badge variant={pt.variant} className="text-xs">{pt.label}</Badge>;
-                      })()}
-                    </div>
-                    <div className="flex items-center gap-1 mt-1 text-sm text-muted-foreground">
-                      <MapPin className="h-3.5 w-3.5 shrink-0" />
-                      <span className="truncate">{prop.address}{prop.city ? `, ${prop.city}` : ""}{prop.state ? `, ${prop.state}` : ""} {prop.zipCode}</span>
-                    </div>
-                    {prop.units && prop.units > 1 && <p className="text-xs text-muted-foreground mt-1">{prop.units} units</p>}
-                    {prop.latitude && prop.longitude && (
-                      <p className="text-xs text-emerald-600 mt-1 flex items-center gap-1">
-                        <MapPin className="h-3 w-3" /> Geocoded ({parseFloat(String(prop.latitude)).toFixed(4)}, {parseFloat(String(prop.longitude)).toFixed(4)})
-                      </p>
-                    )}
-                  </div>
-                  {/* 3-dot menu */}
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground shrink-0">
-                        <MoreVertical className="h-4 w-4" />
-                        <span className="sr-only">Property options</span>
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-40">
-                      <DropdownMenuItem onClick={() => openEdit(prop)} className="gap-2 cursor-pointer">
-                        <Pencil className="h-4 w-4" /> Edit
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem
-                        onClick={() => confirmDelete(prop.id)}
-                        className="gap-2 cursor-pointer text-destructive focus:text-destructive"
-                      >
-                        <Trash2 className="h-4 w-4" /> Remove
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
-              </CardContent>
-            </Card>
+            <PropertyCard
+              key={prop.id}
+              prop={prop}
+              onEdit={openEdit}
+              onDelete={confirmDelete}
+            />
           ))}
         </div>
       )}
     </div>
+  );
+}
+
+// ─── Property Card with inline unit list for multi_family ────────────────────
+function PropertyCard({ prop, onEdit, onDelete }: { prop: any; onEdit: (p: any) => void; onDelete: (id: number) => void }) {
+  const isMultiFamily = prop.propertyType === "multi_family";
+  const { data: units } = trpc.properties.getUnits.useQuery(
+    { propertyId: prop.id },
+    { enabled: isMultiFamily }
+  );
+
+  const pt = PROPERTY_TYPE_LABELS[prop.propertyType] ?? { label: prop.propertyType, variant: "outline" as const };
+
+  return (
+    <Card className="bg-card border-border">
+      <CardContent className="p-4">
+        <div className="flex items-start justify-between">
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2 flex-wrap">
+              <h3 className="font-medium text-card-foreground">{prop.name}</h3>
+              {prop.propertyType && <Badge variant={pt.variant} className="text-xs">{pt.label}</Badge>}
+            </div>
+            <div className="flex items-center gap-1 mt-1 text-sm text-muted-foreground">
+              <MapPin className="h-3.5 w-3.5 shrink-0" />
+              <span className="truncate">{prop.address}{prop.city ? `, ${prop.city}` : ""}{prop.state ? `, ${prop.state}` : ""} {prop.zipCode}</span>
+            </div>
+            {prop.latitude && prop.longitude && (
+              <p className="text-xs text-emerald-600 mt-1 flex items-center gap-1">
+                <MapPin className="h-3 w-3" /> Geocoded ({parseFloat(String(prop.latitude)).toFixed(4)}, {parseFloat(String(prop.longitude)).toFixed(4)})
+              </p>
+            )}
+            {/* Unit list for multi-family */}
+            {isMultiFamily && (
+              <div className="mt-2">
+                {units && units.length > 0 ? (
+                  <div className="flex flex-wrap gap-1 mt-1">
+                    {units.map((u: any) => (
+                      <span key={u.id} className="inline-block bg-muted text-muted-foreground text-xs rounded px-1.5 py-0.5 border border-border">
+                        Unit {u.unitNumber}
+                      </span>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {prop.units && prop.units > 1 ? `${prop.units} units` : "Multi Family"} — <span className="italic">no unit numbers yet</span>
+                  </p>
+                )}
+              </div>
+            )}
+            {/* Unit count for commercial/other */}
+            {!isMultiFamily && prop.units && prop.units > 1 && (
+              <p className="text-xs text-muted-foreground mt-1">{prop.units} units</p>
+            )}
+          </div>
+          {/* 3-dot menu */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground shrink-0">
+                <MoreVertical className="h-4 w-4" />
+                <span className="sr-only">Property options</span>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-40">
+              <DropdownMenuItem onClick={() => onEdit(prop)} className="gap-2 cursor-pointer">
+                <Pencil className="h-4 w-4" /> Edit
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onClick={() => onDelete(prop.id)}
+                className="gap-2 cursor-pointer text-destructive focus:text-destructive"
+              >
+                <Trash2 className="h-4 w-4" /> Remove
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      </CardContent>
+    </Card>
   );
 }

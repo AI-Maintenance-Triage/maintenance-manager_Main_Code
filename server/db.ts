@@ -36,6 +36,7 @@ import {
   pmsIntegrations, InsertPmsIntegration,
   passwordResetTokens, InsertPasswordResetToken,
   jobChangeHistory, InsertJobChangeHistory,
+  propertyUnits, InsertPropertyUnit,
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
@@ -3592,4 +3593,60 @@ export async function getCompanyReportBySkillTier(companyId: number, fromMs: num
       totalSpend: Math.round((labor + parts) * 100) / 100,
     };
   });
+}
+
+// ─── Property Units ────────────────────────────────────────────────────────
+export async function getUnitsByProperty(propertyId: number, companyId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db
+    .select()
+    .from(propertyUnits)
+    .where(and(eq(propertyUnits.propertyId, propertyId), eq(propertyUnits.companyId, companyId)))
+    .orderBy(propertyUnits.unitNumber);
+}
+
+export async function createPropertyUnit(data: InsertPropertyUnit) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  const result = await db.insert(propertyUnits).values(data);
+  return result[0].insertId;
+}
+
+export async function updatePropertyUnit(id: number, companyId: number, data: Partial<InsertPropertyUnit>) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(propertyUnits).set(data).where(and(eq(propertyUnits.id, id), eq(propertyUnits.companyId, companyId)));
+}
+
+export async function deletePropertyUnit(id: number, companyId: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.delete(propertyUnits).where(and(eq(propertyUnits.id, id), eq(propertyUnits.companyId, companyId)));
+}
+
+export async function deleteUnitsByProperty(propertyId: number, companyId: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.delete(propertyUnits).where(and(eq(propertyUnits.propertyId, propertyId), eq(propertyUnits.companyId, companyId)));
+}
+
+/** Upsert a unit by externalId (for PMS sync) or by unitNumber if no externalId */
+export async function upsertPropertyUnit(data: InsertPropertyUnit) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  if (data.externalId) {
+    // Try to find existing by externalId
+    const existing = await db
+      .select({ id: propertyUnits.id })
+      .from(propertyUnits)
+      .where(and(eq(propertyUnits.propertyId, data.propertyId), eq(propertyUnits.externalId, data.externalId)))
+      .limit(1);
+    if (existing.length > 0) {
+      await db.update(propertyUnits).set(data).where(eq(propertyUnits.id, existing[0].id));
+      return existing[0].id;
+    }
+  }
+  const result = await db.insert(propertyUnits).values(data);
+  return result[0].insertId;
 }

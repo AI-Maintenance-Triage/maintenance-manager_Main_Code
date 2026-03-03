@@ -137,6 +137,7 @@ import {
   createPmsWebhookEvent,
   geocodeAddress,
   updatePropertyCoords,
+  upsertPropertyUnit,
 } from "../db";
 
 /**
@@ -180,6 +181,20 @@ export async function runPmsSync(integrationId: number, companyId: number): Prom
           const coords = await geocodeAddress(fullAddress);
           if (coords) await updatePropertyCoords(newId, coords.lat, coords.lng);
         }
+        // Upsert unit numbers for this property
+        if (prop.unitNumbers && prop.unitNumbers.length > 0) {
+          for (const unit of prop.unitNumbers) {
+            await upsertPropertyUnit({
+              propertyId: newId,
+              companyId,
+              unitNumber: unit.unitNumber,
+              bedrooms: unit.bedrooms ?? null,
+              bathrooms: unit.bathrooms != null ? String(unit.bathrooms) : null,
+              sqft: unit.sqft ?? null,
+              externalId: unit.externalId,
+            });
+          }
+        }
         imported++;
       } else {
         // Upsert: update propertyType and units on existing property
@@ -195,6 +210,20 @@ export async function runPmsSync(integrationId: number, companyId: number): Prom
             if (fullAddress) {
               const coords = await geocodeAddress(fullAddress);
               if (coords) await updatePropertyCoords(existing.id, coords.lat, coords.lng);
+            }
+          }
+          // Upsert unit numbers for this property
+          if (prop.unitNumbers && prop.unitNumbers.length > 0) {
+            for (const unit of prop.unitNumbers) {
+              await upsertPropertyUnit({
+                propertyId: existing.id,
+                companyId,
+                unitNumber: unit.unitNumber,
+                bedrooms: unit.bedrooms ?? null,
+                bathrooms: unit.bathrooms != null ? String(unit.bathrooms) : null,
+                sqft: unit.sqft ?? null,
+                externalId: unit.externalId,
+              });
             }
           }
         }

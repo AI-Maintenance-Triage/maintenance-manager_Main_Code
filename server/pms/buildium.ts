@@ -83,8 +83,39 @@ export const buildiumAdapter: PmsAdapter = {
         } else {
           propertyType = "single_family";
         }
+        const propertyId = String(r.Id ?? r.id);
+        // Fetch individual units for this property from /rentals/{id}/units
+        let unitNumbers: PmsProperty["unitNumbers"] = [];
+        try {
+          let unitOffset = 0;
+          while (true) {
+            const unitData = await buildiumFetch(
+              credentials,
+              `/rentals/${propertyId}/units?offset=${unitOffset}&limit=100`
+            );
+            const unitItems: unknown[] = Array.isArray(unitData) ? unitData : (unitData?.items ?? []);
+            if (!unitItems.length) break;
+            for (const u of unitItems) {
+              const unit = u as Record<string, unknown>;
+              const unitAddr = unit.Address as Record<string, unknown> | undefined;
+              unitNumbers.push({
+                externalId: String(unit.Id ?? unit.id),
+                unitNumber: String(
+                  unit.UnitNumber ?? unit.unitNumber ??
+                  unitAddr?.AddressLine2 ?? unitAddr?.addressLine2 ??
+                  unit.Name ?? unit.name ?? unit.Id ?? unit.id
+                ),
+                bedrooms: typeof unit.Bedrooms === "number" ? unit.Bedrooms : typeof unit.bedrooms === "number" ? unit.bedrooms : undefined,
+                bathrooms: typeof unit.Bathrooms === "number" ? unit.Bathrooms : typeof unit.bathrooms === "number" ? unit.bathrooms : undefined,
+                sqft: typeof unit.SquareFeet === "number" ? unit.SquareFeet : typeof unit.squareFeet === "number" ? unit.squareFeet : undefined,
+              });
+            }
+            if (unitItems.length < 100) break;
+            unitOffset += 100;
+          }
+        } catch { /* non-critical: units may not be available */ }
         results.push({
-          externalId: String(r.Id ?? r.id),
+          externalId: propertyId,
           name: String(r.Name ?? r.name ?? r.Id ?? r.id),
           address: addr ? `${addr.AddressLine1 ?? addr.addressLine1 ?? ""}`.trim() : "",
           city: addr?.City ?? addr?.city,
@@ -92,6 +123,7 @@ export const buildiumAdapter: PmsAdapter = {
           zipCode: addr?.PostalCode ?? addr?.postalCode ?? addr?.ZipCode ?? addr?.zipCode,
           units: numUnits,
           propertyType,
+          unitNumbers: unitNumbers.length > 0 ? unitNumbers : undefined,
         });
       }
 

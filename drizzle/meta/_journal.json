@@ -253,6 +253,13 @@
       "when": 1772500203760,
       "tag": "0035_short_lionheart",
       "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "5",
+      "when": 1772503735072,
+      "tag": "0036_late_gamma_corps",
+      "breakpoints": true
     }
   ]
 }

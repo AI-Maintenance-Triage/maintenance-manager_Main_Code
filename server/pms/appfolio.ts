@@ -52,8 +52,34 @@ export const appfolioAdapter: PmsAdapter = {
       for (const item of items) {
         const r = item as Record<string, unknown>;
         const addr = r.address as Record<string, string> | undefined;
+        const propertyExternalId = String(r.id ?? r.property_id);
+        // Fetch individual units for this property from /units?property_id=...
+        let unitNumbers: PmsProperty["unitNumbers"] = [];
+        try {
+          let unitPage = 1;
+          while (true) {
+            const unitData = await appfolioFetch(
+              credentials,
+              `/units?property_id=${propertyExternalId}&per_page=100&page=${unitPage}`
+            );
+            const unitItems: unknown[] = unitData?.results ?? [];
+            if (!unitItems.length) break;
+            for (const u of unitItems) {
+              const unit = u as Record<string, unknown>;
+              unitNumbers.push({
+                externalId: String(unit.id),
+                unitNumber: String(unit.unit_number ?? unit.name ?? unit.id),
+                bedrooms: typeof unit.bedrooms === "number" ? unit.bedrooms : undefined,
+                bathrooms: typeof unit.bathrooms === "number" ? unit.bathrooms : undefined,
+                sqft: typeof unit.square_feet === "number" ? unit.square_feet : undefined,
+              });
+            }
+            if (unitItems.length < 100) break;
+            unitPage++;
+          }
+        } catch { /* non-critical */ }
         results.push({
-          externalId: String(r.id ?? r.property_id),
+          externalId: propertyExternalId,
           name: String(r.name ?? r.property_name ?? r.id),
           address: addr ? String(addr.street ?? "") : String(r.address ?? ""),
           city: addr?.city,
@@ -61,6 +87,7 @@ export const appfolioAdapter: PmsAdapter = {
           zipCode: addr?.zip,
           units: typeof r.unit_count === "number" ? r.unit_count : 1,
           propertyType: mapAppFolioPropertyType(r.property_type as string | undefined),
+          unitNumbers: unitNumbers.length > 0 ? unitNumbers : undefined,
         });
       }
 

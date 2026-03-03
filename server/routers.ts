@@ -283,6 +283,61 @@ const propertiesRouter = router({
       await db.deleteProperty(input.id, getEffectiveCompanyId(ctx));
       return { success: true };
     }),
+
+  getUnits: companyAdminProcedure
+    .input(z.object({ propertyId: z.number() }))
+    .query(async ({ ctx, input }) => {
+      if (!getEffectiveCompanyId(ctx)) throw new TRPCError({ code: "NOT_FOUND" });
+      return db.getUnitsByProperty(input.propertyId, getEffectiveCompanyId(ctx));
+    }),
+
+  addUnit: companyAdminProcedure
+    .input(z.object({
+      propertyId: z.number(),
+      unitNumber: z.string().min(1),
+      bedrooms: z.number().optional(),
+      bathrooms: z.number().optional(),
+      sqft: z.number().optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      if (!getEffectiveCompanyId(ctx)) throw new TRPCError({ code: "NOT_FOUND" });
+      const companyId = getEffectiveCompanyId(ctx);
+      const id = await db.createPropertyUnit({
+        propertyId: input.propertyId,
+        companyId,
+        unitNumber: input.unitNumber,
+        bedrooms: input.bedrooms ?? null,
+        bathrooms: input.bathrooms != null ? String(input.bathrooms) : null,
+        sqft: input.sqft ?? null,
+      });
+      return { id };
+    }),
+
+  updateUnit: companyAdminProcedure
+    .input(z.object({
+      id: z.number(),
+      unitNumber: z.string().min(1).optional(),
+      bedrooms: z.number().nullable().optional(),
+      bathrooms: z.number().nullable().optional(),
+      sqft: z.number().nullable().optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      if (!getEffectiveCompanyId(ctx)) throw new TRPCError({ code: "NOT_FOUND" });
+      const { id, bathrooms, ...rest } = input;
+      await db.updatePropertyUnit(id, getEffectiveCompanyId(ctx), {
+        ...rest,
+        bathrooms: bathrooms != null ? String(bathrooms) : null,
+      });
+      return { success: true };
+    }),
+
+  deleteUnit: companyAdminProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      if (!getEffectiveCompanyId(ctx)) throw new TRPCError({ code: "NOT_FOUND" });
+      await db.deletePropertyUnit(input.id, getEffectiveCompanyId(ctx));
+      return { success: true };
+    }),
 });
 
 // ─── Contractor Router ──────────────────────────────────────────────────────
