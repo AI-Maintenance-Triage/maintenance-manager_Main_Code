@@ -639,6 +639,11 @@ function JobCard({ row, onUpdate, readOnly = false }: { row: any; onUpdate: () =
                 <p className="text-xs text-muted-foreground flex items-center gap-1">
                   <MapPin className="h-3 w-3" />
                   {property.name || property.address} — {property.city}, {property.state}
+                  {job.unitNumber && (
+                    <span className="ml-1 inline-flex items-center bg-muted/60 border border-border rounded px-1.5 py-0.5">
+                      Unit {job.unitNumber}
+                    </span>
+                  )}
                 </p>
               )}
               <div className="flex items-center gap-3 text-xs text-muted-foreground flex-wrap">

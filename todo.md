@@ -1447,3 +1447,14 @@
 - [x] CompanyProperties: PropertyCard shows unit number chips for multi_family properties
 - [x] CompanyProperties: "Number of Units" field hidden for single_family, shown for multi_family/commercial/other
 - [x] 0 TypeScript errors
+
+## Session 49: Buildium Unit Sync Fix & Unit Number on Requests
+- [x] Fix Buildium adapter: unit numbers not pulling in — was using PascalCase (UnitNumber) but API returns snake_case (unit_number)
+- [x] Fix Buildium fetchNewRequests: use snake_case field names (property, requested_by_user_entity, unit_id, created_date_time)
+- [x] Fix Buildium unit number on requests: resolve unit_number by fetching /rentals/units/{unit_id} using unit_id from request
+- [x] unitNumber already stored in maintenanceRequests table and passed through PMS sync correctly
+- [x] Show Unit badge on company job cards (CompanyJobs.tsx)
+- [x] Show Unit badge on verification card header and payment confirmation (CompanyVerification.tsx)
+- [x] Show Unit badge on contractor job cards (ContractorMyJobs.tsx)
+- [x] Show Unit badge in contractor job board detail dialog (ContractorJobBoard.tsx)
+- [x] 0 TypeScript errors

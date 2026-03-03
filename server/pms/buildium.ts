@@ -97,17 +97,23 @@ export const buildiumAdapter: PmsAdapter = {
             if (!unitItems.length) break;
             for (const u of unitItems) {
               const unit = u as Record<string, unknown>;
-              const unitAddr = unit.Address as Record<string, unknown> | undefined;
+              // Buildium RentalUnitMessage uses snake_case: unit_number, unit_bedrooms, unit_bathrooms, unit_size
+              // Also try PascalCase as fallback for older API versions
+              const rawUnitNumber = unit.unit_number ?? unit.UnitNumber ?? unit.unitNumber;
+              const rawId = unit.id ?? unit.Id;
+              if (!rawUnitNumber && !rawId) continue; // skip malformed entries
               unitNumbers.push({
-                externalId: String(unit.Id ?? unit.id),
-                unitNumber: String(
-                  unit.UnitNumber ?? unit.unitNumber ??
-                  unitAddr?.AddressLine2 ?? unitAddr?.addressLine2 ??
-                  unit.Name ?? unit.name ?? unit.Id ?? unit.id
-                ),
-                bedrooms: typeof unit.Bedrooms === "number" ? unit.Bedrooms : typeof unit.bedrooms === "number" ? unit.bedrooms : undefined,
-                bathrooms: typeof unit.Bathrooms === "number" ? unit.Bathrooms : typeof unit.bathrooms === "number" ? unit.bathrooms : undefined,
-                sqft: typeof unit.SquareFeet === "number" ? unit.SquareFeet : typeof unit.squareFeet === "number" ? unit.squareFeet : undefined,
+                externalId: String(rawId ?? ""),
+                unitNumber: String(rawUnitNumber ?? rawId ?? ""),
+                bedrooms: typeof unit.unit_bedrooms === "number" ? unit.unit_bedrooms
+                  : typeof unit.Bedrooms === "number" ? unit.Bedrooms
+                  : typeof unit.bedrooms === "number" ? unit.bedrooms : undefined,
+                bathrooms: typeof unit.unit_bathrooms === "number" ? unit.unit_bathrooms
+                  : typeof unit.Bathrooms === "number" ? unit.Bathrooms
+                  : typeof unit.bathrooms === "number" ? unit.bathrooms : undefined,
+                sqft: typeof unit.unit_size === "number" ? unit.unit_size
+                  : typeof unit.SquareFeet === "number" ? unit.SquareFeet
+                  : typeof unit.squareFeet === "number" ? unit.squareFeet : undefined,
               });
             }
             if (unitItems.length < 100) break;
@@ -152,35 +158,52 @@ export const buildiumAdapter: PmsAdapter = {
 
       for (const item of items) {
         const r = item as Record<string, unknown>;
-        // ResidentRequestTaskMessage fields are PascalCase:
-        // Id, Title, Description, Property, RequestedByUserEntity, CreatedDateTime, LastUpdatedDateTime
-        const property = r.Property as Record<string, unknown> | undefined;
-        const requestedBy = r.RequestedByUserEntity as Record<string, unknown> | undefined;
-        const unitAgreement = r.UnitAgreement as Record<string, unknown> | undefined;
+        // ResidentRequestTaskMessage fields: API returns snake_case (property, requested_by_user_entity, etc.)
+        // Also try PascalCase as fallback for older API versions
+        const property = (r.property ?? r.Property) as Record<string, unknown> | undefined;
+        const requestedBy = (r.RequestedByUserEntity ?? r.requested_by_user_entity) as Record<string, unknown> | undefined;
+        const unitAgreement = r.unit_agreement as Record<string, unknown> | undefined
+          ?? r.UnitAgreement as Record<string, unknown> | undefined;
 
-        // Tenant name from RequestedByUserEntity
-        const tenantName = requestedBy
-          ? `${requestedBy.FirstName ?? requestedBy.firstName ?? ""} ${requestedBy.LastName ?? requestedBy.lastName ?? ""}`.trim()
+        // Tenant name from requested_by_user_entity (snake_case in API response)
+        const requestedBySnake = r.requested_by_user_entity as Record<string, unknown> | undefined ?? requestedBy;
+        const tenantName = requestedBySnake
+          ? `${requestedBySnake.first_name ?? requestedBySnake.FirstName ?? requestedBySnake.firstName ?? ""} ${requestedBySnake.last_name ?? requestedBySnake.LastName ?? requestedBySnake.lastName ?? ""}`.trim()
           : undefined;
-        const tenantEmail = requestedBy
-          ? String(requestedBy.Email ?? requestedBy.email ?? "")
+        const tenantEmail = requestedBySnake
+          ? String(requestedBySnake.email ?? requestedBySnake.Email ?? "")
           : undefined;
 
-        // Unit number from UnitAgreement
-        const unitNumber = unitAgreement
-          ? String(unitAgreement.UnitNumber ?? unitAgreement.unitNumber ?? unitAgreement.Name ?? unitAgreement.name ?? "")
-          : undefined;
+        // Unit number: Buildium provides unit_id (integer) on the request.
+        // We resolve the unit number by fetching the unit directly using unit_id.
+        const rawUnitId = r.unit_id ?? r.UnitId ?? r.unitId;
+        let unitNumber: string | undefined;
+        if (rawUnitId) {
+          try {
+            const unitData = await buildiumFetch(credentials, `/rentals/units/${rawUnitId}`);
+            const u = unitData as Record<string, unknown>;
+            unitNumber = String(u.unit_number ?? u.UnitNumber ?? u.unitNumber ?? rawUnitId);
+          } catch {
+            // fallback: just use the ID as a label
+            unitNumber = String(rawUnitId);
+          }
+        } else if (unitAgreement) {
+          // Older API: try to extract from unit_agreement object
+          unitNumber = String(unitAgreement.unit_number ?? unitAgreement.UnitNumber ?? unitAgreement.unitNumber ?? unitAgreement.Name ?? unitAgreement.name ?? "") || undefined;
+        }
 
         results.push({
-          externalId: String(r.Id ?? r.id),
-          title: String(r.Title ?? r.title ?? "Maintenance Request"),
-          description: String(r.Description ?? r.description ?? ""),
+          externalId: String(r.id ?? r.Id),
+          title: String(r.title ?? r.Title ?? "Maintenance Request"),
+          description: String(r.description ?? r.Description ?? ""),
           unitNumber: unitNumber || undefined,
           tenantName: tenantName || undefined,
           tenantEmail: tenantEmail || undefined,
-          propertyExternalId: property ? String(property.Id ?? property.id ?? "") : "",
-          priority: mapBuildiumPriority(r.Priority as string | undefined ?? r.priority as string | undefined),
-          createdAt: r.CreatedDateTime
+          propertyExternalId: property ? String(property.id ?? property.Id ?? "") : "",
+          priority: mapBuildiumPriority((r.priority ?? r.Priority) as string | undefined),
+          createdAt: r.created_date_time
+            ? new Date(r.created_date_time as string)
+            : r.CreatedDateTime
             ? new Date(r.CreatedDateTime as string)
             : r.createdDateTime
             ? new Date(r.createdDateTime as string)

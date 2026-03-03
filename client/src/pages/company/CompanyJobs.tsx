@@ -478,6 +478,11 @@ export default function CompanyJobs() {
                             {(job.overridePriority || job.overrideSkillTierId) && <span className="text-muted-foreground ml-0.5">(updated)</span>}
                           </span>
                         )}
+                        {job.unitNumber && (
+                          <span className="inline-flex items-center gap-1 bg-muted/60 text-muted-foreground border border-border rounded px-1.5 py-0.5 text-xs">
+                            Unit {job.unitNumber}
+                          </span>
+                        )}
                         {job.tenantName && <span>Tenant: {job.tenantName}</span>}
                         {/* Show final cost on paid/verified jobs */}
                         {isPaid && totalCost > 0 && (

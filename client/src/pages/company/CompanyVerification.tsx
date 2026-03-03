@@ -230,7 +230,14 @@ export default function CompanyVerification() {
             <div className="space-y-4 py-2">
               <div className="p-3 rounded-lg bg-muted/50 text-sm">
                 <p className="font-medium text-foreground">{job.title}</p>
-                <p className="text-muted-foreground text-xs mt-0.5">{selected.property?.name || selected.property?.address}</p>
+                <p className="text-muted-foreground text-xs mt-0.5">
+                  {selected.property?.name || selected.property?.address}
+                  {job.unitNumber && (
+                    <span className="ml-2 inline-flex items-center bg-muted border border-border rounded px-1.5 py-0.5 text-xs">
+                      Unit {job.unitNumber}
+                    </span>
+                  )}
+                </p>
               </div>
 
               {/* Cost breakdown */}
@@ -508,6 +515,11 @@ function VerificationCard({ row, onApprove, onDispute, onViewPhotos, onViewRoute
             {property && (
               <p className="text-sm text-muted-foreground mt-1">
                 {property.name || property.address} — {property.city}, {property.state}
+                {job.unitNumber && (
+                  <span className="ml-2 inline-flex items-center bg-muted/60 text-muted-foreground border border-border rounded px-1.5 py-0.5 text-xs">
+                    Unit {job.unitNumber}
+                  </span>
+                )}
               </p>
             )}
           </div>

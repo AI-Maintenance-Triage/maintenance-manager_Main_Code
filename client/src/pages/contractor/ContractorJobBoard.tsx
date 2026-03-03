@@ -167,6 +167,11 @@ function JobDetailDialog({
               <p className="text-xs text-muted-foreground">Location</p>
               <p className="font-medium text-foreground">
                 {[row.property.city, row.property.state].filter(Boolean).join(", ") || row.property.zipCode || "On file"}
+                {row.job.unitNumber && (
+                  <span className="ml-1.5 inline-flex items-center bg-muted border border-border rounded px-1.5 py-0.5 text-xs font-normal">
+                    Unit {row.job.unitNumber}
+                  </span>
+                )}
               </p>
             </div>
             {row.job.hourlyRate && (
