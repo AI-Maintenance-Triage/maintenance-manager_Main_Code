@@ -1458,3 +1458,16 @@
 - [x] Show Unit badge on contractor job cards (ContractorMyJobs.tsx)
 - [x] Show Unit badge in contractor job board detail dialog (ContractorJobBoard.tsx)
 - [x] 0 TypeScript errors
+
+## Session 50: Buildium Unit Sync - Definitive Fix
+- [x] Confirmed all Buildium API fields are snake_case (from official LeadSimple/buildium SDK)
+- [x] RentalMessage: id (not Id), name (not Name), number_units (not NumberUnits), rental_type (not PropertyType), address.address_line1 (not AddressLine1)
+- [x] rental_type enum: "None" | "Residential" | "Commercial"
+- [x] rental_sub_type enum: "CondoTownhome" | "MultiFamily" | "SingleFamily" | "Industrial" | "Office" | "Retail" | "ShoppingCenter" | "Storage" | "ParkingSpace"
+- [x] RentalUnitMessage: id, unit_number, unit_bedrooms, unit_bathrooms, unit_size (all snake_case confirmed)
+- [x] ResidentRequestTaskMessage: id, unit_id, property, requested_by_user_entity, created_date_time (snake_case confirmed)
+- [x] Rewrote Buildium adapter with all correct snake_case field names
+- [x] Fixed propertyType mapping to use exact rental_type/rental_sub_type enum values
+- [x] Fixed unit fetch to only run for multi-family properties (numUnits > 1)
+- [x] Fixed address mapping: address_line1, city, state, postal_code
+- [x] 0 TypeScript errors

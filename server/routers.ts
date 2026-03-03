@@ -3511,6 +3511,52 @@ const pmsRouter = router({
       const companyId = getEffectiveCompanyId(ctx);
       return db.listPmsWebhookEvents(companyId, input.limit);
     }),
+  // Debug: return raw API response for first property units + first request
+  // Used to inspect actual field names returned by the PMS API
+  debugRaw: companyAdminProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      const companyId = getEffectiveCompanyId(ctx);
+      const integrations = await db.listPmsIntegrations(companyId);
+      const integration = integrations.find(i => i.id === input.id);
+      if (!integration) throw new TRPCError({ code: 'NOT_FOUND', message: 'Integration not found' });
+      const credentials = decodeCredentials(integration.credentialsJson ?? '');
+      const baseUrl = credentials.isSandbox
+        ? 'https://apisandbox.buildium.com/v1'
+        : 'https://api.buildium.com/v1';
+      const headers = {
+        'x-buildium-client-id': credentials.clientId ?? '',
+        'x-buildium-client-secret': credentials.clientSecret ?? '',
+        'Content-Type': 'application/json',
+      };
+      // Fetch first property
+      const rentalsRes = await fetch(`${baseUrl}/rentals?offset=0&limit=1`, { headers });
+      const rentalsData = await rentalsRes.json();
+      const items = Array.isArray(rentalsData) ? rentalsData : (rentalsData?.items ?? []);
+      const firstProperty = items[0] as Record<string, unknown> | undefined;
+      let unitsData: unknown = null;
+      let firstUnitRaw: unknown = null;
+      if (firstProperty) {
+        const propId = firstProperty.Id ?? firstProperty.id;
+        const unitsRes = await fetch(`${baseUrl}/rentals/${propId}/units?offset=0&limit=5`, { headers });
+        unitsData = await unitsRes.json();
+        const unitItems = Array.isArray(unitsData) ? unitsData : (unitsData as Record<string,unknown>)?.items;
+        if (Array.isArray(unitItems) && unitItems.length > 0) {
+          firstUnitRaw = unitItems[0];
+        }
+      }
+      // Fetch first maintenance request
+      const reqRes = await fetch(`${baseUrl}/tasks/residentrequests?offset=0&limit=1`, { headers });
+      const reqData = await reqRes.json();
+      const reqItems = Array.isArray(reqData) ? reqData : (reqData?.items ?? []);
+      return {
+        firstPropertyRaw: firstProperty ?? null,
+        unitsResponseRaw: unitsData,
+        firstUnitRaw: firstUnitRaw,
+        firstRequestRaw: reqItems[0] ?? null,
+      };
+    }),
+
   // Update the webhook secret for an integration.
   // Used when the PMS generates its own signing secret (e.g. Buildium) and the company
   // needs to paste it back into our platform so we can verify incoming webhook signatures.
