@@ -10,6 +10,7 @@ import { Separator } from "@/components/ui/separator";
 import {
   CheckCircle, XCircle, Clock, Image, Loader2, AlertTriangle,
   ClipboardCheck, DollarSign, Timer, Package, CreditCard, Map, Receipt,
+  MapPin, ShieldCheck, ShieldAlert, ChevronDown, ChevronUp, Filter,
 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -432,6 +433,20 @@ function VerificationCard({ row, onApprove, onDispute, onViewPhotos, onViewRoute
   const laborCost = parseFloat(job.totalLaborCost ?? "0");
   const partsCost = parseFloat(job.totalPartsCost ?? "0");
   const totalCost = laborCost + partsCost;
+  const [showSessions, setShowSessions] = useState(false);
+  const [billableOnly, setBillableOnly] = useState(false);
+
+  // Fetch time sessions when expanded
+  const { data: sessions, isLoading: sessionsLoading } = trpc.jobs.timeSessions.useQuery(
+    { jobId: job.id },
+    { enabled: showSessions }
+  );
+
+  const displayedSessions = billableOnly
+    ? (sessions ?? []).filter((s: any) => s.clockInVerified)
+    : (sessions ?? []);
+
+  const outOfGeofenceCount = (sessions ?? []).filter((s: any) => s.clockInVerified === false).length;
 
   return (
     <Card className={`bg-card border-border ${isDisputed ? "border-red-500/30" : ""}`}>
@@ -565,6 +580,104 @@ function VerificationCard({ row, onApprove, onDispute, onViewPhotos, onViewRoute
             <p className="text-sm text-red-300">{job.disputeNotes}</p>
           </div>
         )}
+
+        {/* Time Sessions Breakdown */}
+        <div className="border border-border rounded-lg overflow-hidden">
+          <button
+            onClick={() => setShowSessions((v) => !v)}
+            className="w-full flex items-center justify-between px-3 py-2.5 bg-muted/20 hover:bg-muted/40 transition-colors text-sm"
+          >
+            <div className="flex items-center gap-2">
+              <Timer className="h-3.5 w-3.5 text-blue-400" />
+              <span className="font-medium text-foreground">Time Sessions</span>
+              {outOfGeofenceCount > 0 && (
+                <span className="flex items-center gap-1 text-xs text-orange-400 bg-orange-500/10 border border-orange-500/20 rounded px-1.5 py-0.5">
+                  <ShieldAlert className="h-3 w-3" />
+                  {outOfGeofenceCount} outside geofence
+                </span>
+              )}
+            </div>
+            {showSessions ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
+          </button>
+
+          {showSessions && (
+            <div className="p-3 space-y-2">
+              {/* Billable Only toggle */}
+              {outOfGeofenceCount > 0 && (
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-muted-foreground">Showing {displayedSessions.length} of {sessions?.length ?? 0} sessions</span>
+                  <button
+                    onClick={() => setBillableOnly((v) => !v)}
+                    className={`flex items-center gap-1.5 text-xs px-2 py-1 rounded border transition-colors ${
+                      billableOnly
+                        ? "bg-green-500/20 border-green-500/30 text-green-400"
+                        : "bg-muted/30 border-border text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    <Filter className="h-3 w-3" />
+                    Billable Only
+                  </button>
+                </div>
+              )}
+
+              {sessionsLoading && (
+                <div className="flex items-center gap-2 py-3 justify-center text-muted-foreground text-sm">
+                  <Loader2 className="h-4 w-4 animate-spin" /> Loading sessions...
+                </div>
+              )}
+
+              {!sessionsLoading && displayedSessions.length === 0 && (
+                <p className="text-xs text-muted-foreground text-center py-3">
+                  {billableOnly ? "No on-site verified sessions found." : "No time sessions recorded for this job."}
+                </p>
+              )}
+
+              {!sessionsLoading && displayedSessions.map((s: any, i: number) => {
+                const clockIn = s.clockInTime ? new Date(s.clockInTime) : null;
+                const clockOut = s.clockOutTime ? new Date(s.clockOutTime) : null;
+                const mins = s.totalMinutes ?? (clockIn && clockOut ? Math.round((clockOut.getTime() - clockIn.getTime()) / 60000) : null);
+                const billableMins = s.billableMinutes ?? mins;
+                const isVerified = s.clockInVerified === true;
+                const isUnverified = s.clockInVerified === false;
+
+                return (
+                  <div key={s.id ?? i} className={`rounded-lg border p-2.5 text-xs space-y-1 ${
+                    isUnverified ? "border-orange-500/30 bg-orange-500/5" : "border-border bg-muted/10"
+                  }`}>
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-1.5">
+                        {isVerified && <ShieldCheck className="h-3.5 w-3.5 text-green-400 shrink-0" />}
+                        {isUnverified && <ShieldAlert className="h-3.5 w-3.5 text-orange-400 shrink-0" />}
+                        {s.clockInVerified === null && <MapPin className="h-3.5 w-3.5 text-muted-foreground shrink-0" />}
+                        <span className="text-foreground font-medium">Session {i + 1}</span>
+                        {isUnverified && (
+                          <span className="text-orange-400 bg-orange-500/10 border border-orange-500/20 rounded px-1 py-0.5">Outside geofence</span>
+                        )}
+                      </div>
+                      <span className={`font-semibold ${
+                        isUnverified ? "text-orange-400" : "text-blue-400"
+                      }`}>
+                        {mins != null ? `${Math.floor(mins / 60)}h ${mins % 60}m` : "Active"}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-3 text-muted-foreground">
+                      <span>In: {clockIn ? clockIn.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "—"}</span>
+                      <span>Out: {clockOut ? clockOut.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : <span className="text-yellow-400">Still active</span>}</span>
+                      {billableMins != null && billableMins !== mins && (
+                        <span className="text-green-400">Billable: {Math.floor(billableMins / 60)}h {billableMins % 60}m</span>
+                      )}
+                    </div>
+                    {clockIn && (
+                      <div className="text-muted-foreground/60">
+                        {clockIn.toLocaleDateString([], { month: "short", day: "numeric", year: "numeric" })}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
 
         {/* Actions */}
         <div className="flex items-center gap-2 pt-1">

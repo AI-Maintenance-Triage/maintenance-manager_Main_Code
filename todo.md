@@ -1399,3 +1399,10 @@
 - [x] Edit property dialog: pre-fills all fields, supports address autocomplete, re-geocodes on address change
 - [x] Delete confirmation dialog: replaced direct delete with AlertDialog confirmation
 - [x] getContractorJobs enriched with property lat/lng and companySettings (geofenceRadiusFeet, billableTimePolicy)
+
+## Session 45: Geofence Test Tool & Billable Time Filter
+- [x] Enhanced geofence proximity banner with real-time distance bar, progress indicator, and auto-refresh
+- [x] clockIn procedure now sets clockInVerified=true when within geofence for all policies (not just on_site_only)
+- [x] Company Verification: Time Sessions collapsible panel with per-session geofence badge
+- [x] Company Verification: "Billable Only" filter toggle to show only on-site verified sessions
+- [x] Company Verification: Orange "X outside geofence" warning badge on session header when flagged sessions exist

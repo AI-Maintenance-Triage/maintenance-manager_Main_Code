@@ -12,7 +12,7 @@ import { Input } from "@/components/ui/input";
 import {
   Clock, CheckCircle, Play, Square, AlertCircle, Camera, CheckCheck,
   XCircle, Loader2, Navigation2, MapPin, Wifi, MessageSquare, FileDown,
-  Plus, Trash2, Receipt,
+  Plus, Trash2, Receipt, RefreshCw, Target,
 } from "lucide-react";
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { toast } from "sonner";
@@ -804,28 +804,81 @@ function JobCard({ row, onUpdate, readOnly = false }: { row: any; onUpdate: () =
                 {/* STATE 1: Assigned, not yet clocked in */}
                 {clockState === "idle" && (
                   <div className="flex flex-col gap-2">
-                    {/* Geofence banner — shown when on_site_only and contractor is outside radius */}
-                    {billableTimePolicy === "on_site_only" && geofenceStatus === "outside" && (
-                      <div className="flex flex-col gap-1.5 px-3 py-2 rounded-md bg-amber-500/10 border border-amber-500/30">
-                        <div className="flex items-center gap-1.5">
-                          <MapPin className="h-3.5 w-3.5 text-amber-400 shrink-0" />
-                          <span className="text-xs text-amber-300 font-medium">
-                            Proceed to the property to clock in
-                          </span>
+                    {/* Geofence proximity panel — shown when on_site_only policy is active */}
+                    {billableTimePolicy === "on_site_only" && property?.latitude && property?.longitude && (
+                      <div className={`flex flex-col gap-2 px-3 py-2.5 rounded-md border ${
+                        geofenceStatus === "inside"
+                          ? "bg-emerald-500/10 border-emerald-500/30"
+                          : geofenceStatus === "outside"
+                          ? "bg-amber-500/10 border-amber-500/30"
+                          : "bg-muted/30 border-border"
+                      }`}>
+                        {/* Header row */}
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-1.5">
+                            <Target className={`h-3.5 w-3.5 shrink-0 ${
+                              geofenceStatus === "inside" ? "text-emerald-400" :
+                              geofenceStatus === "outside" ? "text-amber-400" : "text-muted-foreground"
+                            }`} />
+                            <span className={`text-xs font-semibold ${
+                              geofenceStatus === "inside" ? "text-emerald-300" :
+                              geofenceStatus === "outside" ? "text-amber-300" : "text-muted-foreground"
+                            }`}>
+                              {geofenceStatus === "inside" ? "Within geofence — ready to clock in" :
+                               geofenceStatus === "outside" ? "Proceed to the property to clock in" :
+                               geofenceStatus === "checking" ? "Checking your location…" :
+                               "Location check pending"}
+                            </span>
+                          </div>
+                          <button
+                            onClick={checkProximity}
+                            disabled={geofenceStatus === "checking"}
+                            className="text-muted-foreground hover:text-foreground disabled:opacity-40 transition-colors"
+                            title="Refresh location"
+                          >
+                            <RefreshCw className={`h-3.5 w-3.5 ${geofenceStatus === "checking" ? "animate-spin" : ""}`} />
+                          </button>
                         </div>
-                        <p className="text-xs text-amber-400/80 leading-snug">
-                          You will be able to clock in when you are within{" "}
-                          <span className="font-semibold text-amber-300">{geofenceRadiusFeet.toLocaleString()} ft</span>{" "}
-                          of the property.{distanceToPropertyFt !== null && (
-                            <> You are currently <span className="font-semibold">{distanceToPropertyFt.toLocaleString()} ft</span> away.</>
-                          )}
-                        </p>
-                        <button
-                          onClick={checkProximity}
-                          className="text-xs text-amber-400 underline underline-offset-2 text-left w-fit"
-                        >
-                          Check again
-                        </button>
+
+                        {/* Distance info */}
+                        {distanceToPropertyFt !== null && geofenceStatus !== "checking" && (
+                          <>
+                            {/* Progress bar: distance relative to radius (capped at 3× radius for display) */}
+                            <div className="w-full h-1.5 rounded-full bg-muted/40 overflow-hidden">
+                              <div
+                                className={`h-full rounded-full transition-all duration-500 ${
+                                  geofenceStatus === "inside" ? "bg-emerald-500" : "bg-amber-500"
+                                }`}
+                                style={{
+                                  width: `${Math.min(100, (distanceToPropertyFt / (geofenceRadiusFeet * 3)) * 100)}%`,
+                                }}
+                              />
+                            </div>
+                            <div className="flex items-center justify-between text-xs">
+                              <span className={geofenceStatus === "inside" ? "text-emerald-400" : "text-amber-400"}>
+                                {distanceToPropertyFt.toLocaleString()} ft away
+                              </span>
+                              <span className="text-muted-foreground">
+                                Radius: {geofenceRadiusFeet.toLocaleString()} ft
+                              </span>
+                            </div>
+                          </>
+                        )}
+
+                        {/* Property address */}
+                        {property?.address && (
+                          <p className="text-xs text-muted-foreground flex items-center gap-1">
+                            <MapPin className="h-3 w-3 shrink-0" />
+                            {property.address}{property.city ? `, ${property.city}` : ""}
+                          </p>
+                        )}
+
+                        {/* Outside message */}
+                        {geofenceStatus === "outside" && (
+                          <p className="text-xs text-amber-400/80">
+                            Auto-checking every 15 seconds. Clock In will enable when you arrive.
+                          </p>
+                        )}
                       </div>
                     )}
                     {/* Normal clock-in button — disabled when outside geofence */}

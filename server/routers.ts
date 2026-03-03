@@ -1541,12 +1541,13 @@ const timeTrackingRouter = router({
       if (!job) throw new TRPCError({ code: "NOT_FOUND" });
       if (job.assignedContractorId !== profile.id) throw new TRPCError({ code: "FORBIDDEN" });
 
-      // ─── Geofence enforcement ─────────────────────────────────────────────
-      // If the company's billable time policy is "on_site_only", reject clock-in
-      // if the contractor is outside the configured geofence radius.
+      // ─── Geofence enforcement & clockInVerified flag ──────────────────────
+      // For on_site_only: block clock-in if outside radius.
+      // For all policies: compute clockInVerified = true if within geofence.
       const clockInSettings = await db.getCompanySettings(job.companyId);
       const billablePolicy = clockInSettings?.billableTimePolicy ?? "on_site_only";
-      if (billablePolicy === "on_site_only" && job.propertyId) {
+      let clockInVerified = false;
+      if (job.propertyId) {
         const property = await db.getPropertyByIdOnly(job.propertyId);
         if (property?.latitude && property?.longitude) {
           const radiusFeet = clockInSettings?.geofenceRadiusFeet ?? 500;
@@ -1561,7 +1562,9 @@ const timeTrackingRouter = router({
           const a = Math.sin(dLat / 2) ** 2 +
             Math.cos((lat1 * Math.PI) / 180) * Math.cos((lat2 * Math.PI) / 180) * Math.sin(dLng / 2) ** 2;
           const distanceMeters = R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-          if (distanceMeters > radiusMeters) {
+          if (distanceMeters <= radiusMeters) {
+            clockInVerified = true;
+          } else if (billablePolicy === "on_site_only") {
             throw new TRPCError({
               code: "PRECONDITION_FAILED",
               message: `GEOFENCE_REQUIRED:${radiusFeet}`,
@@ -1581,6 +1584,7 @@ const timeTrackingRouter = router({
         clockInTime: Date.now(),
         clockInLat: input.latitude,
         clockInLng: input.longitude,
+        clockInVerified,
       });
 
       // Update job status
