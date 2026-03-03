@@ -65,8 +65,24 @@ export const buildiumAdapter: PmsAdapter = {
 
       for (const item of items) {
         const r = item as Record<string, unknown>;
-        // RentalMessage response: Id, Name, Address (PascalCase)
+        // RentalMessage response: Id, Name, Address, PropertyType (PascalCase)
         const addr = r.Address as Record<string, string> | undefined;
+        // Map Buildium PropertyType to our enum
+        // Buildium types: "ResidentialProperty", "CommercialProperty", "AssociationProperty"
+        // NumberUnits > 1 => multi_family; single-unit residential => single_family
+        const numUnits = typeof r.NumberUnits === "number" ? r.NumberUnits :
+                         typeof r.totalUnits === "number" ? r.totalUnits : 1;
+        const bType = String(r.PropertyType ?? r.propertyType ?? "").toLowerCase();
+        let propertyType: PmsProperty["propertyType"];
+        if (bType.includes("commercial")) {
+          propertyType = "commercial";
+        } else if (bType.includes("association")) {
+          propertyType = "other";
+        } else if (numUnits > 1) {
+          propertyType = "multi_family";
+        } else {
+          propertyType = "single_family";
+        }
         results.push({
           externalId: String(r.Id ?? r.id),
           name: String(r.Name ?? r.name ?? r.Id ?? r.id),
@@ -74,8 +90,8 @@ export const buildiumAdapter: PmsAdapter = {
           city: addr?.City ?? addr?.city,
           state: addr?.State ?? addr?.state,
           zipCode: addr?.PostalCode ?? addr?.postalCode ?? addr?.ZipCode ?? addr?.zipCode,
-          units: typeof r.NumberUnits === "number" ? r.NumberUnits :
-                 typeof r.totalUnits === "number" ? r.totalUnits : 1,
+          units: numUnits,
+          propertyType,
         });
       }
 

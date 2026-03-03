@@ -300,6 +300,7 @@ function TrackingSettings({ readOnly, companyId }: { readOnly: boolean; companyI
   const [maxSession, setMaxSession] = useState("8");
   const [timesheetReview, setTimesheetReview] = useState(true);
   const [billablePolicy, setBillablePolicy] = useState("on_site_only");
+  const [excludeOutOfGeofence, setExcludeOutOfGeofence] = useState(false);
 
   useEffect(() => {
     if (settings) {
@@ -308,6 +309,7 @@ function TrackingSettings({ readOnly, companyId }: { readOnly: boolean; companyI
       setMaxSession(String((settings as any).maxSessionDurationHours ?? 8));
       setTimesheetReview((settings as any).timesheetReviewEnabled ?? true);
       setBillablePolicy((settings as any).billableTimePolicy ?? "on_site_only");
+      setExcludeOutOfGeofence((settings as any).excludeOutOfGeofenceSessions ?? false);
     }
   }, [settings]);
 
@@ -363,6 +365,13 @@ function TrackingSettings({ readOnly, companyId }: { readOnly: boolean; companyI
                 <SelectItem value="hybrid_with_cap">Hybrid with Cap — On-site + capped off-site time</SelectItem>
               </SelectContent>
             </Select>
+          </div>
+          <div className="flex items-center justify-between">
+            <div>
+              <Label>Exclude Out-of-Geofence Sessions from Billing</Label>
+              <p className="text-xs text-muted-foreground">When enabled, time sessions where the contractor was outside the property geofence will not be included in labor cost calculations</p>
+            </div>
+            <Switch checked={excludeOutOfGeofence} disabled={readOnly} onCheckedChange={(v) => { if (!readOnly) { setExcludeOutOfGeofence(v); updateSettings.mutate({ excludeOutOfGeofenceSessions: v }); } }} />
           </div>
         </CardContent>
       </Card>

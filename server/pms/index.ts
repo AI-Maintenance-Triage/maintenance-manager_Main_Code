@@ -131,9 +131,12 @@ import {
   listPmsIntegrations,
   updatePmsIntegration,
   createProperty,
+  updateProperty,
   listProperties,
   createMaintenanceRequest,
   createPmsWebhookEvent,
+  geocodeAddress,
+  updatePropertyCoords,
 } from "../db";
 
 /**
@@ -159,7 +162,8 @@ export async function runPmsSync(integrationId: number, companyId: number): Prom
     let imported = 0;
     for (const prop of pmsProperties) {
       if (!existingExternalIds.has(prop.externalId)) {
-        await createProperty({
+        // Create new property
+        const newId = await createProperty({
           companyId,
           name: prop.name,
           address: prop.address,
@@ -168,8 +172,32 @@ export async function runPmsSync(integrationId: number, companyId: number): Prom
           zipCode: prop.zipCode,
           units: prop.units ?? 1,
           externalId: prop.externalId,
+          propertyType: prop.propertyType ?? "single_family",
         });
+        // Auto-geocode: fetch lat/lng from address
+        const fullAddress = [prop.address, prop.city, prop.state, prop.zipCode].filter(Boolean).join(", ");
+        if (fullAddress) {
+          const coords = await geocodeAddress(fullAddress);
+          if (coords) await updatePropertyCoords(newId, coords.lat, coords.lng);
+        }
         imported++;
+      } else {
+        // Upsert: update propertyType and units on existing property
+        const existing = existingProperties.find(p => p.externalId === prop.externalId);
+        if (existing) {
+          await updateProperty(existing.id, companyId, {
+            units: prop.units ?? existing.units ?? 1,
+            propertyType: prop.propertyType ?? existing.propertyType ?? "single_family",
+          });
+          // Geocode if missing coords
+          if (!existing.latitude || !existing.longitude) {
+            const fullAddress = [prop.address, prop.city, prop.state, prop.zipCode].filter(Boolean).join(", ");
+            if (fullAddress) {
+              const coords = await geocodeAddress(fullAddress);
+              if (coords) await updatePropertyCoords(existing.id, coords.lat, coords.lng);
+            }
+          }
+        }
       }
     }
 

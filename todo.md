@@ -1406,3 +1406,18 @@
 - [x] Company Verification: Time Sessions collapsible panel with per-session geofence badge
 - [x] Company Verification: "Billable Only" filter toggle to show only on-site verified sessions
 - [x] Company Verification: Orange "X outside geofence" warning badge on session header when flagged sessions exist
+
+## Session 46: Geofence Billing Exclusion, Session Flagging, Property Types & Units
+- [x] Company Settings: "Exclude out-of-geofence sessions from billing" toggle (GPS & Time tab)
+- [x] markComplete: respect excludeOutOfGeofenceSessions when calculating totalLaborMinutes
+- [x] verifyJob: respect excludeOutOfGeofenceSessions when recalculating labor cost
+- [x] Company Verification: "Flag for Review" / "Unflag" icon button on each time session row
+- [x] Backend: flagSession + unflagSession procedures (status: flagged / completed)
+- [x] Schema: propertyType enum (single_family/multi_family/commercial/other) in properties table
+- [x] PmsProperty type: added propertyType field
+- [x] Buildium adapter: map PropertyType + NumberUnits to propertyType (commercial/multi_family/single_family)
+- [x] PMS sync: auto-geocode property addresses on import (new properties + existing with missing coords)
+- [x] PMS sync: upsert propertyType and units on existing properties
+- [x] Company Properties page: property type selector in Add + Edit dialogs
+- [x] Company Properties page: property type badge on property cards (Single Family / Multi Family / Commercial / Other)
+- [x] Company Properties page: show geocode coordinates on property cards

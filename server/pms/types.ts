@@ -12,6 +12,8 @@ export interface PmsProperty {
   state?: string;
   zipCode?: string;
   units?: number;
+  /** Normalized property type — single_family, multi_family, commercial, or other */
+  propertyType?: "single_family" | "multi_family" | "commercial" | "other";
 }
 
 export interface PmsMaintenanceRequest {

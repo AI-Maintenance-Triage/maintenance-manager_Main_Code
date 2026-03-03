@@ -84,6 +84,8 @@ export const companySettings = mysqlTable("company_settings", {
   // Billable Time Policy: "on_site_only" | "full_trip" | "hybrid_with_cap"
   billableTimePolicy: mysqlEnum("billableTimePolicy", ["on_site_only", "full_trip", "hybrid_with_cap"]).default("on_site_only").notNull(),
   hybridCapMinutes: int("hybridCapMinutes").default(30),
+  // Billing: exclude out-of-geofence sessions from labor cost calculation
+  excludeOutOfGeofenceSessions: boolean("excludeOutOfGeofenceSessions").default(false).notNull(),
   // Parts
   partsMarkupPercent: decimal("partsMarkupPercent", { precision: 5, scale: 2 }).default("0.00"),
   // Contractor Management
@@ -136,6 +138,7 @@ export const properties = mysqlTable("properties", {
   latitude: decimal("latitude", { precision: 10, scale: 7 }),
   longitude: decimal("longitude", { precision: 10, scale: 7 }),
   units: int("units").default(1),
+  propertyType: mysqlEnum("propertyType", ["single_family", "multi_family", "commercial", "other"]).default("single_family").notNull(),
   externalId: varchar("externalId", { length: 128 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),

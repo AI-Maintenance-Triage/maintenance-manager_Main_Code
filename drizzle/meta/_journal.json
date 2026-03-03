@@ -246,6 +246,13 @@
       "when": 1772406235400,
       "tag": "0034_workable_starhawk",
       "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "5",
+      "when": 1772500203760,
+      "tag": "0035_short_lionheart",
+      "breakpoints": true
     }
   ]
 }

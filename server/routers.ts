@@ -169,6 +169,8 @@ const settingsRouter = router({
       notifyOnNewContractor: z.boolean().optional(),
       // Job Board Visibility Default
       defaultJobBoardVisibility: z.enum(["public", "private"]).optional(),
+      // Billing: exclude out-of-geofence sessions from labor cost
+      excludeOutOfGeofenceSessions: z.boolean().optional(),
     }))
     .mutation(async ({ ctx, input }) => {
       if (!getEffectiveCompanyId(ctx)) throw new TRPCError({ code: "NOT_FOUND" });
@@ -227,7 +229,7 @@ const propertiesRouter = router({
     }),
 
   create: companyAdminProcedure
-    .input(z.object({ name: z.string().optional(), address: z.string().min(1), city: z.string().optional(), state: z.string().optional(), zipCode: z.string().optional(), latitude: z.string().optional(), longitude: z.string().optional(), units: z.number().optional() }))
+    .input(z.object({ name: z.string().optional(), address: z.string().min(1), city: z.string().optional(), state: z.string().optional(), zipCode: z.string().optional(), latitude: z.string().optional(), longitude: z.string().optional(), units: z.number().optional(), propertyType: z.enum(["single_family", "multi_family", "commercial", "other"]).optional() }))
     .mutation(async ({ ctx, input }) => {
       if (!getEffectiveCompanyId(ctx)) throw new TRPCError({ code: "NOT_FOUND" });
       const companyId = getEffectiveCompanyId(ctx);
@@ -257,7 +259,7 @@ const propertiesRouter = router({
     }),
 
   update: companyAdminProcedure
-    .input(z.object({ id: z.number(), name: z.string().optional(), address: z.string().optional(), city: z.string().optional(), state: z.string().optional(), zipCode: z.string().optional(), latitude: z.string().optional(), longitude: z.string().optional(), units: z.number().optional() }))
+    .input(z.object({ id: z.number(), name: z.string().optional(), address: z.string().optional(), city: z.string().optional(), state: z.string().optional(), zipCode: z.string().optional(), latitude: z.string().optional(), longitude: z.string().optional(), units: z.number().optional(), propertyType: z.enum(["single_family", "multi_family", "commercial", "other"]).optional() }))
     .mutation(async ({ ctx, input }) => {
       if (!getEffectiveCompanyId(ctx)) throw new TRPCError({ code: "NOT_FOUND" });
       const { id, ...data } = input;
@@ -644,11 +646,20 @@ const contractorRouter = router({
       }
       // Re-fetch sessions after auto-close
       const updatedSessions = await db.getTimeSessionsByJob(input.jobId);
-      const completedSessions = updatedSessions.filter((s: any) => s.status === "completed" && s.totalMinutes);
-      const totalLaborMinutes = completedSessions.reduce((sum: number, s: any) => sum + (s.totalMinutes ?? 0), 0);
-      // Get job to find hourlyRate
+      // Get job to find hourlyRate and company settings (for excludeOutOfGeofenceSessions)
       const jobs = await db.getContractorJobs(profile.id);
       const job = jobs.find((j: any) => j.job.id === input.jobId);
+      const jobData = await db.getMaintenanceRequestById(input.jobId);
+      const companySettings = jobData?.companyId ? await db.getCompanySettings(jobData.companyId) : null;
+      const excludeOutOfGeofence = companySettings?.excludeOutOfGeofenceSessions ?? false;
+      // Filter sessions: if excludeOutOfGeofenceSessions, only count clockInVerified sessions
+      const completedSessions = updatedSessions.filter((s: any) => {
+        if (s.status !== "completed" && s.status !== "flagged") return false;
+        if (!s.totalMinutes) return false;
+        if (excludeOutOfGeofence && !s.clockInVerified) return false;
+        return true;
+      });
+      const totalLaborMinutes = completedSessions.reduce((sum: number, s: any) => sum + (s.totalMinutes ?? 0), 0);
       const hourlyRate = parseFloat(job?.job?.hourlyRate ?? "0");
       const totalLaborCost = hourlyRate > 0 && totalLaborMinutes > 0
         ? ((totalLaborMinutes / 60) * hourlyRate).toFixed(2)
@@ -1253,7 +1264,15 @@ const jobsRouter = router({
                 }
               }
               const refreshedSessions = await db.getTimeSessionsByJob(input.jobId);
-              const completedPay = refreshedSessions.filter((s: any) => s.status === "completed" && s.totalMinutes);
+              // Respect excludeOutOfGeofenceSessions company setting
+              const companySettingsPay = await db.getCompanySettings(companyId);
+              const excludeOOGPay = companySettingsPay?.excludeOutOfGeofenceSessions ?? false;
+              const completedPay = refreshedSessions.filter((s: any) => {
+                if (s.status !== "completed" && s.status !== "flagged") return false;
+                if (!s.totalMinutes) return false;
+                if (excludeOOGPay && !s.clockInVerified) return false;
+                return true;
+              });
               const totalMins = completedPay.reduce((sum: number, s: any) => sum + (s.totalMinutes ?? 0), 0);
               const rate = parseFloat(job.hourlyRate ?? "0");
               if (totalMins > 0 && rate > 0) {
@@ -1721,6 +1740,44 @@ const timeTrackingRouter = router({
     .query(async ({ ctx, input }) => {
       const companyId = getEffectiveCompanyId(ctx);
       return db.getCompletedSessionsByCompany(companyId, input.limit ?? 50);
+    }),
+
+  // Company: flag a time session for review (sets status to 'flagged')
+  flagSession: companyAdminProcedure
+    .input(z.object({
+      sessionId: z.number(),
+      /** Optional note explaining why the session is flagged */
+      note: z.string().optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const companyId = getEffectiveCompanyId(ctx);
+      // Verify the session belongs to this company
+      const session = await db.getTimeSessionById(input.sessionId);
+      if (!session || session.companyId !== companyId) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Session not found" });
+      }
+      await db.updateTimeSession(input.sessionId, { status: "flagged" });
+      // Notify the contractor via owner notification (non-critical)
+      try {
+        await notifyOwner({
+          title: `\u26A0\uFE0F Time Session Flagged for Review`,
+          content: `Session #${input.sessionId} has been flagged for review by your company.${input.note ? ` Note: ${input.note}` : ""}`,
+        });
+      } catch { /* non-critical */ }
+      return { success: true };
+    }),
+
+  // Company: unflag a time session (restore to completed)
+  unflagSession: companyAdminProcedure
+    .input(z.object({ sessionId: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      const companyId = getEffectiveCompanyId(ctx);
+      const session = await db.getTimeSessionById(input.sessionId);
+      if (!session || session.companyId !== companyId) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Session not found" });
+      }
+      await db.updateTimeSession(input.sessionId, { status: "completed" });
+      return { success: true };
     }),
 });
 

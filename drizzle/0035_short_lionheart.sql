@@ -1,0 +1,2 @@
+ALTER TABLE `company_settings` ADD `excludeOutOfGeofenceSessions` boolean DEFAULT false NOT NULL;--> statement-breakpoint
+ALTER TABLE `properties` ADD `propertyType` enum('single_family','multi_family','commercial','other') DEFAULT 'single_family' NOT NULL;

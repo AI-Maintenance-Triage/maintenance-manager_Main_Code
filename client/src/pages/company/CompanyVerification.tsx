@@ -10,7 +10,7 @@ import { Separator } from "@/components/ui/separator";
 import {
   CheckCircle, XCircle, Clock, Image, Loader2, AlertTriangle,
   ClipboardCheck, DollarSign, Timer, Package, CreditCard, Map, Receipt,
-  MapPin, ShieldCheck, ShieldAlert, ChevronDown, ChevronUp, Filter,
+  MapPin, ShieldCheck, ShieldAlert, ChevronDown, ChevronUp, Filter, Flag, FlagOff,
 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -420,6 +420,48 @@ export default function CompanyVerification() {
   );
 }
 
+// ─── FlagSessionButton ────────────────────────────────────────────────────────
+function FlagSessionButton({ sessionId, isFlagged, jobId }: { sessionId: number; isFlagged: boolean; jobId: number }) {
+  const utils = trpc.useUtils();
+  const flagSession = trpc.timeTracking.flagSession.useMutation({
+    onSuccess: () => {
+      toast.success("Session flagged for review");
+      utils.jobs.timeSessions.invalidate({ jobId });
+    },
+    onError: (err: any) => toast.error(err.message),
+  });
+  const unflagSession = trpc.timeTracking.unflagSession.useMutation({
+    onSuccess: () => {
+      toast.success("Session unflagged");
+      utils.jobs.timeSessions.invalidate({ jobId });
+    },
+    onError: (err: any) => toast.error(err.message),
+  });
+  const isPending = flagSession.isPending || unflagSession.isPending;
+  if (isFlagged) {
+    return (
+      <button
+        onClick={() => unflagSession.mutate({ sessionId })}
+        disabled={isPending}
+        title="Remove flag"
+        className="text-yellow-400 hover:text-yellow-300 transition-colors disabled:opacity-50"
+      >
+        {isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <FlagOff className="h-3 w-3" />}
+      </button>
+    );
+  }
+  return (
+    <button
+      onClick={() => flagSession.mutate({ sessionId })}
+      disabled={isPending}
+      title="Flag for review"
+      className="text-muted-foreground hover:text-yellow-400 transition-colors disabled:opacity-50"
+    >
+      {isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Flag className="h-3 w-3" />}
+    </button>
+  );
+}
+
 function VerificationCard({ row, onApprove, onDispute, onViewPhotos, onViewRoute }: {
   row: any;
   onApprove: () => void;
@@ -639,9 +681,11 @@ function VerificationCard({ row, onApprove, onDispute, onViewPhotos, onViewRoute
                 const billableMins = s.billableMinutes ?? mins;
                 const isVerified = s.clockInVerified === true;
                 const isUnverified = s.clockInVerified === false;
+                const isFlagged = s.status === "flagged";
 
                 return (
                   <div key={s.id ?? i} className={`rounded-lg border p-2.5 text-xs space-y-1 ${
+                    isFlagged ? "border-yellow-500/30 bg-yellow-500/5" :
                     isUnverified ? "border-orange-500/30 bg-orange-500/5" : "border-border bg-muted/10"
                   }`}>
                     <div className="flex items-center justify-between gap-2">
@@ -653,12 +697,21 @@ function VerificationCard({ row, onApprove, onDispute, onViewPhotos, onViewRoute
                         {isUnverified && (
                           <span className="text-orange-400 bg-orange-500/10 border border-orange-500/20 rounded px-1 py-0.5">Outside geofence</span>
                         )}
+                        {isFlagged && (
+                          <span className="text-yellow-400 bg-yellow-500/10 border border-yellow-500/20 rounded px-1 py-0.5 flex items-center gap-0.5"><Flag className="h-2.5 w-2.5" /> Flagged</span>
+                        )}
                       </div>
-                      <span className={`font-semibold ${
-                        isUnverified ? "text-orange-400" : "text-blue-400"
-                      }`}>
-                        {mins != null ? `${Math.floor(mins / 60)}h ${mins % 60}m` : "Active"}
-                      </span>
+                      <div className="flex items-center gap-1.5">
+                        <span className={`font-semibold ${
+                          isFlagged ? "text-yellow-400" :
+                          isUnverified ? "text-orange-400" : "text-blue-400"
+                        }`}>
+                          {mins != null ? `${Math.floor(mins / 60)}h ${mins % 60}m` : "Active"}
+                        </span>
+                        {s.id && (
+                          <FlagSessionButton sessionId={s.id} isFlagged={isFlagged} jobId={job.id} />
+                        )}
+                      </div>
                     </div>
                     <div className="flex items-center gap-3 text-muted-foreground">
                       <span>In: {clockIn ? clockIn.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "—"}</span>

@@ -10,12 +10,21 @@ import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useViewAs } from "@/contexts/ViewAsContext";
 import { Plus, MapPin, Trash2, Building, ArrowUpRight, MoreVertical, Pencil } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useState } from "react";
 import { useLocation } from "wouter";
 import { toast } from "sonner";
 import AddressAutocomplete from "@/components/AddressAutocomplete";
 
-const emptyForm = { name: "", address: "", city: "", state: "", zipCode: "", units: "", lat: "", lng: "" };
+const emptyForm = { name: "", address: "", city: "", state: "", zipCode: "", units: "", lat: "", lng: "", propertyType: "single_family" as string };
+
+const PROPERTY_TYPE_LABELS: Record<string, { label: string; variant: "default" | "secondary" | "outline" }> = {
+  single_family: { label: "Single Family", variant: "secondary" },
+  multi_family: { label: "Multi Family", variant: "default" },
+  commercial: { label: "Commercial", variant: "outline" },
+  other: { label: "Other", variant: "outline" },
+};
 
 export default function CompanyProperties() {
   const { user } = useAuth();
@@ -108,6 +117,7 @@ export default function CompanyProperties() {
       units: form.units ? Number(form.units) : undefined,
       latitude: form.lat || undefined,
       longitude: form.lng || undefined,
+      propertyType: form.propertyType as any || undefined,
     });
   };
 
@@ -122,6 +132,7 @@ export default function CompanyProperties() {
       units: prop.units ? String(prop.units) : "",
       lat: prop.latitude ? String(prop.latitude) : "",
       lng: prop.longitude ? String(prop.longitude) : "",
+      propertyType: prop.propertyType ?? "single_family",
     });
     setEditOpen(true);
   };
@@ -138,6 +149,7 @@ export default function CompanyProperties() {
       units: editForm.units ? Number(editForm.units) : undefined,
       latitude: editForm.lat || undefined,
       longitude: editForm.lng || undefined,
+      propertyType: editForm.propertyType as any || undefined,
     });
   };
 
@@ -205,6 +217,18 @@ export default function CompanyProperties() {
               <div className="space-y-2">
                 <Label>Number of Units</Label>
                 <Input type="number" placeholder="12" value={form.units} onChange={(e) => setForm({ ...form, units: e.target.value })} />
+              </div>
+              <div className="space-y-2">
+                <Label>Property Type</Label>
+                <Select value={form.propertyType} onValueChange={(v) => setForm({ ...form, propertyType: v })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="single_family">Single Family</SelectItem>
+                    <SelectItem value="multi_family">Multi Family</SelectItem>
+                    <SelectItem value="commercial">Commercial</SelectItem>
+                    <SelectItem value="other">Other</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
               <Button onClick={handleCreate} disabled={!form.address || createProperty.isPending} className="w-full">
                 {createProperty.isPending ? "Adding..." : "Add Property"}
@@ -294,6 +318,18 @@ export default function CompanyProperties() {
               <Label>Number of Units</Label>
               <Input type="number" placeholder="12" value={editForm.units} onChange={(e) => setEditForm({ ...editForm, units: e.target.value })} />
             </div>
+            <div className="space-y-2">
+              <Label>Property Type</Label>
+              <Select value={editForm.propertyType} onValueChange={(v) => setEditForm({ ...editForm, propertyType: v })}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="single_family">Single Family</SelectItem>
+                  <SelectItem value="multi_family">Multi Family</SelectItem>
+                  <SelectItem value="commercial">Commercial</SelectItem>
+                  <SelectItem value="other">Other</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
             <div className="flex gap-2">
               <Button variant="outline" className="flex-1" onClick={() => { setEditOpen(false); setEditingProp(null); setEditForm(emptyForm); }}>
                 Cancel
@@ -345,15 +381,21 @@ export default function CompanyProperties() {
               <CardContent className="p-4">
                 <div className="flex items-start justify-between">
                   <div className="min-w-0 flex-1">
-                    <h3 className="font-medium text-card-foreground">{prop.name}</h3>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h3 className="font-medium text-card-foreground">{prop.name}</h3>
+                      {prop.propertyType && (() => {
+                        const pt = PROPERTY_TYPE_LABELS[prop.propertyType] ?? { label: prop.propertyType, variant: "outline" as const };
+                        return <Badge variant={pt.variant} className="text-xs">{pt.label}</Badge>;
+                      })()}
+                    </div>
                     <div className="flex items-center gap-1 mt-1 text-sm text-muted-foreground">
                       <MapPin className="h-3.5 w-3.5 shrink-0" />
                       <span className="truncate">{prop.address}{prop.city ? `, ${prop.city}` : ""}{prop.state ? `, ${prop.state}` : ""} {prop.zipCode}</span>
                     </div>
-                    {prop.units && <p className="text-xs text-muted-foreground mt-1">{prop.units} units</p>}
+                    {prop.units && prop.units > 1 && <p className="text-xs text-muted-foreground mt-1">{prop.units} units</p>}
                     {prop.latitude && prop.longitude && (
                       <p className="text-xs text-emerald-600 mt-1 flex items-center gap-1">
-                        <MapPin className="h-3 w-3" /> Geocoded
+                        <MapPin className="h-3 w-3" /> Geocoded ({parseFloat(String(prop.latitude)).toFixed(4)}, {parseFloat(String(prop.longitude)).toFixed(4)})
                       </p>
                     )}
                   </div>
