@@ -91,7 +91,9 @@ export default function CompanyVerification() {
     setSelected(job);
     setAction(act);
     setNotes("");
-    setStep("notes");
+    // For approvals: skip the notes step and go straight to the payment confirmation screen.
+    // For disputes: keep the notes step so the company can describe the issue.
+    setStep(act === "approve" ? "confirm" : "notes");
     setSelectedPaymentMethodId(null);
   };
 
@@ -106,10 +108,12 @@ export default function CompanyVerification() {
 
   const handleSubmit = () => {
     if (!selected || !action) return;
+    // For approvals, notes are optional (we skipped the notes step).
+    // For disputes, notes are required (validated in handleNext).
     verifyJob.mutate({
       jobId: selected.job.id,
       action,
-      notes,
+      notes: notes.trim() || (action === "approve" ? "Approved" : ""),
       paymentMethodId: selectedPaymentMethodId ?? undefined,
     });
   };

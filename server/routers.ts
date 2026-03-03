@@ -647,8 +647,6 @@ const contractorRouter = router({
       // Re-fetch sessions after auto-close
       const updatedSessions = await db.getTimeSessionsByJob(input.jobId);
       // Get job to find hourlyRate and company settings (for excludeOutOfGeofenceSessions)
-      const jobs = await db.getContractorJobs(profile.id);
-      const job = jobs.find((j: any) => j.job.id === input.jobId);
       const jobData = await db.getMaintenanceRequestById(input.jobId);
       const companySettings = jobData?.companyId ? await db.getCompanySettings(jobData.companyId) : null;
       const excludeOutOfGeofence = companySettings?.excludeOutOfGeofenceSessions ?? false;
@@ -660,7 +658,20 @@ const contractorRouter = router({
         return true;
       });
       const totalLaborMinutes = completedSessions.reduce((sum: number, s: any) => sum + (s.totalMinutes ?? 0), 0);
-      const hourlyRate = parseFloat(job?.job?.hourlyRate ?? "0");
+      // Resolve hourlyRate: use job's stored rate, or fall back to the company's skill tier rate
+      let hourlyRate = parseFloat(jobData?.hourlyRate ?? "0");
+      if (hourlyRate === 0 && jobData?.skillTierId && jobData?.companyId) {
+        try {
+          const tiers = await db.getSkillTiers(jobData.companyId);
+          const tier = tiers.find((t: any) => t.id === jobData.skillTierId);
+          if (tier?.hourlyRate) {
+            hourlyRate = parseFloat(tier.hourlyRate);
+            if (jobData.isEmergency && tier.emergencyMultiplier) {
+              hourlyRate = hourlyRate * parseFloat(tier.emergencyMultiplier);
+            }
+          }
+        } catch { /* non-critical */ }
+      }
       const totalLaborCost = hourlyRate > 0 && totalLaborMinutes > 0
         ? ((totalLaborMinutes / 60) * hourlyRate).toFixed(2)
         : null;
@@ -1126,11 +1137,25 @@ const jobsRouter = router({
     // always shows accurate labor minutes even if the job record is stale.
     const enriched = await Promise.all(rows.map(async (row: any) => {
       const sessions = await db.getTimeSessionsByJob(row.job.id);
-      const completedSessions = sessions.filter((s: any) => s.status === "completed" && s.totalMinutes);
+      // Include both completed and flagged sessions in the labor calculation
+      const completedSessions = sessions.filter((s: any) => (s.status === "completed" || s.status === "flagged") && s.totalMinutes);
       const liveMinutes = completedSessions.reduce((sum: number, s: any) => sum + (s.totalMinutes ?? 0), 0);
       const storedMinutes = row.job.totalLaborMinutes ?? 0;
       const totalLaborMinutes = liveMinutes > storedMinutes ? liveMinutes : storedMinutes;
-      const hourlyRate = parseFloat(row.job.hourlyRate ?? "0");
+      // Resolve hourlyRate: use job's stored rate, or fall back to the company's skill tier rate
+      let hourlyRate = parseFloat(row.job.hourlyRate ?? "0");
+      if (hourlyRate === 0 && row.job.skillTierId) {
+        try {
+          const tiers = await db.getSkillTiers(row.job.companyId);
+          const tier = tiers.find((t: any) => t.id === row.job.skillTierId);
+          if (tier?.hourlyRate) {
+            hourlyRate = parseFloat(tier.hourlyRate);
+            if (row.job.isEmergency && tier.emergencyMultiplier) {
+              hourlyRate = hourlyRate * parseFloat(tier.emergencyMultiplier);
+            }
+          }
+        } catch { /* non-critical */ }
+      }
       const totalLaborCost = hourlyRate > 0 && totalLaborMinutes > 0
         ? ((totalLaborMinutes / 60) * hourlyRate).toFixed(2)
         : row.job.totalLaborCost ?? null;
@@ -1158,6 +1183,8 @@ const jobsRouter = router({
           totalLaborMinutes: totalLaborMinutes > 0 ? totalLaborMinutes : row.job.totalLaborMinutes,
           totalLaborCost,
           totalPartsCost,
+          // Return the resolved hourlyRate so the payment dialog shows the correct rate
+          hourlyRate: hourlyRate > 0 ? hourlyRate.toFixed(2) : row.job.hourlyRate,
           sessionCount: completedSessions.length,
           receipts,
           contractorName,
@@ -1172,7 +1199,7 @@ const jobsRouter = router({
     .input(z.object({
       jobId: z.number(),
       action: z.enum(["approve", "dispute"]),
-      notes: z.string().min(1, "Please provide notes"),
+      notes: z.string().min(0).default(""),
       /** Optional: specific payment method ID to charge. Falls back to company default if omitted. */
       paymentMethodId: z.string().optional(),
     }))
@@ -1274,7 +1301,20 @@ const jobsRouter = router({
                 return true;
               });
               const totalMins = completedPay.reduce((sum: number, s: any) => sum + (s.totalMinutes ?? 0), 0);
-              const rate = parseFloat(job.hourlyRate ?? "0");
+              // Resolve rate: use stored hourlyRate, or fall back to skill tier
+              let rate = parseFloat(job.hourlyRate ?? "0");
+              if (rate === 0 && job.skillTierId) {
+                try {
+                  const tiers = await db.getSkillTiers(companyId);
+                  const tier = tiers.find((t: any) => t.id === job.skillTierId);
+                  if (tier?.hourlyRate) {
+                    rate = parseFloat(tier.hourlyRate);
+                    if (job.isEmergency && tier.emergencyMultiplier) {
+                      rate = rate * parseFloat(tier.emergencyMultiplier);
+                    }
+                  }
+                } catch { /* non-critical */ }
+              }
               if (totalMins > 0 && rate > 0) {
                 laborCost = parseFloat(((totalMins / 60) * rate).toFixed(2));
                 // Persist recalculated cost back to the job
@@ -1606,9 +1646,25 @@ const timeTrackingRouter = router({
         clockInVerified,
       });
 
-      // Update job status
-      if (job.status === "assigned") {
-        await db.updateMaintenanceRequest(input.jobId, { status: "in_progress" });
+      // Update job status and persist resolved hourlyRate so LiveTracking can show it
+      const clockInUpdates: Record<string, any> = {};
+      if (job.status === "assigned") clockInUpdates.status = "in_progress";
+      // If the job has no hourlyRate yet, resolve it from the skill tier now
+      if (!job.hourlyRate && job.skillTierId) {
+        try {
+          const tiers = await db.getSkillTiers(job.companyId);
+          const tier = tiers.find((t: any) => t.id === job.skillTierId);
+          if (tier?.hourlyRate) {
+            let resolvedRate = parseFloat(tier.hourlyRate);
+            if (job.isEmergency && tier.emergencyMultiplier) {
+              resolvedRate = resolvedRate * parseFloat(tier.emergencyMultiplier);
+            }
+            clockInUpdates.hourlyRate = resolvedRate.toFixed(2);
+          }
+        } catch { /* non-critical */ }
+      }
+      if (Object.keys(clockInUpdates).length > 0) {
+        await db.updateMaintenanceRequest(input.jobId, clockInUpdates);
       }
 
       // Notify company owner that contractor clocked in (if preference enabled)

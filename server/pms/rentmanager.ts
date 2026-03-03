@@ -74,6 +74,7 @@ export const rentManagerAdapter: PmsAdapter = {
             state,
             zipCode: zip,
             units: prop.UnitCount ?? prop.Units ?? 1,
+            propertyType: mapRentManagerPropertyType(prop.PropertyType ?? prop.Type ?? prop.PropertyTypeName),
           });
         }
 
@@ -158,6 +159,15 @@ export const rentManagerAdapter: PmsAdapter = {
     }
   },
 };
+
+function mapRentManagerPropertyType(t?: string): "single_family" | "multi_family" | "commercial" | "other" | undefined {
+  if (!t) return undefined;
+  const lower = String(t).toLowerCase();
+  if (lower.includes("single") || lower.includes("sfr") || lower.includes("house") || lower.includes("condo") || lower.includes("townhouse")) return "single_family";
+  if (lower.includes("multi") || lower.includes("apartment") || lower.includes("duplex") || lower.includes("triplex") || lower.includes("fourplex") || lower.includes("mfr")) return "multi_family";
+  if (lower.includes("commercial") || lower.includes("office") || lower.includes("retail") || lower.includes("industrial")) return "commercial";
+  return "other";
+}
 
 function mapRentManagerPriority(priority: string): "low" | "medium" | "high" | "emergency" {
   const p = priority.toLowerCase();

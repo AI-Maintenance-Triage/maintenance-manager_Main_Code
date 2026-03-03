@@ -1421,3 +1421,13 @@
 - [x] Company Properties page: property type selector in Add + Edit dialogs
 - [x] Company Properties page: property type badge on property cards (Single Family / Multi Family / Commercial / Other)
 - [x] Company Properties page: show geocode coordinates on property cards
+
+## Session 47: Verification Flow Fixes, Billing Calculation, Live Counter Restore
+- [x] CompanyVerification: skip "Approve Job" dialog, go straight to payment screen on green button click
+- [x] Fix cost breakdown calculation for multi-session jobs (temp clock-out + clock-in)
+- [x] Fix hourlyRate resolution: fall back to skill tier when job.hourlyRate is null (markComplete + verifyJob + pendingVerification)
+- [x] Fix clockIn to persist resolved hourlyRate so LiveTracking counter shows immediately
+- [x] Restore live labor cost counter on Contractor Tracking page (time on clock + live $ counter)
+- [x] AppFolio adapter: map propertyType from API response (mapAppFolioPropertyType)
+- [x] Rent Manager adapter: map propertyType from API response (mapRentManagerPropertyType)
+- [x] DoorLoop adapter: map propertyType from API response (mapDoorLoopPropertyType)

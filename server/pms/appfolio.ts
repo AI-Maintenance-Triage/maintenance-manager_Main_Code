@@ -60,6 +60,7 @@ export const appfolioAdapter: PmsAdapter = {
           state: addr?.state,
           zipCode: addr?.zip,
           units: typeof r.unit_count === "number" ? r.unit_count : 1,
+          propertyType: mapAppFolioPropertyType(r.property_type as string | undefined),
         });
       }
 
@@ -118,6 +119,15 @@ export const appfolioAdapter: PmsAdapter = {
     }
   },
 };
+
+function mapAppFolioPropertyType(t?: string): "single_family" | "multi_family" | "commercial" | "other" | undefined {
+  if (!t) return undefined;
+  const lower = t.toLowerCase();
+  if (lower.includes("single") || lower.includes("sfr") || lower.includes("house") || lower.includes("condo") || lower.includes("townhouse")) return "single_family";
+  if (lower.includes("multi") || lower.includes("apartment") || lower.includes("duplex") || lower.includes("triplex") || lower.includes("fourplex")) return "multi_family";
+  if (lower.includes("commercial") || lower.includes("office") || lower.includes("retail") || lower.includes("industrial")) return "commercial";
+  return "other";
+}
 
 function mapAppFolioPriority(p?: string): "low" | "medium" | "high" | "emergency" | undefined {
   if (!p) return undefined;
