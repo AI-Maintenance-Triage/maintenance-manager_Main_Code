@@ -1477,3 +1477,14 @@
 - [ ] Add debug logging to capture raw Buildium API response for units
 - [ ] Fix root cause of unit numbers not importing
 - [ ] Verify units appear in property_units table after resync
+
+## Session 52: Buildium PascalCase Fix, Units Endpoint, Auto-Push Webhooks
+- [x] CONFIRMED from debug tool: Buildium API returns PascalCase (Id, Name, NumberUnits, RentalType, RentalSubType, Address.AddressLine1)
+- [x] Rewrote Buildium adapter with getField() helper that tries both PascalCase and snake_case for every field
+- [x] Fixed units endpoint: was calling /rentals/undefined/units because r.id was undefined (now uses getField(r, 'Id', 'id'))
+- [x] Fixed unit number resolution: tries both UnitNumber and unit_number fields
+- [x] Filter out undefined/nameless properties: skip any property where Name is empty/null
+- [x] Added handlePropertyWebhook() to pms-webhook.ts: triggers runPmsSync when rental.created/updated events arrive
+- [x] Route handler now detects property events vs maintenance request events and routes accordingly
+- [x] Auto-push: new properties added in Buildium will appear in platform without manual resync (requires webhook configured in Buildium)
+- [x] 0 TypeScript errors

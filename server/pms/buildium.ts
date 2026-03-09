@@ -3,11 +3,13 @@
  * Uses Buildium Open API v1 with Client ID + Client Secret (API key auth).
  * Docs: https://developer.buildium.com/
  *
- * All response objects use snake_case field names (confirmed from official SDK):
- * - RentalMessage: id, name, number_units, rental_type, rental_sub_type, address
- * - RentalUnitMessage: id, property_id, unit_number, unit_bedrooms, unit_bathrooms, unit_size
- * - ResidentRequestTaskMessage: id, title, description, unit_id, property, requested_by_user_entity, created_date_time, priority
- * - ListingPropertyMessageAddress: address_line1, city, state, postal_code, country
+ * CONFIRMED from actual API response (debug tool): ALL fields are PascalCase.
+ * - RentalMessage: Id, Name, NumberUnits, RentalType, RentalSubType, Address
+ * - Address: AddressLine1, AddressLine2, City, State, PostalCode, Country
+ * - RentalUnitMessage: Id, UnitNumber (or unit_number), Bedrooms, Bathrooms, SquareFeet
+ * - ResidentRequestTaskMessage: Id, Title, Description, UnitId, Property, RequestedByUserEntity, CreatedDateTime, Priority
+ * - Property (nested): Id, Name
+ * - RequestedByUserEntity: FirstName, LastName, Email
  */
 
 import type { PmsAdapter, PmsCredentials, PmsProperty, PmsMaintenanceRequest } from "./types";
@@ -37,6 +39,11 @@ async function buildiumFetch(credentials: PmsCredentials, path: string, options:
   return res.json();
 }
 
+/** Helper to read a field trying both PascalCase and snake_case variants */
+function getField(r: Record<string, unknown>, pascal: string, snake: string): unknown {
+  return r[pascal] !== undefined ? r[pascal] : r[snake];
+}
+
 export const buildiumAdapter: PmsAdapter = {
   provider: "buildium",
 
@@ -55,7 +62,6 @@ export const buildiumAdapter: PmsAdapter = {
     const limit = 100;
 
     while (true) {
-      // RentalMessage fields (all snake_case): id, name, number_units, rental_type, rental_sub_type, address
       const data = await buildiumFetch(credentials, `/rentals?offset=${offset}&limit=${limit}`);
       const items: unknown[] = Array.isArray(data) ? data : (data?.items ?? []);
       if (!items.length) break;
@@ -63,16 +69,22 @@ export const buildiumAdapter: PmsAdapter = {
       for (const item of items) {
         const r = item as Record<string, unknown>;
 
-        // id (integer)
-        const propertyId = String(r.id);
+        // Id — PascalCase confirmed from debug
+        const propertyId = getField(r, "Id", "id");
+        if (!propertyId) continue;
 
-        // number_units (integer)
-        const numUnits = typeof r.number_units === "number" ? r.number_units : 1;
+        // Name — skip properties with no name (avoids "undefined" cards)
+        const nameRaw = getField(r, "Name", "name");
+        if (!nameRaw || String(nameRaw).trim() === "") continue;
 
-        // rental_type enum: "None" | "Residential" | "Commercial"
-        // rental_sub_type enum: "CondoTownhome" | "MultiFamily" | "SingleFamily" | "Industrial" | "Office" | "Retail" | "ShoppingCenter" | "Storage" | "ParkingSpace"
-        const rentalType = String(r.rental_type ?? "");
-        const rentalSubType = String(r.rental_sub_type ?? "");
+        // NumberUnits — PascalCase confirmed
+        const numUnitsRaw = getField(r, "NumberUnits", "number_units");
+        const numUnits = typeof numUnitsRaw === "number" ? numUnitsRaw : 1;
+
+        // RentalType / RentalSubType — PascalCase confirmed
+        const rentalType = String(getField(r, "RentalType", "rental_type") ?? "");
+        const rentalSubType = String(getField(r, "RentalSubType", "rental_sub_type") ?? "");
+
         let propertyType: PmsProperty["propertyType"];
         if (rentalType === "Commercial" || ["Industrial", "Office", "Retail", "ShoppingCenter", "Storage", "ParkingSpace"].includes(rentalSubType)) {
           propertyType = "commercial";
@@ -81,14 +93,17 @@ export const buildiumAdapter: PmsAdapter = {
         } else if (rentalSubType === "SingleFamily") {
           propertyType = "single_family";
         } else {
-          // Default: single_family for Residential with no sub_type, or None
           propertyType = numUnits > 1 ? "multi_family" : "single_family";
         }
 
-        // address: ListingPropertyMessageAddress — snake_case: address_line1, city, state, postal_code
-        const addr = r.address as Record<string, string> | undefined;
+        // Address — PascalCase confirmed: Address.AddressLine1, .City, .State, .PostalCode
+        const addr = (getField(r, "Address", "address") ?? {}) as Record<string, string>;
+        const street = String(getField(addr, "AddressLine1", "address_line1") ?? "").trim();
+        const city = String(getField(addr, "City", "city") ?? "").trim() || undefined;
+        const state = String(getField(addr, "State", "state") ?? "").trim() || undefined;
+        const zip = String(getField(addr, "PostalCode", "postal_code") ?? "").trim() || undefined;
 
-        // Fetch individual units for multi-family properties from /rentals/{id}/units
+        // Fetch individual units for multi-family properties
         let unitNumbers: PmsProperty["unitNumbers"] = [];
         if (numUnits > 1 || propertyType === "multi_family") {
           try {
@@ -98,25 +113,23 @@ export const buildiumAdapter: PmsAdapter = {
                 credentials,
                 `/rentals/${propertyId}/units?offset=${unitOffset}&limit=100`
               );
-              // Response is a direct array or wrapped in { items: [] }
               const unitItems: unknown[] = Array.isArray(unitData) ? unitData : (unitData?.items ?? []);
               if (!unitItems.length) break;
               for (const u of unitItems) {
                 const unit = u as Record<string, unknown>;
-                // RentalUnitMessage: id (integer), unit_number (string)
-                const rawId = unit.id;
-                const rawUnitNumber = unit.unit_number;
-                if (!rawId && !rawUnitNumber) continue;
+                // RentalUnitMessage: try both Id/id and UnitNumber/unit_number
+                const unitId = getField(unit, "Id", "id");
+                const rawUnitNumber = getField(unit, "UnitNumber", "unit_number");
+                if (!unitId && !rawUnitNumber) continue;
+                const bedroomsRaw = getField(unit, "Bedrooms", "unit_bedrooms");
+                const bathroomsRaw = getField(unit, "Bathrooms", "unit_bathrooms");
+                const sqftRaw = getField(unit, "SquareFeet", "unit_size");
                 unitNumbers.push({
-                  externalId: String(rawId ?? ""),
-                  unitNumber: String(rawUnitNumber ?? rawId ?? ""),
-                  bedrooms: typeof unit.unit_bedrooms === "number" ? unit.unit_bedrooms
-                    : typeof unit.unit_bedrooms === "string" ? parseFloat(unit.unit_bedrooms) || undefined
-                    : undefined,
-                  bathrooms: typeof unit.unit_bathrooms === "number" ? unit.unit_bathrooms
-                    : typeof unit.unit_bathrooms === "string" ? parseFloat(unit.unit_bathrooms) || undefined
-                    : undefined,
-                  sqft: typeof unit.unit_size === "number" ? unit.unit_size : undefined,
+                  externalId: String(unitId ?? ""),
+                  unitNumber: String(rawUnitNumber ?? unitId ?? ""),
+                  bedrooms: typeof bedroomsRaw === "number" ? bedroomsRaw : undefined,
+                  bathrooms: typeof bathroomsRaw === "number" ? bathroomsRaw : undefined,
+                  sqft: typeof sqftRaw === "number" ? sqftRaw : undefined,
                 });
               }
               if (unitItems.length < 100) break;
@@ -128,12 +141,12 @@ export const buildiumAdapter: PmsAdapter = {
         }
 
         results.push({
-          externalId: propertyId,
-          name: String(r.name ?? r.id),
-          address: addr ? String(addr.address_line1 ?? "").trim() : "",
-          city: addr?.city,
-          state: addr?.state,
-          zipCode: addr?.postal_code,
+          externalId: String(propertyId),
+          name: String(nameRaw).trim(),
+          address: street,
+          city,
+          state,
+          zipCode: zip,
           units: numUnits,
           propertyType,
           unitNumbers: unitNumbers.length > 0 ? unitNumbers : undefined,
@@ -151,12 +164,9 @@ export const buildiumAdapter: PmsAdapter = {
     const results: PmsMaintenanceRequest[] = [];
     let offset = 0;
     const limit = 100;
-    // Buildium filter param: lastupdatedfrom (all lowercase)
     const sinceParam = since ? `&lastupdatedfrom=${since.toISOString().split("T")[0]}` : "";
 
     while (true) {
-      // ResidentRequestTaskMessage fields (snake_case):
-      // id, title, description, unit_id, property, requested_by_user_entity, created_date_time, priority
       const data = await buildiumFetch(
         credentials,
         `/tasks/residentrequests?offset=${offset}&limit=${limit}${sinceParam}`
@@ -167,43 +177,49 @@ export const buildiumAdapter: PmsAdapter = {
       for (const item of items) {
         const r = item as Record<string, unknown>;
 
-        // property: ContactRequestTaskMessageProperty — has id, name
-        const property = r.property as Record<string, unknown> | undefined;
+        // Property — try both PascalCase and snake_case
+        const property = (getField(r, "Property", "property") ?? {}) as Record<string, unknown>;
 
-        // requested_by_user_entity: ResidentRequestTaskMessageRequestedByUserEntity
-        // Has: first_name, last_name, email
-        const requestedBy = r.requested_by_user_entity as Record<string, unknown> | undefined;
-        const tenantName = requestedBy
-          ? `${requestedBy.first_name ?? ""} ${requestedBy.last_name ?? ""}`.trim()
-          : undefined;
-        const tenantEmail = requestedBy ? String(requestedBy.email ?? "") || undefined : undefined;
+        // RequestedByUserEntity — try both cases
+        const requestedBy = (getField(r, "RequestedByUserEntity", "requested_by_user_entity") ?? {}) as Record<string, unknown>;
+        const firstName = String(getField(requestedBy, "FirstName", "first_name") ?? "");
+        const lastName = String(getField(requestedBy, "LastName", "last_name") ?? "");
+        const tenantName = `${firstName} ${lastName}`.trim() || undefined;
+        const tenantEmailRaw = getField(requestedBy, "Email", "email");
+        const tenantEmail = tenantEmailRaw ? String(tenantEmailRaw) || undefined : undefined;
 
-        // unit_id: integer — resolve unit_number by fetching /rentals/units/{unit_id}
-        const rawUnitId = r.unit_id;
+        // UnitId — try both cases, then resolve unit number
+        const rawUnitId = getField(r, "UnitId", "unit_id");
         let unitNumber: string | undefined;
         if (rawUnitId) {
           try {
             const unitData = await buildiumFetch(credentials, `/rentals/units/${rawUnitId}`);
             const u = unitData as Record<string, unknown>;
-            // RentalUnitMessage: unit_number (string)
-            unitNumber = String(u.unit_number ?? rawUnitId);
+            const unitNum = getField(u, "UnitNumber", "unit_number");
+            unitNumber = String(unitNum ?? rawUnitId);
           } catch {
             unitNumber = String(rawUnitId);
           }
         }
 
+        // Id, Title, Description, CreatedDateTime, Priority
+        const reqId = getField(r, "Id", "id");
+        const title = getField(r, "Title", "title");
+        const description = getField(r, "Description", "description");
+        const createdAt = getField(r, "CreatedDateTime", "created_date_time");
+        const priority = getField(r, "Priority", "priority");
+        const propertyId = getField(property, "Id", "id");
+
         results.push({
-          externalId: String(r.id),
-          title: String(r.title ?? "Maintenance Request"),
-          description: String(r.description ?? ""),
+          externalId: String(reqId),
+          title: String(title ?? "Maintenance Request"),
+          description: String(description ?? ""),
           unitNumber: unitNumber || undefined,
           tenantName: tenantName || undefined,
           tenantEmail: tenantEmail || undefined,
-          propertyExternalId: property ? String(property.id ?? "") : "",
-          priority: mapBuildiumPriority(r.priority as string | undefined),
-          createdAt: r.created_date_time
-            ? new Date(r.created_date_time as string)
-            : undefined,
+          propertyExternalId: propertyId ? String(propertyId) : "",
+          priority: mapBuildiumPriority(priority as string | undefined),
+          createdAt: createdAt ? new Date(createdAt as string) : undefined,
         });
       }
 

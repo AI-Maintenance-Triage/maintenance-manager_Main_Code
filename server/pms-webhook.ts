@@ -35,6 +35,9 @@ import { getDb } from "./db";
 import { eq, and } from "drizzle-orm";
 import { invokeLLM } from "./_core/llm";
 import { notifyOwner } from "./_core/notification";
+import { buildiumAdapter } from "./pms/buildium";
+import type { PmsCredentials } from "./pms/types";
+import { runPmsSync } from "./pms/index";
 
 // Supported providers — must match the schema enum
 const SUPPORTED_PROVIDERS = [
@@ -424,6 +427,53 @@ async function handlePmsWebhook(req: Request, res: Response) {
   }
 }
 
+// ─── Property auto-push handler ──────────────────────────────────────────
+/**
+ * Handles Buildium property events (rental.created, rental.updated).
+ * When Buildium fires these events, we re-run the full PMS sync for that company
+ * so the new/updated property appears immediately without a manual resync.
+ *
+ * Buildium sends a webhook with event type in the body:
+ * { "EventType": "rental.created", "EntityId": 12345, ... }
+ */
+async function handlePropertyWebhook(companyId: number, provider: Provider, rawPayload: Record<string, unknown>) {
+  try {
+    // Determine if this is a property event
+    const eventType = String(rawPayload.EventType ?? rawPayload.event_type ?? rawPayload.eventType ?? "").toLowerCase();
+    const isPropertyEvent = [
+      "rental.created", "rental.updated", "rental.deleted",
+      "property.created", "property.updated", "property.deleted",
+    ].some(t => eventType.includes(t.split(".")[0]) && eventType.includes(t.split(".")[1]));
+
+    if (!isPropertyEvent) return; // Not a property event — skip
+
+    console.log(`[PMS Webhook] Property event "${eventType}" for company ${companyId} — triggering sync`);
+
+    // Look up the PMS integration credentials for this company
+    const database = await getDb();
+    if (!database) return;
+
+    const [integration] = await database
+      .select()
+      .from(pmsIntegrations)
+      .where(and(
+        eq(pmsIntegrations.companyId, companyId),
+        eq(pmsIntegrations.provider, provider),
+        eq(pmsIntegrations.status, "connected")
+      ))
+      .limit(1);
+
+    if (!integration) return;
+
+    // Run a full sync for this company's PMS integration
+    await runPmsSync(companyId, integration.id);
+
+    console.log(`[PMS Webhook] Property sync complete for company ${companyId}`);
+  } catch (err) {
+    console.error(`[PMS Webhook] Property auto-push error for company ${companyId}:`, err);
+  }
+}
+
 // ─── Route registration ───────────────────────────────────────────────────
 export function registerPmsWebhookRoute(app: { use: (path: string, router: Router) => void }) {
   const router = Router();
@@ -443,6 +493,57 @@ export function registerPmsWebhookRoute(app: { use: (path: string, router: Route
       }
       next();
     });
-  }, handlePmsWebhook);
+  }, async (req, res) => {
+    const provider = req.params.provider as Provider;
+    const rawPayload = req.body as Record<string, unknown>;
+
+    // Check if this is a property event — handle it separately from maintenance requests
+    const eventType = String(rawPayload.EventType ?? rawPayload.event_type ?? rawPayload.eventType ?? "").toLowerCase();
+    const isPropertyEvent = [
+      "rental.created", "rental.updated", "rental.deleted",
+      "property.created", "property.updated", "property.deleted",
+    ].some(t => eventType.includes(t.split(".")[0]) && eventType.includes(t.split(".")[1]));
+
+    if (isPropertyEvent) {
+      // Authenticate the request first
+      const database = await getDb();
+      if (!database) return res.status(503).json({ error: "Database unavailable" });
+
+      const authHeader = req.headers.authorization ?? "";
+      const bearerToken = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : authHeader;
+      const rawBody: Buffer = (req as any).rawBody ?? Buffer.from(JSON.stringify(rawPayload));
+      const sigHeaderName = getSignatureHeader(provider);
+      const incomingSignature = req.headers[sigHeaderName] as string | undefined;
+
+      let companyId: number | undefined;
+
+      if (incomingSignature) {
+        const pmsRows = await database
+          .select({ id: pmsIntegrations.id, companyId: pmsIntegrations.companyId, webhookSecret: pmsIntegrations.webhookSecret })
+          .from(pmsIntegrations)
+          .where(and(eq(pmsIntegrations.provider, provider), eq(pmsIntegrations.status, "connected")))
+          .limit(50);
+        const matchedPms = pmsRows.find((r) => r.webhookSecret && verifyHmacSignature(r.webhookSecret, rawBody, incomingSignature));
+        if (matchedPms) companyId = matchedPms.companyId;
+      } else if (bearerToken) {
+        const [found] = await database
+          .select()
+          .from(integrationConnectors)
+          .where(and(eq(integrationConnectors.provider, provider), eq(integrationConnectors.apiKey, bearerToken), eq(integrationConnectors.isActive, true)))
+          .limit(1);
+        if (found) companyId = found.companyId;
+      }
+
+      if (!companyId) return res.status(401).json({ error: "Unauthorized" });
+
+      // Fire-and-forget the sync — respond immediately so Buildium doesn't timeout
+      res.status(200).json({ status: "accepted", message: "Property sync triggered" });
+      handlePropertyWebhook(companyId, provider, rawPayload).catch(console.error);
+      return;
+    }
+
+    // Otherwise handle as a maintenance request webhook
+    return handlePmsWebhook(req, res);
+  });
   app.use("/api/webhooks/pms", router);
 }
