@@ -121,6 +121,39 @@ function EventStatusBadge({ status }: { status: string }) {
   return <Badge className="bg-blue-500/15 text-blue-600 border-blue-500/30 text-xs">Received</Badge>;
 }
 
+function DebugRawResult({ data }: { data: unknown }) {
+  if (!data) return null;
+  const d = data as Record<string, unknown>;
+  return (
+    <div className="space-y-4">
+      <div>
+        <p className="text-xs font-semibold text-muted-foreground mb-1">First Property (RentalMessage)</p>
+        <pre className="text-xs bg-muted rounded p-3 overflow-x-auto whitespace-pre-wrap break-all">
+          {JSON.stringify(d.firstPropertyRaw, null, 2)}
+        </pre>
+      </div>
+      <div>
+        <p className="text-xs font-semibold text-muted-foreground mb-1">Units Response (/rentals/&#123;id&#125;/units)</p>
+        <pre className="text-xs bg-muted rounded p-3 overflow-x-auto whitespace-pre-wrap break-all">
+          {JSON.stringify(d.unitsResponseRaw, null, 2)}
+        </pre>
+      </div>
+      <div>
+        <p className="text-xs font-semibold text-muted-foreground mb-1">First Unit (RentalUnitMessage)</p>
+        <pre className="text-xs bg-muted rounded p-3 overflow-x-auto whitespace-pre-wrap break-all">
+          {JSON.stringify(d.firstUnitRaw, null, 2)}
+        </pre>
+      </div>
+      <div>
+        <p className="text-xs font-semibold text-muted-foreground mb-1">First Maintenance Request (ResidentRequestTaskMessage)</p>
+        <pre className="text-xs bg-muted rounded p-3 overflow-x-auto whitespace-pre-wrap break-all">
+          {JSON.stringify(d.firstRequestRaw, null, 2)}
+        </pre>
+      </div>
+    </div>
+  );
+}
+
 export default function CompanyIntegrations() {
   const utils = trpc.useUtils();
   const { data: providers = [] } = trpc.pms.listProviders.useQuery();
@@ -141,6 +174,18 @@ export default function CompanyIntegrations() {
   // For inline "update secret" on existing integration cards
   const [editingSecretId, setEditingSecretId] = useState<number | null>(null);
   const [editingSecretValue, setEditingSecretValue] = useState("");
+  const [debugResult, setDebugResult] = useState<unknown>(null);
+  const [debugDialogOpen, setDebugDialogOpen] = useState(false);
+
+  const debugRawMutation = trpc.pms.debugRaw.useMutation({
+    onSuccess: (data) => {
+      setDebugResult(data);
+      setDebugDialogOpen(true);
+    },
+    onError: (err) => {
+      toast.error("Debug failed", { description: err.message });
+    },
+  });
 
   const connectMutation = trpc.pms.connect.useMutation({
     onSuccess: (data) => {
@@ -300,6 +345,17 @@ export default function CompanyIntegrations() {
                         <RefreshCw className={`w-3 h-3 mr-1 ${syncMutation.isPending ? "animate-spin" : ""}`} />
                         Sync Now
                       </Button>
+                      {integration.provider === "buildium" && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => debugRawMutation.mutate({ id: integration.id })}
+                          disabled={debugRawMutation.isPending}
+                          title="Inspect raw Buildium API response"
+                        >
+                          <FlaskConical className={`w-3 h-3 ${debugRawMutation.isPending ? "animate-pulse" : ""}`} />
+                        </Button>
+                      )}
                       <Button
                         variant="outline"
                         size="sm"
@@ -793,6 +849,26 @@ export default function CompanyIntegrations() {
             {newIntegration?.provider !== "buildium" && (
               <Button onClick={() => setNewIntegration(null)}>Done</Button>
             )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Debug Raw API Response Dialog */}
+      <Dialog open={debugDialogOpen} onOpenChange={setDebugDialogOpen}>
+        <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FlaskConical className="w-4 h-4" />
+              Raw Buildium API Response
+            </DialogTitle>
+            <DialogDescription>
+              This shows the exact JSON returned by Buildium for your first property, its units, and first maintenance request.
+              Use this to verify field names are correct.
+            </DialogDescription>
+          </DialogHeader>
+          <DebugRawResult data={debugResult} />
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDebugDialogOpen(false)}>Close</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

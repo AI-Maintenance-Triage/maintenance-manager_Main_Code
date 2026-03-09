@@ -1471,3 +1471,9 @@
 - [x] Fixed unit fetch to only run for multi-family properties (numUnits > 1)
 - [x] Fixed address mapping: address_line1, city, state, postal_code
 - [x] 0 TypeScript errors
+
+## Session 51: Buildium Unit Import - Deep Fix
+- [ ] Trace full sync path: adapter → sync engine → DB helpers
+- [ ] Add debug logging to capture raw Buildium API response for units
+- [ ] Fix root cause of unit numbers not importing
+- [ ] Verify units appear in property_units table after resync
