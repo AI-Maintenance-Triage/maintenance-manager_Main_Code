@@ -272,10 +272,34 @@ async function runChurnRiskCheck(): Promise<void> {
 
 // ─── PMS Sync ─────────────────────────────────────────────────────────────────
 async function runPmsSyncAll(): Promise<void> {
+  // Read the admin-configured sync interval from platform settings
+  let syncIntervalHours = 24; // default fallback
+  try {
+    const { getPlatformSettings } = await import("./stripe");
+    const settings = await getPlatformSettings();
+    syncIntervalHours = settings.pmsSyncIntervalHours ?? 24;
+  } catch {
+    // Non-fatal: use default
+  }
+
+  // 0 = disabled
+  if (syncIntervalHours === 0) {
+    console.log("[cron] PMS auto-sync is disabled (pmsSyncIntervalHours=0)");
+    return;
+  }
+
+  const now = Date.now();
+  const intervalMs = syncIntervalHours * 60 * 60 * 1000;
+
   const allCompanies = await db.listCompanies();
   for (const company of allCompanies) {
     const integrations = await db.listPmsIntegrations(company.id);
     for (const integration of integrations.filter(i => i.status === "connected")) {
+      // Skip if synced recently (within the configured interval)
+      const lastSync = integration.lastSyncAt ? new Date(integration.lastSyncAt).getTime() : 0;
+      if (lastSync > 0 && now - lastSync < intervalMs) {
+        continue; // Not time yet
+      }
       try {
         const result = await runPmsSync(integration.id, company.id);
         if (result.imported > 0 || result.jobs > 0) {

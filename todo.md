@@ -1488,3 +1488,21 @@
 - [x] Route handler now detects property events vs maintenance request events and routes accordingly
 - [x] Auto-push: new properties added in Buildium will appear in platform without manual resync (requires webhook configured in Buildium)
 - [x] 0 TypeScript errors
+
+## Session 53: Global PMS Auto-Sync Interval
+- [ ] Schema: add pmsSyncIntervalHours (int, default 24) to platformSettings table
+- [ ] Backend: getPlatformSettings / updatePlatformSettings procedures include pmsSyncIntervalHours
+- [ ] Cron: replace 15-min fixed PMS sync with dynamic interval read from platformSettings
+- [ ] Cron: on each tick, run runPmsSync for every company with a connected PMS integration
+- [ ] Admin UI: add "PMS Auto-Sync Interval" number input (hours) to Platform Settings page
+- [ ] Admin UI: show last sync time per company on the admin Companies list
+
+## Session 53 Completion: Global PMS Auto-Sync Interval + Buildium Units Fix
+- [x] Fixed Buildium units endpoint: now uses /rentals/units?propertyids={id} (was /rentals/{id}/units which returned 404)
+- [x] Fixed debug tool to also use correct endpoint
+- [x] Added pmsSyncIntervalHours to updatePlatformSettings tRPC procedure (0-168 hours, 0=disabled)
+- [x] Cron scheduler now reads pmsSyncIntervalHours from platformSettings at runtime
+- [x] Cron skips integrations synced within the configured interval (respects lastSyncAt)
+- [x] Admin UI: PMS Auto-Sync Interval input added to Platform Settings card (PlatformDashboard.tsx)
+- [x] Integrations page: shows "Next auto-sync in Xh Ym" or "Auto-sync disabled" per integration
+- [x] 0 TypeScript errors

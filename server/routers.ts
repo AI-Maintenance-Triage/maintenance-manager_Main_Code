@@ -2587,6 +2587,8 @@ const stripeRouter = router({
       perListingFeeAmount: z.number().min(0).optional(),
       autoClockOutMinutes: z.number().min(1).max(120).optional(),
       autoClockOutRadiusMeters: z.number().min(50).max(1000).optional(),
+      // PMS auto-sync interval in hours (1-168). 0 = disabled.
+      pmsSyncIntervalHours: z.number().min(0).max(168).optional(),
     }))
     .mutation(async ({ input }) => {
       const settings = await getPlatformSettings();
@@ -2600,6 +2602,7 @@ const stripeRouter = router({
         ...(input.perListingFeeAmount !== undefined && { perListingFeeAmount: input.perListingFeeAmount.toFixed(2) }),
         ...(input.autoClockOutMinutes !== undefined && { autoClockOutMinutes: input.autoClockOutMinutes }),
         ...(input.autoClockOutRadiusMeters !== undefined && { autoClockOutRadiusMeters: input.autoClockOutRadiusMeters }),
+        ...(input.pmsSyncIntervalHours !== undefined && { pmsSyncIntervalHours: input.pmsSyncIntervalHours }),
        }).where(eq(platformSettings.id, settings.id));
       return { success: true };
     }),
@@ -3538,7 +3541,8 @@ const pmsRouter = router({
       let firstUnitRaw: unknown = null;
       if (firstProperty) {
         const propId = firstProperty.Id ?? firstProperty.id;
-        const unitsRes = await fetch(`${baseUrl}/rentals/${propId}/units?offset=0&limit=5`, { headers });
+        // Correct endpoint: GET /v1/rentals/units?propertyids={id} (NOT /rentals/{id}/units)
+        const unitsRes = await fetch(`${baseUrl}/rentals/units?propertyids=${propId}&offset=0&limit=5`, { headers });
         unitsData = await unitsRes.json();
         const unitItems = Array.isArray(unitsData) ? unitsData : (unitsData as Record<string,unknown>)?.items;
         if (Array.isArray(unitItems) && unitItems.length > 0) {

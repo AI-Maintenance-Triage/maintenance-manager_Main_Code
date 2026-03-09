@@ -1,0 +1,9 @@
+{
+  "query": "ALTER TABLE platform_settings ADD COLUMN IF NOT EXISTS pmsSyncIntervalHours INT NOT NULL DEFAULT 24;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user sHLCts4RR6iL2PA.1ead08cf1a54 --database bBuQZrfKLoBs6LmtvQ4y6E --execute ALTER TABLE platform_settings ADD COLUMN IF NOT EXISTS pmsSyncIntervalHours INT NOT NULL DEFAULT 24;",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 869
+}

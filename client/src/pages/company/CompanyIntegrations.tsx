@@ -133,7 +133,7 @@ function DebugRawResult({ data }: { data: unknown }) {
         </pre>
       </div>
       <div>
-        <p className="text-xs font-semibold text-muted-foreground mb-1">Units Response (/rentals/&#123;id&#125;/units)</p>
+        <p className="text-xs font-semibold text-muted-foreground mb-1">Units Response (/rentals/units?propertyids=&#123;id&#125;)</p>
         <pre className="text-xs bg-muted rounded p-3 overflow-x-auto whitespace-pre-wrap break-all">
           {JSON.stringify(d.unitsResponseRaw, null, 2)}
         </pre>
@@ -159,6 +159,7 @@ export default function CompanyIntegrations() {
   const { data: providers = [] } = trpc.pms.listProviders.useQuery();
   const { data: integrations = [], isLoading } = trpc.pms.list.useQuery();
   const { data: webhookEvents = [] } = trpc.pms.webhookEvents.useQuery({ limit: 50 });
+  const { data: platformSettings } = trpc.stripePayments.getPlatformSettings.useQuery();
 
   const [connectingProvider, setConnectingProvider] = useState<string | null>(null);
   const [credentials, setCredentials] = useState<Record<string, string | boolean>>({});
@@ -332,6 +333,17 @@ export default function CompanyIntegrations() {
                             ? `Last synced ${new Date(integration.lastSyncAt).toLocaleString()}`
                             : "Never synced"}
                         </p>
+                        {(() => {
+                          const intervalHours = (platformSettings as any)?.pmsSyncIntervalHours ?? 24;
+                          if (intervalHours === 0) return <p className="text-xs text-amber-500">Auto-sync disabled</p>;
+                          if (!integration.lastSyncAt) return <p className="text-xs text-muted-foreground">Auto-sync: every {intervalHours}h</p>;
+                          const nextSync = new Date(integration.lastSyncAt).getTime() + intervalHours * 3600000;
+                          const diffMs = nextSync - Date.now();
+                          if (diffMs <= 0) return <p className="text-xs text-blue-500">Auto-sync due soon</p>;
+                          const diffH = Math.floor(diffMs / 3600000);
+                          const diffM = Math.floor((diffMs % 3600000) / 60000);
+                          return <p className="text-xs text-muted-foreground">Next auto-sync in {diffH > 0 ? `${diffH}h ` : ""}{diffM}m</p>;
+                        })()}
                       </div>
                     </div>
                     <div className="flex items-center gap-2">

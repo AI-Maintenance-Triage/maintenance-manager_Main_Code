@@ -6,10 +6,14 @@
  * CONFIRMED from actual API response (debug tool): ALL fields are PascalCase.
  * - RentalMessage: Id, Name, NumberUnits, RentalType, RentalSubType, Address
  * - Address: AddressLine1, AddressLine2, City, State, PostalCode, Country
- * - RentalUnitMessage: Id, UnitNumber (or unit_number), Bedrooms, Bathrooms, SquareFeet
+ * - RentalUnitMessage (from GET /v1/rentals/units): snake_case fields:
+ *   id, property_id, unit_number, unit_bedrooms, unit_bathrooms, unit_size
  * - ResidentRequestTaskMessage: Id, Title, Description, UnitId, Property, RequestedByUserEntity, CreatedDateTime, Priority
  * - Property (nested): Id, Name
  * - RequestedByUserEntity: FirstName, LastName, Email
+ *
+ * UNITS ENDPOINT: GET /v1/rentals/units?propertyids={id}
+ * NOT /rentals/{id}/units (that path does not exist)
  */
 
 import type { PmsAdapter, PmsCredentials, PmsProperty, PmsMaintenanceRequest } from "./types";
@@ -104,6 +108,8 @@ export const buildiumAdapter: PmsAdapter = {
         const zip = String(getField(addr, "PostalCode", "postal_code") ?? "").trim() || undefined;
 
         // Fetch individual units for multi-family properties
+        // Correct endpoint: GET /v1/rentals/units?propertyids={id}
+        // RentalUnitMessage fields are snake_case: id, unit_number, unit_bedrooms, unit_bathrooms, unit_size
         let unitNumbers: PmsProperty["unitNumbers"] = [];
         if (numUnits > 1 || propertyType === "multi_family") {
           try {
@@ -111,24 +117,38 @@ export const buildiumAdapter: PmsAdapter = {
             while (true) {
               const unitData = await buildiumFetch(
                 credentials,
-                `/rentals/${propertyId}/units?offset=${unitOffset}&limit=100`
+                `/rentals/units?propertyids=${propertyId}&offset=${unitOffset}&limit=100`
               );
               const unitItems: unknown[] = Array.isArray(unitData) ? unitData : (unitData?.items ?? []);
               if (!unitItems.length) break;
               for (const u of unitItems) {
                 const unit = u as Record<string, unknown>;
-                // RentalUnitMessage: try both Id/id and UnitNumber/unit_number
-                const unitId = getField(unit, "Id", "id");
-                const rawUnitNumber = getField(unit, "UnitNumber", "unit_number");
+                // RentalUnitMessage uses snake_case (confirmed from SDK docs)
+                const unitId = unit["id"] ?? unit["Id"];
+                const rawUnitNumber = unit["unit_number"] ?? unit["UnitNumber"];
                 if (!unitId && !rawUnitNumber) continue;
-                const bedroomsRaw = getField(unit, "Bedrooms", "unit_bedrooms");
-                const bathroomsRaw = getField(unit, "Bathrooms", "unit_bathrooms");
-                const sqftRaw = getField(unit, "SquareFeet", "unit_size");
+                // bedrooms/bathrooms come as strings like "TwoBedrooms" or numbers
+                const bedroomsRaw = unit["unit_bedrooms"] ?? unit["Bedrooms"];
+                const bathroomsRaw = unit["unit_bathrooms"] ?? unit["Bathrooms"];
+                const sqftRaw = unit["unit_size"] ?? unit["SquareFeet"];
+                const parseBedBath = (v: unknown): number | undefined => {
+                  if (typeof v === "number") return v;
+                  if (typeof v === "string") {
+                    const n = parseFloat(v);
+                    if (!isNaN(n)) return n;
+                    // Handle string enums like "TwoBedrooms"
+                    const map: Record<string, number> = { One: 1, Two: 2, Three: 3, Four: 4, Five: 5 };
+                    for (const [k, val] of Object.entries(map)) {
+                      if (v.startsWith(k)) return val;
+                    }
+                  }
+                  return undefined;
+                };
                 unitNumbers.push({
                   externalId: String(unitId ?? ""),
                   unitNumber: String(rawUnitNumber ?? unitId ?? ""),
-                  bedrooms: typeof bedroomsRaw === "number" ? bedroomsRaw : undefined,
-                  bathrooms: typeof bathroomsRaw === "number" ? bathroomsRaw : undefined,
+                  bedrooms: parseBedBath(bedroomsRaw),
+                  bathrooms: parseBedBath(bathroomsRaw),
                   sqft: typeof sqftRaw === "number" ? sqftRaw : undefined,
                 });
               }

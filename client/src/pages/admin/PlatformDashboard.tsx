@@ -13,7 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Separator } from "@/components/ui/separator";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
-import { Building2, HardHat, ClipboardList, DollarSign, Plus, Wrench, Pencil, Trash2, MapPin, Loader2, Settings, Clock, CreditCard, Check, X } from "lucide-react";
+import { Building2, HardHat, ClipboardList, DollarSign, Plus, Wrench, Pencil, Trash2, MapPin, Loader2, Settings, Clock, CreditCard, Check, X, RefreshCw } from "lucide-react";
 
 const TRADE_OPTIONS = [
   "General Handyman", "Plumbing", "Electrical", "HVAC",
@@ -165,6 +165,7 @@ export default function PlatformDashboard() {
   const [perListingAmount, setPerListingAmount] = useState("");
   const [autoClockOutMinutes, setAutoClockOutMinutes] = useState("");
   const [autoClockOutRadius, setAutoClockOutRadius] = useState("");
+  const [pmsSyncIntervalHours, setPmsSyncIntervalHours] = useState("24");
   useEffect(() => {
     if (platformSettings) {
       setFeePercent(platformSettings.platformFeePercent ?? "5.00");
@@ -172,6 +173,7 @@ export default function PlatformDashboard() {
       setPerListingAmount(platformSettings.perListingFeeAmount ?? "0.00");
       setAutoClockOutMinutes(String(platformSettings.autoClockOutMinutes ?? 15));
       setAutoClockOutRadius(String(platformSettings.autoClockOutRadiusMeters ?? 200));
+      setPmsSyncIntervalHours(String((platformSettings as any).pmsSyncIntervalHours ?? 24));
     }
   }, [platformSettings]);
   const updateSettings = trpc.stripePayments.updatePlatformSettings.useMutation({
@@ -769,6 +771,31 @@ export default function PlatformDashboard() {
                   </div>
                 </div>
               </div>
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <RefreshCw className="h-4 w-4 text-primary" />
+                  <h3 className="font-medium text-foreground">PMS Auto-Sync Interval</h3>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-sm text-muted-foreground">Hours between syncs (0 = disabled)</Label>
+                  <p className="text-xs text-muted-foreground">How often the platform automatically syncs properties and maintenance requests from all connected PMS integrations.</p>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      type="number"
+                      min="0"
+                      max="168"
+                      value={pmsSyncIntervalHours}
+                      onChange={(e) => setPmsSyncIntervalHours(e.target.value)}
+                      className="w-24 bg-secondary border-border"
+                    />
+                    <span className="text-muted-foreground text-sm">
+                      {parseInt(pmsSyncIntervalHours) === 0 ? "(disabled)" :
+                       parseInt(pmsSyncIntervalHours) === 1 ? "hour" :
+                       `hours`}
+                    </span>
+                  </div>
+                </div>
+              </div>
               <Button
                 onClick={() => updateSettings.mutate({
                   platformFeePercent: parseFloat(feePercent) || 5,
@@ -776,6 +803,7 @@ export default function PlatformDashboard() {
                   perListingFeeAmount: 0,
                   autoClockOutMinutes: parseInt(autoClockOutMinutes) || 15,
                   autoClockOutRadiusMeters: parseInt(autoClockOutRadius) || 200,
+                  pmsSyncIntervalHours: parseInt(pmsSyncIntervalHours) || 24,
                 })}
                 disabled={updateSettings.isPending}
                 className="w-full"

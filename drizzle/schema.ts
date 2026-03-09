@@ -388,6 +388,8 @@ export const platformSettings = mysqlTable("platform_settings", {
   autoClockOutMinutes: int("autoClockOutMinutes").default(15).notNull(),
   // Return-to-origin radius in meters to trigger auto clock-out check
   autoClockOutRadiusMeters: int("autoClockOutRadiusMeters").default(200).notNull(),
+  // Global PMS auto-sync interval in hours (0 = disabled). Applies to all companies.
+  pmsSyncIntervalHours: int("pmsSyncIntervalHours").default(24).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
