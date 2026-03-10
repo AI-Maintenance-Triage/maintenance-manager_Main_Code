@@ -1189,6 +1189,12 @@ const jobsRouter = router({
           }
         } catch { /* non-critical */ }
       }
+      // Sync completion back to Buildium if this job came from a PMS integration
+      if (job.externalId && job.source && job.source !== 'manual') {
+        try {
+          await notifyPmsJobComplete(companyId, job.externalId, job.source);
+        } catch { /* non-critical — don't fail the request if Buildium is unavailable */ }
+      }
       return { success: true };
     }),
 

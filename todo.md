@@ -1532,3 +1532,7 @@
 - [x] Frontend: add "Mark as Completed" option to three-dot menu on company job cards
 - [x] Frontend: show a brief confirmation dialog before marking complete (with optional notes field)
 - [x] Frontend: after marking complete, job moves to Completed filter tab
+
+## Session 58: Resolution Notes Display + Buildium Bypass Sync
+- [x] Frontend: show completionNotes on completed job cards in CompanyJobs
+- [x] Backend: call notifyPmsJobComplete in markAsCompleted procedure when job has externalId

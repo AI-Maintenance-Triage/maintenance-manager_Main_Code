@@ -578,6 +578,13 @@ export default function CompanyJobs() {
                       {job.aiReasoning && (
                         <p className="text-xs text-muted-foreground/70 mt-2 italic">AI: {job.aiReasoning}</p>
                       )}
+                      {/* Resolution notes — shown on completed jobs that were bypassed */}
+                      {job.status === "completed" && job.completionNotes && (
+                        <div className="mt-2 flex items-start gap-1.5 text-xs text-emerald-400/80 bg-emerald-500/5 border border-emerald-500/20 rounded px-2 py-1.5">
+                          <CheckCheck className="h-3 w-3 shrink-0 mt-0.5" />
+                          <span className="italic">{job.completionNotes}</span>
+                        </div>
+                      )}
                       {/* Change History toggle — shown when there are overrides */}
                       {hasHistory && (
                         <button
