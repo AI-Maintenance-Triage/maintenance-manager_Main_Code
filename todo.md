@@ -1541,3 +1541,8 @@
 - [x] Backend: extend jobs.reopen procedure to also allow re-opening completed jobs (not just assigned/in_progress)
 - [x] Frontend: show "Re-open Job" in three-dot menu for completed jobs
 - [x] Frontend: re-open confirmation dialog with optional note for completed jobs (reuses existing reopen dialog)
+
+## Session 60: Fix Buildium Task Completion Sync
+- [x] Debug markComplete in Buildium adapter — found swapped arguments (externalId/provider) in markAsCompleted call
+- [x] Fix the argument order in notifyPmsJobComplete call in markAsCompleted (was passing externalId as provider)
+- [x] Verify notifyPmsJobComplete is called correctly in both verifyJob and markAsCompleted — verifyJob was correct, markAsCompleted was wrong

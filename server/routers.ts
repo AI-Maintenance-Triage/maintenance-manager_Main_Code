@@ -1191,9 +1191,12 @@ const jobsRouter = router({
       }
       // Sync completion back to Buildium if this job came from a PMS integration
       if (job.externalId && job.source && job.source !== 'manual') {
-        try {
-          await notifyPmsJobComplete(companyId, job.externalId, job.source);
-        } catch { /* non-critical — don't fail the request if Buildium is unavailable */ }
+        notifyPmsJobComplete(companyId, job.source, job.externalId)
+          .then(r => {
+            if (r.ok) console.log(`[PMS] markComplete OK for job ${input.jobId} (${job.source}/${job.externalId})`);
+            else console.warn(`[PMS] markComplete failed for job ${input.jobId} (${job.source}/${job.externalId}):`, r.error);
+          })
+          .catch(e => console.warn(`[PMS] markComplete error for job ${input.jobId}:`, e));
       }
       return { success: true };
     }),
