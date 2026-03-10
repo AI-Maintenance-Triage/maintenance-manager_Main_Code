@@ -3567,8 +3567,9 @@ export async function reopenJob(jobId: number, companyId: number): Promise<{ con
     .limit(1);
 
   if (!job) throw new Error("Job not found");
-  if (!["assigned", "in_progress"].includes(job.status)) {
-    throw new Error("Job can only be re-opened when assigned or in progress");
+  const reopenableStatuses = ["assigned", "in_progress", "completed", "verified", "paid", "payment_pending_ach"];
+  if (!reopenableStatuses.includes(job.status)) {
+    throw new Error("Job cannot be re-opened from its current status");
   }
 
   const contractorProfileId = job.assignedContractorId;
@@ -3584,13 +3585,20 @@ export async function reopenJob(jobId: number, companyId: number): Promise<{ con
     contractorUserId = cp?.userId ?? null;
   }
 
-  // Clear assignment and set status back to open
+  // Clear assignment, completion data, and set status back to open
   await db
     .update(maintenanceRequests)
     .set({
       status: "open",
       assignedContractorId: null,
       assignedAt: null,
+      completionNotes: null,
+      completedAt: null,
+      totalLaborCost: null,
+      totalPartsCost: null,
+      platformFee: null,
+      totalCost: null,
+      stripePaymentIntentId: null,
     })
     .where(and(eq(maintenanceRequests.id, jobId), eq(maintenanceRequests.companyId, companyId)));
 

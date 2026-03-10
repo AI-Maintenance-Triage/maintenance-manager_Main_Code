@@ -1536,3 +1536,8 @@
 ## Session 58: Resolution Notes Display + Buildium Bypass Sync
 - [x] Frontend: show completionNotes on completed job cards in CompanyJobs
 - [x] Backend: call notifyPmsJobComplete in markAsCompleted procedure when job has externalId
+
+## Session 59: Re-open Completed Jobs
+- [x] Backend: extend jobs.reopen procedure to also allow re-opening completed jobs (not just assigned/in_progress)
+- [x] Frontend: show "Re-open Job" in three-dot menu for completed jobs
+- [x] Frontend: re-open confirmation dialog with optional note for completed jobs (reuses existing reopen dialog)

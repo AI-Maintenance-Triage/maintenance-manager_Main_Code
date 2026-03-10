@@ -618,7 +618,8 @@ export default function CompanyJobs() {
                           </Button>
                         )}
                         {/* 3-dot menu — open jobs get edit/delete; all non-terminal jobs get priority/tier overrides + mark complete */}
-                        {(isEditable || !["verified", "paid", "payment_pending_ach", "completed"].includes(job.status)) && (
+                        {/* 3-dot menu always visible so completed/verified/paid jobs can be re-opened */}
+                        {(isEditable || true) && (
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                               <Button size="sm" variant="ghost" className="h-6 w-6 p-0 text-muted-foreground hover:text-foreground">
@@ -683,6 +684,18 @@ export default function CompanyJobs() {
                                     className="gap-2 cursor-pointer text-emerald-400 focus:text-emerald-400"
                                   >
                                     <CheckCheck className="h-3.5 w-3.5" /> Mark as Completed
+                                  </DropdownMenuItem>
+                                </>
+                              )}
+                              {/* Re-open Job — available for completed/verified/paid jobs */}
+                              {["completed", "verified", "paid", "payment_pending_ach"].includes(job.status) && (
+                                <>
+                                  <DropdownMenuSeparator />
+                                  <DropdownMenuItem
+                                    onClick={() => { setReopenJob(job); setReopenNote(""); }}
+                                    className="gap-2 cursor-pointer text-amber-400 focus:text-amber-400"
+                                  >
+                                    <RefreshCcw className="h-3.5 w-3.5" /> Re-open Job
                                   </DropdownMenuItem>
                                 </>
                               )}
