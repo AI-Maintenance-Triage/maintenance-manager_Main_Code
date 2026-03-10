@@ -11,7 +11,7 @@ import { notifyOwner } from "./_core/notification";
 import * as email from "./email";
 import { ENV } from "./_core/env";
 import { adminViewAsRouter } from "./routers/admin-viewas";
-import { SUPPORTED_PROVIDERS, getAdapter, encodeCredentials, decodeCredentials, runPmsSync, notifyPmsJobComplete } from "./pms/index";
+import { SUPPORTED_PROVIDERS, getAdapter, encodeCredentials, decodeCredentials, runPmsSync, notifyPmsJobComplete, notifyPmsJobReopen } from "./pms/index";
 import {
   stripe,
   getPlatformSettings,
@@ -1243,6 +1243,16 @@ const jobsRouter = router({
             });
           }
         } catch { /* non-critical */ }
+      }
+      // Sync reopen back to PMS if this job came from a PMS integration
+      const reopenedJob = await db.getMaintenanceRequestById(input.jobId);
+      if (reopenedJob?.externalId && reopenedJob?.source && reopenedJob.source !== 'manual') {
+        try {
+          const reopenResult = await notifyPmsJobReopen(companyId, reopenedJob.source, reopenedJob.externalId);
+          console.log(`[PMS Reopen] job=${input.jobId} provider=${reopenedJob.source} externalId=${reopenedJob.externalId} ok=${reopenResult.ok}${reopenResult.error ? ' error=' + reopenResult.error : ''}`);
+        } catch (e) {
+          console.error('[PMS Reopen] Failed to notify PMS:', e);
+        }
       }
       return { success: true };
     }),

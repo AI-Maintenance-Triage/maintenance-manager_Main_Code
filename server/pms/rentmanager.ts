@@ -183,6 +183,19 @@ export const rentManagerAdapter: PmsAdapter = {
       return { ok: false, error: (e as Error).message };
     }
   },
+
+  async markReopen(credentials, externalId) {
+    try {
+      const issueId = externalId.replace("rentmanager_", "");
+      await rmFetch(`/ServiceIssues/${issueId}`, credentials, {
+        method: "PATCH",
+        body: JSON.stringify({ Status: "Open" }),
+      });
+      return { ok: true };
+    } catch (e) {
+      return { ok: false, error: (e as Error).message };
+    }
+  },
 };
 
 function mapRentManagerPropertyType(t?: string): "single_family" | "multi_family" | "commercial" | "other" | undefined {

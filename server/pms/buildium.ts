@@ -184,7 +184,9 @@ export const buildiumAdapter: PmsAdapter = {
     const results: PmsMaintenanceRequest[] = [];
     let offset = 0;
     const limit = 100;
-    const sinceParam = since ? `&lastupdatedfrom=${since.toISOString().split("T")[0]}` : "";
+    // Use createddatefrom so we only pull genuinely NEW tasks, not tasks updated since last sync
+    // This prevents re-pulling already-imported tasks on every resync
+    const sinceParam = since ? `&createddatefrom=${since.toISOString().split("T")[0]}` : "";
 
     while (true) {
       const data = await buildiumFetch(
@@ -208,17 +210,17 @@ export const buildiumAdapter: PmsAdapter = {
         const tenantEmailRaw = getField(requestedBy, "Email", "email");
         const tenantEmail = tenantEmailRaw ? String(tenantEmailRaw) || undefined : undefined;
 
-        // UnitAgreement — used to look up tenant phone number
-        const unitAgreement = (getField(r, "UnitAgreement", "unit_agreement") ?? {}) as Record<string, unknown>;
-        const unitAgreementId = getField(unitAgreement, "Id", "id");
+        // UnitId — used to look up tenant phone number via /leases/tenants?unitids={unitId}
+        // (unitagreementids is NOT a valid filter; unitids is the correct parameter)
+        const rawUnitIdForPhone = getField(r, "UnitId", "unit_id");
 
-        // Try to get tenant phone via unit agreement lookup
+        // Try to get tenant phone via unit ID lookup
         let tenantPhone: string | undefined;
-        if (unitAgreementId) {
+        if (rawUnitIdForPhone) {
           try {
             const tenantsData = await buildiumFetch(
               credentials,
-              `/leases/tenants?unitagreementids=${unitAgreementId}&limit=1`
+              `/leases/tenants?unitids=${rawUnitIdForPhone}&limit=1`
             );
             const tenants: unknown[] = Array.isArray(tenantsData) ? tenantsData : (tenantsData?.items ?? []);
             if (tenants.length > 0) {
@@ -294,6 +296,28 @@ export const buildiumAdapter: PmsAdapter = {
         body: JSON.stringify({
           Title: title,
           TaskStatus: "Completed",
+          Priority: priority,
+        }),
+      });
+      return { ok: true };
+    } catch (e) {
+      return { ok: false, error: (e as Error).message };
+    }
+  },
+
+  async markReopen(credentials, externalId) {
+    try {
+      // First fetch the task to get required fields (title, priority) for the PUT body
+      const task = await buildiumFetch(credentials, `/tasks/residentrequests/${externalId}`) as Record<string, unknown>;
+      const title = String(getField(task, "Title", "title") ?? "Maintenance Request");
+      const priority = String(getField(task, "Priority", "priority") ?? "Normal");
+      // PUT requires title, task_status, and priority as required fields
+      // Set TaskStatus back to "New" to re-open the task in Buildium
+      await buildiumFetch(credentials, `/tasks/residentrequests/${externalId}`, {
+        method: "PUT",
+        body: JSON.stringify({
+          Title: title,
+          TaskStatus: "New",
           Priority: priority,
         }),
       });

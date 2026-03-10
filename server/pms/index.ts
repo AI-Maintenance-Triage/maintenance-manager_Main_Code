@@ -246,7 +246,7 @@ export async function runPmsSync(integrationId: number, companyId: number): Prom
       // Check for duplicate by externalId
       // (createMaintenanceRequest handles the duplicate check via externalId unique constraint)
       try {
-        await createMaintenanceRequest({
+        const newJobId = await createMaintenanceRequest({
           companyId,
           propertyId: property.id,
           title: req.title,
@@ -261,6 +261,37 @@ export async function runPmsSync(integrationId: number, companyId: number): Prom
           source: integration.provider as "buildium" | "appfolio" | "rentmanager" | "yardi" | "doorloop",
         });
         jobs++;
+
+        // Run AI skill tier classification for the new job (same logic as jobs.create)
+        try {
+          const { companyHasPlanFeature, getSkillTiers, updateMaintenanceRequest } = await import("../db");
+          const { classifyMaintenanceRequest } = await import("../ai-classify");
+          const aiEnabled = await companyHasPlanFeature(companyId, "aiJobClassification");
+          const tiers = await getSkillTiers(companyId);
+          if (aiEnabled && tiers.length > 0) {
+            const classification = await classifyMaintenanceRequest(req.title, req.description, tiers);
+            const matchedTier = tiers.find((t: { name: string }) => t.name.toLowerCase() === classification.skillTierName.toLowerCase());
+            let aiHourlyRate: string | null = (matchedTier as any)?.hourlyRate ?? null;
+            if (classification.priority === "emergency" && (matchedTier as any)?.emergencyMultiplier) {
+              const base = parseFloat((matchedTier as any).hourlyRate);
+              const mult = parseFloat((matchedTier as any).emergencyMultiplier);
+              if (!isNaN(base) && !isNaN(mult)) aiHourlyRate = (base * mult).toFixed(2);
+            }
+            await updateMaintenanceRequest(newJobId, {
+              aiPriority: classification.priority,
+              aiSkillTier: classification.skillTierName,
+              aiSkillTierId: (matchedTier as any)?.id ?? null,
+              aiReasoning: classification.reasoning,
+              aiClassifiedAt: new Date(),
+              skillTierId: (matchedTier as any)?.id ?? null,
+              hourlyRate: aiHourlyRate,
+              isEmergency: classification.priority === "emergency",
+            });
+          }
+        } catch (classifyErr) {
+          console.error('[PMS Sync] AI classification failed for job', newJobId, classifyErr);
+          // Non-critical — job still created
+        }
       } catch {
         // Likely a duplicate — skip silently
       }
@@ -312,6 +343,19 @@ export async function notifyPmsJobComplete(
   const credentials = decodeCredentials(integration.credentialsJson ?? "");
   const adapter = getAdapter(provider);
   return adapter.markComplete(credentials, externalId);
+}
+
+export async function notifyPmsJobReopen(
+  companyId: number,
+  provider: string,
+  externalId: string
+): Promise<{ ok: boolean; error?: string }> {
+  const integration = await import("../db").then(db => db.getPmsIntegrationByProvider(companyId, provider));
+  if (!integration) return { ok: false, error: "Integration not found" };
+
+  const credentials = decodeCredentials(integration.credentialsJson ?? "");
+  const adapter = getAdapter(provider);
+  return adapter.markReopen(credentials, externalId);
 }
 
 export type { PmsAdapter, PmsCredentials };

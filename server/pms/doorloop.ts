@@ -179,6 +179,19 @@ export const doorloopAdapter: PmsAdapter = {
       return { ok: false, error: (e as Error).message };
     }
   },
+
+  async markReopen(credentials, externalId) {
+    try {
+      const requestId = externalId.replace("doorloop_", "");
+      await dlFetch(`/maintenance-requests/${requestId}`, credentials, {
+        method: "PATCH",
+        body: JSON.stringify({ status: "new" }),
+      });
+      return { ok: true };
+    } catch (e) {
+      return { ok: false, error: (e as Error).message };
+    }
+  },
 };
 
 function mapDoorLoopPropertyType(t?: string): "single_family" | "multi_family" | "commercial" | "other" | undefined {

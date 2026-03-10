@@ -1546,3 +1546,9 @@
 - [x] Debug markComplete in Buildium adapter — found swapped arguments (externalId/provider) in markAsCompleted call
 - [x] Fix the argument order in notifyPmsJobComplete call in markAsCompleted (was passing externalId as provider)
 - [x] Verify notifyPmsJobComplete is called correctly in both verifyJob and markAsCompleted — verifyJob was correct, markAsCompleted was wrong
+
+## Session 61: Four Buildium Sync Fixes
+- [x] Fix tenant phone lookup — changed query param from unitagreementids to unitids (correct Buildium API param)
+- [x] Fix duplicate sync — changed filter from lastupdatedfrom to createddatefrom so only genuinely new tasks are fetched
+- [x] Fix skill tier assignment — added AI classification call in pms/index.ts after each job is created
+- [x] Fix reopen writeback — added markReopen to all PMS adapters + notifyPmsJobReopen in pms/index.ts + wired to reopen procedure

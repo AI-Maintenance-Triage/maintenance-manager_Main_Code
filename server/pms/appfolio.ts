@@ -145,6 +145,18 @@ export const appfolioAdapter: PmsAdapter = {
       return { ok: false, error: (e as Error).message };
     }
   },
+
+  async markReopen(credentials, externalId) {
+    try {
+      await appfolioFetch(credentials, `/maintenance_requests/${externalId}`, {
+        method: "PATCH",
+        body: JSON.stringify({ status: "new" }),
+      });
+      return { ok: true };
+    } catch (e) {
+      return { ok: false, error: (e as Error).message };
+    }
+  },
 };
 
 function mapAppFolioPropertyType(t?: string): "single_family" | "multi_family" | "commercial" | "other" | undefined {

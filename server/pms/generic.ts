@@ -35,4 +35,12 @@ export const genericAdapter: PmsAdapter = {
         "This PMS does not support automatic completion writeback. Please mark the request complete manually in your PMS.",
     };
   },
+
+  async markReopen(_credentials, _externalId) {
+    return {
+      ok: false,
+      error:
+        "This PMS does not support automatic reopen writeback. Please update the request status manually in your PMS.",
+    };
+  },
 };

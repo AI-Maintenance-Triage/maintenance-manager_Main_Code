@@ -57,4 +57,6 @@ export interface PmsAdapter {
   fetchNewRequests(credentials: PmsCredentials, since?: Date): Promise<PmsMaintenanceRequest[]>;
   /** Mark a maintenance request as complete in the PMS */
   markComplete(credentials: PmsCredentials, externalId: string): Promise<{ ok: boolean; error?: string }>;
+  /** Re-open a previously completed maintenance request in the PMS (set status back to New/Open) */
+  markReopen(credentials: PmsCredentials, externalId: string): Promise<{ ok: boolean; error?: string }>;
 }
