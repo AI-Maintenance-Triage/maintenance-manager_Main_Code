@@ -545,6 +545,16 @@ export default function CompanyJobs() {
                           </span>
                         )}
                         {job.tenantName && <span>Tenant: {job.tenantName}</span>}
+                        {job.tenantPhone && (
+                          <a href={`tel:${job.tenantPhone}`} className="text-blue-400 hover:text-blue-300">
+                            {job.tenantPhone}
+                          </a>
+                        )}
+                        {job.tenantEmail && (
+                          <a href={`mailto:${job.tenantEmail}`} className="text-blue-400 hover:text-blue-300">
+                            {job.tenantEmail}
+                          </a>
+                        )}
                         {/* Show final cost on paid/verified jobs */}
                         {isPaid && totalCost > 0 && (
                           <span className="flex items-center gap-0.5 text-green-400 font-medium">

@@ -1518,3 +1518,11 @@
 - [x] Frontend: show "Select All" + delete button when 1+ jobs are selected
 - [x] Backend: add bulkDeleteJobs tRPC procedure (company-scoped, admin only)
 - [x] Frontend: wire bulk delete mutation with confirmation dialog
+
+## Session 56: Tenant Contact Info + Buildium Status Sync
+- [x] Buildium adapter: capture tenant phone and email from ResidentRequestTaskMessage
+- [x] Buildium adapter: implement markComplete to PUT TaskStatus=Completed back to Buildium
+- [x] Backend: call markComplete when a job is verified/completed (in verifyJob procedure)
+- [x] Contractor job board: hide tenant contact info and full address until job is accepted (already omitted from query)
+- [x] Contractor my-jobs: show tenant name, phone, email, and full property address after acceptance
+- [x] Company jobs: show tenant phone and email on job cards

@@ -11,7 +11,7 @@ import { notifyOwner } from "./_core/notification";
 import * as email from "./email";
 import { ENV } from "./_core/env";
 import { adminViewAsRouter } from "./routers/admin-viewas";
-import { SUPPORTED_PROVIDERS, getAdapter, encodeCredentials, decodeCredentials, runPmsSync } from "./pms/index";
+import { SUPPORTED_PROVIDERS, getAdapter, encodeCredentials, decodeCredentials, runPmsSync, notifyPmsJobComplete } from "./pms/index";
 import {
   stripe,
   getPlatformSettings,
@@ -1278,6 +1278,18 @@ const jobsRouter = router({
 
       // Verify the job first
       await db.verifyJob(input.jobId, companyId, ctx.user.id, input.action, input.notes);
+
+      // Sync completion back to PMS (best-effort, non-blocking)
+      if (input.action === "approve") {
+        try {
+          const jobForPms = await db.getMaintenanceRequestById(input.jobId);
+          if (jobForPms?.externalId && jobForPms.source && jobForPms.source !== "manual") {
+            notifyPmsJobComplete(companyId, jobForPms.source, jobForPms.externalId)
+              .then(r => { if (!r.ok) console.warn(`[PMS] markComplete failed for job ${input.jobId}:`, r.error); })
+              .catch(e => console.warn(`[PMS] markComplete error for job ${input.jobId}:`, e));
+          }
+        } catch { /* non-critical */ }
+      }
 
       // Only trigger payment on approval
       if (input.action === "approve") {

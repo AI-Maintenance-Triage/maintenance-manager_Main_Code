@@ -208,6 +208,37 @@ export const buildiumAdapter: PmsAdapter = {
         const tenantEmailRaw = getField(requestedBy, "Email", "email");
         const tenantEmail = tenantEmailRaw ? String(tenantEmailRaw) || undefined : undefined;
 
+        // UnitAgreement — used to look up tenant phone number
+        const unitAgreement = (getField(r, "UnitAgreement", "unit_agreement") ?? {}) as Record<string, unknown>;
+        const unitAgreementId = getField(unitAgreement, "Id", "id");
+
+        // Try to get tenant phone via unit agreement lookup
+        let tenantPhone: string | undefined;
+        if (unitAgreementId) {
+          try {
+            const tenantsData = await buildiumFetch(
+              credentials,
+              `/leases/tenants?unitagreementids=${unitAgreementId}&limit=1`
+            );
+            const tenants: unknown[] = Array.isArray(tenantsData) ? tenantsData : (tenantsData?.items ?? []);
+            if (tenants.length > 0) {
+              const tenant = tenants[0] as Record<string, unknown>;
+              const phoneNumbers = (getField(tenant, "PhoneNumbers", "phone_numbers") ?? []) as Array<Record<string, unknown>>;
+              // Prefer Home > Cell > Work > first available
+              const preferred = phoneNumbers.find(p => String(getField(p, "Type", "type") ?? "").toLowerCase() === "home")
+                ?? phoneNumbers.find(p => String(getField(p, "Type", "type") ?? "").toLowerCase() === "cell")
+                ?? phoneNumbers.find(p => String(getField(p, "Type", "type") ?? "").toLowerCase() === "work")
+                ?? phoneNumbers[0];
+              if (preferred) {
+                const num = getField(preferred, "Number", "number");
+                if (num) tenantPhone = String(num);
+              }
+            }
+          } catch {
+            // Phone lookup is best-effort; don't fail the whole sync
+          }
+        }
+
         // UnitId — try both cases, then resolve unit number
         const rawUnitId = getField(r, "UnitId", "unit_id");
         let unitNumber: string | undefined;
@@ -236,6 +267,7 @@ export const buildiumAdapter: PmsAdapter = {
           description: String(description ?? ""),
           unitNumber: unitNumber || undefined,
           tenantName: tenantName || undefined,
+          tenantPhone: tenantPhone || undefined,
           tenantEmail: tenantEmail || undefined,
           propertyExternalId: propertyId ? String(propertyId) : "",
           priority: mapBuildiumPriority(priority as string | undefined),
@@ -252,9 +284,18 @@ export const buildiumAdapter: PmsAdapter = {
 
   async markComplete(credentials, externalId) {
     try {
+      // First fetch the task to get required fields (title, priority) for the PUT body
+      const task = await buildiumFetch(credentials, `/tasks/residentrequests/${externalId}`) as Record<string, unknown>;
+      const title = String(getField(task, "Title", "title") ?? "Maintenance Request");
+      const priority = String(getField(task, "Priority", "priority") ?? "Normal");
+      // PUT requires title, task_status, and priority as required fields
       await buildiumFetch(credentials, `/tasks/residentrequests/${externalId}`, {
         method: "PUT",
-        body: JSON.stringify({ Status: "Completed" }),
+        body: JSON.stringify({
+          Title: title,
+          TaskStatus: "Completed",
+          Priority: priority,
+        }),
       });
       return { ok: true };
     } catch (e) {

@@ -12,7 +12,7 @@ import { Input } from "@/components/ui/input";
 import {
   Clock, CheckCircle, Play, Square, AlertCircle, Camera, CheckCheck,
   XCircle, Loader2, Navigation2, MapPin, Wifi, MessageSquare, FileDown,
-  Plus, Trash2, Receipt, RefreshCw, Target,
+  Plus, Trash2, Receipt, RefreshCw, Target, Phone, Mail, User,
 } from "lucide-react";
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { toast } from "sonner";
@@ -876,6 +876,37 @@ function JobCard({ row, onUpdate, readOnly = false }: { row: any; onUpdate: () =
                             <MapPin className="h-3 w-3 shrink-0" />
                             {property.address}{property.city ? `, ${property.city}` : ""}
                           </p>
+                        )}
+
+                        {/* Tenant contact info — revealed after job acceptance */}
+                        {(job.tenantName || job.tenantPhone || job.tenantEmail) && (
+                          <div className="mt-2 rounded-md border border-border/50 bg-muted/30 p-2 space-y-1">
+                            <p className="text-xs font-semibold text-foreground/70 uppercase tracking-wide mb-1">Tenant Contact</p>
+                            {job.tenantName && (
+                              <p className="text-xs text-foreground flex items-center gap-1.5">
+                                <User className="h-3 w-3 shrink-0 text-muted-foreground" />
+                                {job.tenantName}
+                              </p>
+                            )}
+                            {job.tenantPhone && (
+                              <a
+                                href={`tel:${job.tenantPhone}`}
+                                className="text-xs text-blue-400 hover:text-blue-300 flex items-center gap-1.5"
+                              >
+                                <Phone className="h-3 w-3 shrink-0" />
+                                {job.tenantPhone}
+                              </a>
+                            )}
+                            {job.tenantEmail && (
+                              <a
+                                href={`mailto:${job.tenantEmail}`}
+                                className="text-xs text-blue-400 hover:text-blue-300 flex items-center gap-1.5"
+                              >
+                                <Mail className="h-3 w-3 shrink-0" />
+                                {job.tenantEmail}
+                              </a>
+                            )}
+                          </div>
                         )}
 
                         {/* Outside message */}
