@@ -1138,6 +1138,21 @@ const jobsRouter = router({
       return { success: true };
     }),
 
+  // Company: bulk delete jobs (any status) — used for admin cleanup
+  bulkDelete: companyAdminProcedure
+    .input(z.object({ jobIds: z.array(z.number()).min(1).max(500) }))
+    .mutation(async ({ ctx, input }) => {
+      const companyId = getEffectiveCompanyId(ctx);
+      let deleted = 0;
+      for (const jobId of input.jobIds) {
+        const job = await db.getMaintenanceRequestById(jobId);
+        if (!job || job.companyId !== companyId) continue;
+        await db.deleteMaintenanceRequest(jobId);
+        deleted++;
+      }
+      return { deleted };
+    }),
+
   // Company: get change history for a job (priority/skill tier overrides)
   changeHistory: companyAdminProcedure
     .input(z.object({ jobId: z.number() }))

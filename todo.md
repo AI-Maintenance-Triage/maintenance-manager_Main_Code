@@ -1512,3 +1512,9 @@
 - [x] Backend: add a separate query to get job cost summary from maintenance_requests for jobs in verified/paid/completed status
 - [x] Frontend: show all verified/completed jobs in the Job Payment History table, not just those with a transaction record
 - [x] Frontend: show correct status badges (verified, pending payment, paid) in the table
+
+## Session 55: Bulk Delete Jobs (Company Jobs Tab)
+- [x] Frontend: add per-row checkboxes to the company jobs list
+- [x] Frontend: show "Select All" + delete button when 1+ jobs are selected
+- [x] Backend: add bulkDeleteJobs tRPC procedure (company-scoped, admin only)
+- [x] Frontend: wire bulk delete mutation with confirmation dialog

@@ -13,6 +13,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent } from "@/components/ui/dropdown-menu";
 import { useViewAs } from "@/contexts/ViewAsContext";
 import { Plus, Zap, Clock, CheckCircle, AlertTriangle, Globe, X, Route, DollarSign, FileDown, Star, MessageSquare, ChevronDown, ChevronUp, Lock, Unlock, Pencil, MoreVertical, Trash2, Edit, History, RefreshCcw } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useState } from "react";
 import { JobCostBreakdown } from "@/components/JobCostBreakdown";
 import { toast } from "sonner";
@@ -149,6 +150,10 @@ export default function CompanyJobs() {
   const [reopenJob, setReopenJob] = useState<any | null>(null);
   const [reopenNote, setReopenNote] = useState("");
 
+  // Multi-select state
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [bulkDeleteConfirm, setBulkDeleteConfirm] = useState(false);
+
   const utils = trpc.useUtils();
 
   const currentTab = FILTER_TABS.find(t => t.value === activeTab) ?? FILTER_TABS[0];
@@ -197,6 +202,28 @@ export default function CompanyJobs() {
     utils.jobs.list.invalidate();
     utils.adminViewAs.companyJobs.invalidate();
   };
+
+  // Multi-select helpers
+  const toggleSelect = (id: number) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+  const selectAll = () => setSelectedIds(new Set((jobs ?? []).map((j: any) => j.id)));
+  const clearSelection = () => setSelectedIds(new Set());
+
+  const bulkDelete = trpc.jobs.bulkDelete.useMutation({
+    onSuccess: (data) => {
+      toast.success(`Deleted ${data.deleted} job${data.deleted !== 1 ? 's' : ''}.`);
+      setBulkDeleteConfirm(false);
+      clearSelection();
+      invalidateJobs();
+      utils.company.dashboardStats.invalidate();
+    },
+    onError: (err: any) => toast.error(err.message),
+  });
 
   const postToBoard = trpc.jobBoard.post.useMutation({
     onSuccess: () => { toast.success("Job posted to the contractor board!"); invalidateJobs(); },
@@ -425,6 +452,34 @@ export default function CompanyJobs() {
         </Card>
       ) : (
         <div className="space-y-3">
+          {/* Bulk action bar — appears when 1+ jobs are selected */}
+          {selectedIds.size > 0 && (
+            <div className="flex items-center gap-3 px-4 py-2.5 bg-primary/10 border border-primary/30 rounded-lg">
+              <Checkbox
+                checked={selectedIds.size === (jobs?.length ?? 0)}
+                onCheckedChange={(checked) => checked ? selectAll() : clearSelection()}
+                className="border-primary"
+              />
+              <span className="text-sm font-medium text-foreground">
+                {selectedIds.size} of {jobs?.length ?? 0} selected
+              </span>
+              <Button size="sm" variant="outline" className="ml-1 text-xs" onClick={selectAll}>
+                Select All ({jobs?.length ?? 0})
+              </Button>
+              <Button size="sm" variant="outline" className="text-xs" onClick={clearSelection}>
+                <X className="h-3 w-3 mr-1" /> Clear
+              </Button>
+              <Button
+                size="sm"
+                variant="destructive"
+                className="ml-auto gap-1.5 text-xs"
+                onClick={() => setBulkDeleteConfirm(true)}
+              >
+                <Trash2 className="h-3.5 w-3.5" /> Delete {selectedIds.size} Job{selectedIds.size !== 1 ? 's' : ''}
+              </Button>
+            </div>
+          )}
+
           {jobs.map((job: any) => {
             const laborCost = parseFloat(job.totalLaborCost ?? "0");
             const partsCost = parseFloat(job.totalPartsCost ?? "0");
@@ -435,13 +490,19 @@ export default function CompanyJobs() {
             const isEditable = EDITABLE_STATUSES.includes(job.status);
             const effectivePriority = job.overridePriority ?? job.aiPriority;
             const hasHistory = !!(job.overridePriority || job.overrideSkillTierId);
+            const isSelected = selectedIds.has(job.id);
 
             return (
-              <Card key={job.id} className="bg-card border-border hover:border-primary/30 transition-colors">
+              <Card key={job.id} className={`bg-card border-border hover:border-primary/30 transition-colors ${isSelected ? 'border-primary/60 bg-primary/5' : ''}`}>
                 <CardContent className="p-4">
                   <div className="flex items-start justify-between gap-4">
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2 mb-1">
+                        <Checkbox
+                          checked={isSelected}
+                          onCheckedChange={() => toggleSelect(job.id)}
+                          className="shrink-0"
+                        />
                         <h3 className="font-medium text-card-foreground truncate">{job.title}</h3>
                         {effectivePriority === 'emergency' && <Badge variant="destructive" className="text-xs">Emergency</Badge>}
                       </div>
@@ -904,6 +965,31 @@ export default function CompanyJobs() {
           }}
         />
       )}
+      {/* Bulk Delete Confirmation Dialog */}
+      <Dialog open={bulkDeleteConfirm} onOpenChange={(o) => { if (!o) setBulkDeleteConfirm(false); }}>
+        <DialogContent className="max-w-sm bg-card">
+          <DialogHeader>
+            <DialogTitle className="text-card-foreground">Delete {selectedIds.size} Job{selectedIds.size !== 1 ? 's' : ''}?</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              This will permanently delete <span className="font-medium text-foreground">{selectedIds.size} job{selectedIds.size !== 1 ? 's' : ''}</span>, regardless of status. This action cannot be undone.
+            </p>
+            <div className="flex gap-2">
+              <Button
+                variant="destructive"
+                className="flex-1"
+                onClick={() => bulkDelete.mutate({ jobIds: Array.from(selectedIds) })}
+                disabled={bulkDelete.isPending}
+              >
+                {bulkDelete.isPending ? "Deleting..." : `Delete ${selectedIds.size} Job${selectedIds.size !== 1 ? 's' : ''}`}
+              </Button>
+              <Button variant="outline" onClick={() => setBulkDeleteConfirm(false)}>Cancel</Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {commentsJob && (
         <Sheet open={!!commentsJob} onOpenChange={(open) => { if (!open) setCommentsJob(null); }}>
           <SheetContent side="right" className="w-full sm:max-w-md p-0 flex flex-col">
