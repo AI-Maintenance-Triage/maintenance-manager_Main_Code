@@ -1506,3 +1506,9 @@
 - [x] Admin UI: PMS Auto-Sync Interval input added to Platform Settings card (PlatformDashboard.tsx)
 - [x] Integrations page: shows "Next auto-sync in Xh Ym" or "Auto-sync disabled" per integration
 - [x] 0 TypeScript errors
+
+## Session 54: Fix Job Payment History Not Populating
+- [x] Backend: update getTransactionsByCompany to also return verified/completed jobs without a transaction record (as synthetic rows)
+- [x] Backend: add a separate query to get job cost summary from maintenance_requests for jobs in verified/paid/completed status
+- [x] Frontend: show all verified/completed jobs in the Job Payment History table, not just those with a transaction record
+- [x] Frontend: show correct status badges (verified, pending payment, paid) in the table

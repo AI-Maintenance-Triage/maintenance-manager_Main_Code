@@ -646,7 +646,9 @@ export async function createTransaction(data: InsertTransaction) {
 export async function getTransactionsByCompany(companyId: number) {
   const db = await getDb();
   if (!db) return [];
-  return db
+
+  // 1. Formal transaction records (Stripe-paid jobs)
+  const paidTxns = await db
     .select({
       id: transactions.id,
       maintenanceRequestId: transactions.maintenanceRequestId,
@@ -667,6 +669,90 @@ export async function getTransactionsByCompany(companyId: number) {
     .leftJoin(properties, eq(maintenanceRequests.propertyId, properties.id))
     .where(eq(transactions.companyId, companyId))
     .orderBy(desc(transactions.createdAt));
+
+  // 2. Verified/completed jobs that don't have a transaction record yet
+  //    (payment was skipped — no Stripe setup, zero cost, etc.)
+  const paidJobIds = new Set(paidTxns.map(t => t.maintenanceRequestId));
+  const verifiedJobs = await db
+    .select({
+      id: maintenanceRequests.id,
+      title: maintenanceRequests.title,
+      status: maintenanceRequests.status,
+      totalLaborCost: maintenanceRequests.totalLaborCost,
+      totalPartsCost: maintenanceRequests.totalPartsCost,
+      platformFee: maintenanceRequests.platformFee,
+      totalCost: maintenanceRequests.totalCost,
+      stripePaymentIntentId: maintenanceRequests.stripePaymentIntentId,
+      paidAt: maintenanceRequests.paidAt,
+      verifiedAt: maintenanceRequests.verifiedAt,
+      createdAt: maintenanceRequests.createdAt,
+      propertyName: properties.name,
+    })
+    .from(maintenanceRequests)
+    .leftJoin(properties, eq(maintenanceRequests.propertyId, properties.id))
+    .where(
+      and(
+        eq(maintenanceRequests.companyId, companyId),
+        inArray(maintenanceRequests.status, ["verified", "paid", "payment_pending_ach", "pending_verification", "disputed"] as any[])
+      )
+    )
+    .orderBy(desc(maintenanceRequests.createdAt));
+
+  // Merge: add synthetic rows for verified jobs not already in paidTxns
+  // Fetch parts receipts for all verified jobs in one batch
+  const verifiedJobIds = verifiedJobs.filter(j => !paidJobIds.has(j.id)).map(j => j.id);
+  let receiptsByJob: Map<number, number> = new Map();
+  if (verifiedJobIds.length > 0) {
+    const receipts = await db
+      .select({
+        maintenanceRequestId: partsReceipts.maintenanceRequestId,
+        amount: partsReceipts.amount,
+      })
+      .from(partsReceipts)
+      .where(inArray(partsReceipts.maintenanceRequestId, verifiedJobIds));
+    for (const r of receipts) {
+      const prev = receiptsByJob.get(r.maintenanceRequestId) ?? 0;
+      receiptsByJob.set(r.maintenanceRequestId, prev + parseFloat(r.amount ?? "0"));
+    }
+  }
+
+  const syntheticRows = verifiedJobs
+    .filter(j => !paidJobIds.has(j.id))
+    .map(j => {
+      const laborCost = j.totalLaborCost ?? "0.00";
+      // Use live parts receipts sum if available, fall back to stored field
+      const livePartsCost = receiptsByJob.get(j.id) ?? 0;
+      const partsCost = livePartsCost > 0
+        ? livePartsCost.toFixed(2)
+        : (j.totalPartsCost ?? "0.00");
+      const platformFee = j.platformFee ?? "0.00";
+      const totalCharged = j.totalCost ?? (parseFloat(laborCost) + parseFloat(partsCost) + parseFloat(platformFee)).toFixed(2);
+      // Map job status to a transaction-like status
+      let txStatus: "pending" | "escrow" | "captured" | "paid_out" | "refunded" | "failed" = "pending";
+      if (j.status === "paid") txStatus = "captured";
+      else if (j.status === "payment_pending_ach") txStatus = "escrow";
+      return {
+        id: -(j.id), // negative id to distinguish from real transactions
+        maintenanceRequestId: j.id,
+        laborCost,
+        partsCost,
+        platformFee,
+        totalCharged,
+        contractorPayout: laborCost,
+        status: txStatus,
+        paidAt: j.paidAt,
+        createdAt: j.verifiedAt ?? j.createdAt,
+        stripePaymentIntentId: j.stripePaymentIntentId,
+        jobTitle: j.title,
+        propertyName: j.propertyName,
+        // Extra field to signal this is a synthetic (unpaid) record
+        paymentPending: true,
+      };
+    });
+
+  return [...paidTxns, ...syntheticRows].sort(
+    (a, b) => new Date(b.createdAt ?? 0).getTime() - new Date(a.createdAt ?? 0).getTime()
+  );
 }
 
 export async function getTransactionsByContractor(contractorProfileId: number) {
@@ -711,7 +797,7 @@ export async function getCompanyExpenseReport(companyId: number) {
   if (!db) return { transactions: [], monthlyTotals: [], propertyTotals: [] };
 
   // All transactions for this company
-  const txns = await db
+  const paidTxns = await db
     .select({
       id: transactions.id,
       maintenanceRequestId: transactions.maintenanceRequestId,
@@ -734,39 +820,118 @@ export async function getCompanyExpenseReport(companyId: number) {
     .where(eq(transactions.companyId, companyId))
     .orderBy(desc(transactions.createdAt));
 
-  // Monthly totals (last 12 months)
-  const monthlyTotals = await db
+  // Also include verified/completed jobs without a transaction record
+  const paidJobIds = new Set(paidTxns.map(t => t.maintenanceRequestId));
+  const verifiedJobs = await db
     .select({
-      month: sql<string>`DATE_FORMAT(createdAt, '%Y-%m')`,
-      total: sql<string>`SUM(totalCharged)`,
-      laborTotal: sql<string>`SUM(laborCost)`,
-      partsTotal: sql<string>`SUM(partsCost)`,
-      feeTotal: sql<string>`SUM(platformFee)`,
-      jobCount: sql<number>`COUNT(*)`,
-    })
-    .from(transactions)
-    .where(and(
-      eq(transactions.companyId, companyId),
-      sql`createdAt >= DATE_SUB(NOW(), INTERVAL 12 MONTH)`
-    ))
-    .groupBy(sql`DATE_FORMAT(createdAt, '%Y-%m')`)
-    .orderBy(sql`DATE_FORMAT(createdAt, '%Y-%m')`);
-
-  // Per-property totals
-  const propertyTotals = await db
-    .select({
+      id: maintenanceRequests.id,
+      title: maintenanceRequests.title,
+      status: maintenanceRequests.status,
+      totalLaborCost: maintenanceRequests.totalLaborCost,
+      totalPartsCost: maintenanceRequests.totalPartsCost,
+      platformFee: maintenanceRequests.platformFee,
+      totalCost: maintenanceRequests.totalCost,
+      paidAt: maintenanceRequests.paidAt,
+      verifiedAt: maintenanceRequests.verifiedAt,
+      createdAt: maintenanceRequests.createdAt,
       propertyId: maintenanceRequests.propertyId,
       propertyName: properties.name,
       propertyAddress: properties.address,
-      total: sql<string>`SUM(${transactions.totalCharged})`,
-      jobCount: sql<number>`COUNT(*)`,
     })
-    .from(transactions)
-    .leftJoin(maintenanceRequests, eq(transactions.maintenanceRequestId, maintenanceRequests.id))
+    .from(maintenanceRequests)
     .leftJoin(properties, eq(maintenanceRequests.propertyId, properties.id))
-    .where(eq(transactions.companyId, companyId))
-    .groupBy(maintenanceRequests.propertyId, properties.name, properties.address)
-    .orderBy(desc(sql`SUM(${transactions.totalCharged})`));
+    .where(
+      and(
+        eq(maintenanceRequests.companyId, companyId),
+        inArray(maintenanceRequests.status, ["verified", "paid", "payment_pending_ach", "pending_verification", "disputed"] as any[])
+      )
+    );
+
+  const unpaidJobIds = verifiedJobs.filter(j => !paidJobIds.has(j.id)).map(j => j.id);
+  let receiptsByJobExp: Map<number, number> = new Map();
+  if (unpaidJobIds.length > 0) {
+    const receipts = await db.select({ maintenanceRequestId: partsReceipts.maintenanceRequestId, amount: partsReceipts.amount })
+      .from(partsReceipts).where(inArray(partsReceipts.maintenanceRequestId, unpaidJobIds));
+    for (const r of receipts) {
+      receiptsByJobExp.set(r.maintenanceRequestId, (receiptsByJobExp.get(r.maintenanceRequestId) ?? 0) + parseFloat(r.amount ?? "0"));
+    }
+  }
+
+  const syntheticTxns = verifiedJobs
+    .filter(j => !paidJobIds.has(j.id))
+    .map(j => {
+      const laborCost = j.totalLaborCost ?? "0.00";
+      const livePartsCost = receiptsByJobExp.get(j.id) ?? 0;
+      const partsCost = livePartsCost > 0 ? livePartsCost.toFixed(2) : (j.totalPartsCost ?? "0.00");
+      const platformFee = j.platformFee ?? "0.00";
+      const totalCharged = j.totalCost ?? (parseFloat(laborCost) + parseFloat(partsCost) + parseFloat(platformFee)).toFixed(2);
+      return {
+        id: -(j.id),
+        maintenanceRequestId: j.id,
+        laborCost,
+        partsCost,
+        platformFee,
+        totalCharged,
+        contractorPayout: laborCost,
+        status: "pending" as const,
+        paidAt: j.paidAt,
+        createdAt: j.verifiedAt ?? j.createdAt,
+        jobTitle: j.title,
+        propertyId: j.propertyId,
+        propertyName: j.propertyName,
+        propertyAddress: j.propertyAddress,
+      };
+    });
+
+  const txns = [...paidTxns, ...syntheticTxns].sort(
+    (a, b) => new Date(b.createdAt ?? 0).getTime() - new Date(a.createdAt ?? 0).getTime()
+  );
+
+  // Monthly totals (last 12 months) — computed from merged txns array
+  const twelveMonthsAgo = Date.now() - 12 * 30 * 24 * 60 * 60 * 1000;
+  const monthlyMap = new Map<string, { total: number; laborTotal: number; partsTotal: number; feeTotal: number; jobCount: number }>();
+  for (const t of txns) {
+    const ts = t.createdAt ? new Date(t.createdAt).getTime() : 0;
+    if (ts < twelveMonthsAgo) continue;
+    const month = new Date(t.createdAt!).toISOString().slice(0, 7); // 'YYYY-MM'
+    const entry = monthlyMap.get(month) ?? { total: 0, laborTotal: 0, partsTotal: 0, feeTotal: 0, jobCount: 0 };
+    entry.total += parseFloat(String(t.totalCharged ?? "0"));
+    entry.laborTotal += parseFloat(String(t.laborCost ?? "0"));
+    entry.partsTotal += parseFloat(String(t.partsCost ?? "0"));
+    entry.feeTotal += parseFloat(String(t.platformFee ?? "0"));
+    entry.jobCount += 1;
+    monthlyMap.set(month, entry);
+  }
+  const monthlyTotals = Array.from(monthlyMap.entries())
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([month, v]) => ({
+      month,
+      total: v.total.toFixed(2),
+      laborTotal: v.laborTotal.toFixed(2),
+      partsTotal: v.partsTotal.toFixed(2),
+      feeTotal: v.feeTotal.toFixed(2),
+      jobCount: v.jobCount,
+    }));
+
+  // Per-property totals — computed from merged txns array
+  type PropKey = string;
+  const propMap = new Map<PropKey, { propertyId: number | null; propertyName: string | null; propertyAddress: string | null; total: number; jobCount: number }>();
+  for (const t of txns) {
+    const key = String((t as any).propertyId ?? "unknown");
+    const entry = propMap.get(key) ?? {
+      propertyId: (t as any).propertyId ?? null,
+      propertyName: t.propertyName ?? null,
+      propertyAddress: (t as any).propertyAddress ?? null,
+      total: 0,
+      jobCount: 0,
+    };
+    entry.total += parseFloat(String(t.totalCharged ?? "0"));
+    entry.jobCount += 1;
+    propMap.set(key, entry);
+  }
+  const propertyTotals = Array.from(propMap.values())
+    .sort((a, b) => b.total - a.total)
+    .map(v => ({ ...v, total: v.total.toFixed(2) }));
 
   return { transactions: txns, monthlyTotals, propertyTotals };
 }

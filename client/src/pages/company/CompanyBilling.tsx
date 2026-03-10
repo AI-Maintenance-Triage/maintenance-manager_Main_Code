@@ -51,7 +51,8 @@ function fmtCents(cents: number, currency?: string | null) {
   return new Intl.NumberFormat("en-US", { style: "currency", currency: cur }).format(cents / 100);
 }
 
-function statusColor(status: string | null | undefined) {
+function statusColor(status: string | null | undefined, paymentPending?: boolean) {
+  if (paymentPending) return "bg-amber-500/15 text-amber-400 border-amber-500/30";
   if (!status) return "bg-secondary text-muted-foreground";
   switch (status) {
     case "captured":
@@ -1038,8 +1039,8 @@ export default function CompanyBilling() {
                         <td className="px-4 py-3 text-right text-muted-foreground">{fmt(t.platformFee)}</td>
                         <td className="px-4 py-3 text-right font-semibold text-foreground">{fmt(t.totalCharged)}</td>
                         <td className="px-4 py-3 text-center">
-                          <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border ${statusColor(t.status)}`}>
-                            {t.status.replace("_", " ")}
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border ${statusColor(t.status, (t as any).paymentPending)}`}>
+                            {(t as any).paymentPending ? "payment pending" : t.status.replace(/_/g, " ")}
                           </span>
                         </td>
                         <td className="px-4 py-3 text-center">
