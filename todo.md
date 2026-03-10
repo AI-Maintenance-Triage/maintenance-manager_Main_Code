@@ -1526,3 +1526,9 @@
 - [x] Contractor job board: hide tenant contact info and full address until job is accepted (already omitted from query)
 - [x] Contractor my-jobs: show tenant name, phone, email, and full property address after acceptance
 - [x] Company jobs: show tenant phone and email on job cards
+
+## Session 57: Company Mark Job as Completed (Bypass Workflow)
+- [x] Backend: add jobs.markAsCompleted tRPC procedure (company-scoped, sets status=completed, clears contractor assignment if any)
+- [x] Frontend: add "Mark as Completed" option to three-dot menu on company job cards
+- [x] Frontend: show a brief confirmation dialog before marking complete (with optional notes field)
+- [x] Frontend: after marking complete, job moves to Completed filter tab

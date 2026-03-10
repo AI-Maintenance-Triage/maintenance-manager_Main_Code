@@ -12,7 +12,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent } from "@/components/ui/dropdown-menu";
 import { useViewAs } from "@/contexts/ViewAsContext";
-import { Plus, Zap, Clock, CheckCircle, AlertTriangle, Globe, X, Route, DollarSign, FileDown, Star, MessageSquare, ChevronDown, ChevronUp, Lock, Unlock, Pencil, MoreVertical, Trash2, Edit, History, RefreshCcw } from "lucide-react";
+import { Plus, Zap, Clock, CheckCircle, AlertTriangle, Globe, X, Route, DollarSign, FileDown, Star, MessageSquare, ChevronDown, ChevronUp, Lock, Unlock, Pencil, MoreVertical, Trash2, Edit, History, RefreshCcw, CheckCheck } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useState } from "react";
 import { JobCostBreakdown } from "@/components/JobCostBreakdown";
@@ -147,6 +147,8 @@ export default function CompanyJobs() {
   const [editJob, setEditJob] = useState<any | null>(null);
   const [editForm, setEditForm] = useState<any>({});
   const [deleteConfirmJob, setDeleteConfirmJob] = useState<any | null>(null);
+  const [markCompleteJob, setMarkCompleteJob] = useState<any | null>(null);
+  const [markCompleteNotes, setMarkCompleteNotes] = useState("");
   const [reopenJob, setReopenJob] = useState<any | null>(null);
   const [reopenNote, setReopenNote] = useState("");
 
@@ -275,6 +277,17 @@ export default function CompanyJobs() {
     onSuccess: () => {
       toast.success("Job deleted.");
       setDeleteConfirmJob(null);
+      invalidateJobs();
+      utils.company.dashboardStats.invalidate();
+    },
+    onError: (err: any) => toast.error(err.message),
+  });
+
+  const markAsCompleted = trpc.jobs.markAsCompleted.useMutation({
+    onSuccess: () => {
+      toast.success("Job marked as completed.");
+      setMarkCompleteJob(null);
+      setMarkCompleteNotes("");
       invalidateJobs();
       utils.company.dashboardStats.invalidate();
     },
@@ -597,8 +610,8 @@ export default function CompanyJobs() {
                             <RefreshCcw className="h-3.5 w-3.5" />
                           </Button>
                         )}
-                        {/* 3-dot menu — open jobs get edit/delete; all non-paid jobs get priority/tier overrides */}
-                        {(isEditable || job.status === "assigned" || job.status === "in_progress" || job.status === "pending_verification") && (
+                        {/* 3-dot menu — open jobs get edit/delete; all non-terminal jobs get priority/tier overrides + mark complete */}
+                        {(isEditable || !["verified", "paid", "payment_pending_ach", "completed"].includes(job.status)) && (
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                               <Button size="sm" variant="ghost" className="h-6 w-6 p-0 text-muted-foreground hover:text-foreground">
@@ -653,6 +666,18 @@ export default function CompanyJobs() {
                                     ))}
                                   </DropdownMenuSubContent>
                                 </DropdownMenuSub>
+                              )}
+                              {/* Mark as Completed — available for any non-terminal job */}
+                              {!["verified", "paid", "payment_pending_ach", "completed"].includes(job.status) && (
+                                <>
+                                  <DropdownMenuSeparator />
+                                  <DropdownMenuItem
+                                    onClick={() => { setMarkCompleteJob(job); setMarkCompleteNotes(""); }}
+                                    className="gap-2 cursor-pointer text-emerald-400 focus:text-emerald-400"
+                                  >
+                                    <CheckCheck className="h-3.5 w-3.5" /> Mark as Completed
+                                  </DropdownMenuItem>
+                                </>
                               )}
                               {isEditable && (
                                 <>
@@ -922,6 +947,41 @@ export default function CompanyJobs() {
                   {reopenJobMutation.isPending ? "Re-opening..." : "Re-open Job"}
                 </Button>
                 <Button variant="outline" onClick={() => { setReopenJob(null); setReopenNote(""); }}>Cancel</Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Mark as Completed Confirmation Dialog */}
+      <Dialog open={!!markCompleteJob} onOpenChange={(o) => { if (!o) { setMarkCompleteJob(null); setMarkCompleteNotes(""); } }}>
+        <DialogContent className="max-w-sm bg-card">
+          <DialogHeader>
+            <DialogTitle className="text-card-foreground">Mark Job as Completed?</DialogTitle>
+          </DialogHeader>
+          {markCompleteJob && (
+            <div className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                This will immediately close <span className="font-medium text-foreground">"{markCompleteJob.title}"</span> and move it to the Completed tab, bypassing the contractor workflow.
+              </p>
+              <div className="space-y-1.5">
+                <Label className="text-xs text-muted-foreground">Resolution notes (optional)</Label>
+                <Textarea
+                  placeholder="e.g. Tenant was locked out — provided entry code by phone."
+                  value={markCompleteNotes}
+                  onChange={(e) => setMarkCompleteNotes(e.target.value)}
+                  className="text-sm resize-none h-20"
+                />
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white"
+                  onClick={() => markAsCompleted.mutate({ jobId: markCompleteJob.id, notes: markCompleteNotes || undefined })}
+                  disabled={markAsCompleted.isPending}
+                >
+                  {markAsCompleted.isPending ? "Completing..." : "Mark as Completed"}
+                </Button>
+                <Button variant="outline" onClick={() => { setMarkCompleteJob(null); setMarkCompleteNotes(""); }}>Cancel</Button>
               </div>
             </div>
           )}

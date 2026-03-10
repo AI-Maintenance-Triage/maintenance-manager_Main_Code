@@ -1153,6 +1153,45 @@ const jobsRouter = router({
       return { deleted };
     }),
 
+  // Company: bypass workflow and mark a job as completed directly
+  markAsCompleted: companyAdminProcedure
+    .input(z.object({
+      jobId: z.number(),
+      notes: z.string().optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const companyId = getEffectiveCompanyId(ctx);
+      const job = await db.getMaintenanceRequestById(input.jobId);
+      if (!job || job.companyId !== companyId) throw new TRPCError({ code: "NOT_FOUND" });
+      // Allow bypassing from any non-terminal status
+      const terminalStatuses = ["verified", "paid", "payment_pending_ach", "completed"];
+      if (terminalStatuses.includes(job.status)) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Job is already completed or paid." });
+      }
+      await db.updateMaintenanceRequest(input.jobId, {
+        status: "completed",
+        completionNotes: input.notes ?? "Marked as completed by company.",
+        completedAt: new Date(),
+      });
+      // If a contractor was assigned, notify them the job was closed
+      if (job.assignedContractorId) {
+        try {
+          const contractorUser = await db.getUserEmailByContractorProfileId(job.assignedContractorId);
+          if (contractorUser?.id) {
+            await db.createNotification({
+              userId: contractorUser.id,
+              type: 'system',
+              title: 'Job Closed by Company',
+              body: `The job "${job.title}" has been marked as completed by the company and is now closed.`,
+              linkRoute: '/contractor/my-jobs',
+              metadata: { jobId: input.jobId },
+            });
+          }
+        } catch { /* non-critical */ }
+      }
+      return { success: true };
+    }),
+
   // Company: get change history for a job (priority/skill tier overrides)
   changeHistory: companyAdminProcedure
     .input(z.object({ jobId: z.number() }))
