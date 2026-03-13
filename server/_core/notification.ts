@@ -58,32 +58,13 @@ const validatePayload = (input: NotificationPayload): NotificationPayload => {
 };
 
 /**
- * Dispatches a project-owner notification through the Manus Notification Service.
- * Returns `true` if the request was accepted, `false` when the upstream service
- * cannot be reached (callers can fall back to email/slack). Validation errors
- * bubble up as TRPC errors so callers can fix the payload.
+ * Send owner notification via Manus forge service.
+ * Returns true on success, false on failure.
  */
-export async function notifyOwner(
-  payload: NotificationPayload
-): Promise<boolean> {
-  const { title, content } = validatePayload(payload);
-
-  if (!ENV.forgeApiUrl) {
-    throw new TRPCError({
-      code: "INTERNAL_SERVER_ERROR",
-      message: "Notification service URL is not configured.",
-    });
-  }
-
-  if (!ENV.forgeApiKey) {
-    throw new TRPCError({
-      code: "INTERNAL_SERVER_ERROR",
-      message: "Notification service API key is not configured.",
-    });
-  }
+async function notifyViaForge(title: string, content: string): Promise<boolean> {
+  if (!ENV.forgeApiUrl || !ENV.forgeApiKey) return false;
 
   const endpoint = buildEndpointUrl(ENV.forgeApiUrl);
-
   try {
     const response = await fetch(endpoint, {
       method: "POST",
@@ -95,20 +76,66 @@ export async function notifyOwner(
       },
       body: JSON.stringify({ title, content }),
     });
-
     if (!response.ok) {
       const detail = await response.text().catch(() => "");
-      console.warn(
-        `[Notification] Failed to notify owner (${response.status} ${response.statusText})${
-          detail ? `: ${detail}` : ""
-        }`
-      );
+      console.warn(`[Notification] Forge notification failed (${response.status})${detail ? `: ${detail}` : ""}`);
       return false;
     }
-
     return true;
   } catch (error) {
-    console.warn("[Notification] Error calling notification service:", error);
+    console.warn("[Notification] Error calling forge notification service:", error);
     return false;
   }
+}
+
+/**
+ * Send owner notification via email (Resend) as fallback.
+ * Used when Manus forge is not available (e.g., DigitalOcean deployment).
+ */
+async function notifyViaEmail(title: string, content: string): Promise<boolean> {
+  const ownerEmail = process.env.OWNER_EMAIL ?? process.env.EMAIL_FROM;
+  if (!ENV.resendApiKey || !ownerEmail) {
+    console.warn("[Notification] Email fallback not configured (RESEND_API_KEY or OWNER_EMAIL missing)");
+    return false;
+  }
+
+  try {
+    const { Resend } = await import("resend");
+    const resend = new Resend(ENV.resendApiKey);
+    const { error } = await resend.emails.send({
+      from: ENV.emailFrom || "notifications@resend.dev",
+      to: ownerEmail,
+      subject: `[Maintenance Manager] ${title}`,
+      html: `<h2>${title}</h2><pre style="white-space:pre-wrap;font-family:sans-serif">${content}</pre>`,
+    });
+    if (error) {
+      console.warn("[Notification] Email notification failed:", error);
+      return false;
+    }
+    return true;
+  } catch (error) {
+    console.warn("[Notification] Error sending email notification:", error);
+    return false;
+  }
+}
+
+/**
+ * Dispatches a project-owner notification.
+ * On Manus: uses the Manus Notification Service.
+ * On DigitalOcean / standalone: falls back to email via Resend.
+ * Returns `true` if the notification was sent, `false` otherwise.
+ */
+export async function notifyOwner(
+  payload: NotificationPayload
+): Promise<boolean> {
+  const { title, content } = validatePayload(payload);
+
+  // Try Manus forge first
+  if (ENV.forgeApiUrl && ENV.forgeApiKey) {
+    const sent = await notifyViaForge(title, content);
+    if (sent) return true;
+  }
+
+  // Fall back to email
+  return notifyViaEmail(title, content);
 }

@@ -15,4 +15,9 @@ export const ENV = {
   emailFrom: process.env.EMAIL_FROM ?? "onboarding@resend.dev",
   // App URL for email deep links — falls back to localhost for dev
   appUrl: process.env.APP_URL ?? "http://localhost:3000",
+  // LLM — override with any OpenAI-compatible endpoint (e.g. DigitalOcean Gradient)
+  // If not set, falls back to Manus forge API
+  llmApiUrl: process.env.LLM_API_URL ?? "",
+  llmApiKey: process.env.LLM_API_KEY ?? "",
+  llmModel: process.env.LLM_MODEL ?? "",
 };

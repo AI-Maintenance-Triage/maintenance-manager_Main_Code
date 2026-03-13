@@ -209,14 +209,52 @@ const normalizeToolChoice = (
   return toolChoice;
 };
 
-const resolveApiUrl = () =>
-  ENV.forgeApiUrl && ENV.forgeApiUrl.trim().length > 0
-    ? `${ENV.forgeApiUrl.replace(/\/$/, "")}/v1/chat/completions`
-    : "https://forge.manus.im/v1/chat/completions";
+/**
+ * Resolve the LLM API endpoint URL.
+ * Priority: LLM_API_URL (DigitalOcean Gradient / OpenAI) > Manus forge API
+ */
+const resolveApiUrl = (): string => {
+  if (ENV.llmApiUrl && ENV.llmApiUrl.trim().length > 0) {
+    return `${ENV.llmApiUrl.replace(/\/$/, "")}/v1/chat/completions`;
+  }
+  if (ENV.forgeApiUrl && ENV.forgeApiUrl.trim().length > 0) {
+    return `${ENV.forgeApiUrl.replace(/\/$/, "")}/v1/chat/completions`;
+  }
+  return "https://forge.manus.im/v1/chat/completions";
+};
+
+/**
+ * Resolve the API key.
+ * Priority: LLM_API_KEY > Manus forge API key
+ */
+const resolveApiKey = (): string => {
+  if (ENV.llmApiKey && ENV.llmApiKey.trim().length > 0) {
+    return ENV.llmApiKey;
+  }
+  return ENV.forgeApiKey;
+};
+
+/**
+ * Resolve the model name.
+ * Priority: LLM_MODEL env var > default model
+ * Default: meta-llama/Llama-3.3-70B-Instruct (DigitalOcean Gradient)
+ *          Falls back to gemini-2.5-flash when using Manus forge
+ */
+const resolveModel = (): string => {
+  if (ENV.llmModel && ENV.llmModel.trim().length > 0) {
+    return ENV.llmModel;
+  }
+  // When using a custom LLM endpoint, default to Llama 3.3 70B
+  if (ENV.llmApiUrl && ENV.llmApiUrl.trim().length > 0) {
+    return "meta-llama/Llama-3.3-70B-Instruct";
+  }
+  return "gemini-2.5-flash";
+};
 
 const assertApiKey = () => {
-  if (!ENV.forgeApiKey) {
-    throw new Error("OPENAI_API_KEY is not configured");
+  const key = resolveApiKey();
+  if (!key) {
+    throw new Error("LLM API key is not configured. Set LLM_API_KEY or BUILT_IN_FORGE_API_KEY.");
   }
 };
 
@@ -279,8 +317,11 @@ export async function invokeLLM(params: InvokeParams): Promise<InvokeResult> {
     response_format,
   } = params;
 
+  const model = resolveModel();
+  const isForge = !ENV.llmApiUrl || ENV.llmApiUrl.trim().length === 0;
+
   const payload: Record<string, unknown> = {
-    model: "gemini-2.5-flash",
+    model,
     messages: messages.map(normalizeMessage),
   };
 
@@ -296,9 +337,11 @@ export async function invokeLLM(params: InvokeParams): Promise<InvokeResult> {
     payload.tool_choice = normalizedToolChoice;
   }
 
-  payload.max_tokens = 32768
-  payload.thinking = {
-    "budget_tokens": 128
+  payload.max_tokens = 32768;
+
+  // Manus forge-specific thinking budget — skip for standard OpenAI-compatible endpoints
+  if (isForge) {
+    payload.thinking = { budget_tokens: 128 };
   }
 
   const normalizedResponseFormat = normalizeResponseFormat({
@@ -316,7 +359,7 @@ export async function invokeLLM(params: InvokeParams): Promise<InvokeResult> {
     method: "POST",
     headers: {
       "content-type": "application/json",
-      authorization: `Bearer ${ENV.forgeApiKey}`,
+      authorization: `Bearer ${resolveApiKey()}`,
     },
     body: JSON.stringify(payload),
   });
