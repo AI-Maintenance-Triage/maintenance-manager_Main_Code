@@ -274,21 +274,36 @@ export function registerLocalAuthRoutes(app: Express) {
         res.status(401).json({ error: "Invalid email or password" });
         return;
       }
-      // If account is not yet email-verified, require verification before login
+      // If account is not yet email-verified:
+      // - Admin accounts are always auto-verified on login (they predate the feature or were created by admin)
+      // - Accounts created before email verification was introduced (no verification code ever set) are auto-verified
+      // - Only newly self-registered accounts with a pending code are blocked
       if (!user.emailVerified) {
-        // Resend a fresh code
-        const code = String(Math.floor(100000 + Math.random() * 900000));
-        const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
-        await db.setEmailVerificationCode(user.id, code, expiresAt);
-        if (user.email) {
-          emailService.sendEmailVerificationCode({
-            to: user.email,
-            name: user.name ?? "there",
-            code,
-          }).catch(err => console.error("[Email] Verification email failed:", err));
+        const isAdmin = user.role === 'admin';
+        const hasNeverBeenSentCode = !user.emailVerificationCode;
+        if (isAdmin || hasNeverBeenSentCode) {
+          // Auto-verify legacy accounts and admin accounts silently
+          const dbConn = await db.getDb();
+          if (dbConn) {
+            const { eq } = await import("drizzle-orm");
+            const { users } = await import("../drizzle/schema");
+            await dbConn.update(users).set({ emailVerified: true }).where(eq(users.id, user.id));
+          }
+        } else {
+          // Newly registered account with a pending verification code — require verification
+          const code = String(Math.floor(100000 + Math.random() * 900000));
+          const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
+          await db.setEmailVerificationCode(user.id, code, expiresAt);
+          if (user.email) {
+            emailService.sendEmailVerificationCode({
+              to: user.email,
+              name: user.name ?? "there",
+              code,
+            }).catch(err => console.error("[Email] Verification email failed:", err));
+          }
+          res.status(403).json({ error: "Email not verified. A new verification code has been sent to your email.", requiresVerification: true, userId: user.id, email: user.email });
+          return;
         }
-        res.status(403).json({ error: "Email not verified. A new verification code has been sent to your email.", requiresVerification: true, userId: user.id, email: user.email });
-        return;
       }
       await db.upsertUser({ openId: user.openId, lastSignedIn: new Date() });
       const sessionToken = await createLocalSessionToken(user);
