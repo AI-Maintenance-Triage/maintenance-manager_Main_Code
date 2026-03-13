@@ -55,7 +55,7 @@ const PROVIDER_SETUP_INSTRUCTIONS: Record<string, {
     steps: [
       "Log in to your Buildium account and navigate to Settings → Integrations → Webhooks.",
       "Click 'Add Webhook' and paste the Endpoint URL (copied above) into the URL field.",
-      "Select the event types: Maintenance Request Created and Maintenance Request Updated.",
+      "Select the event types: Task.Created and Task.Updated (found under the Tasks section).",
       "Click Save. Buildium will display a Signing Secret — copy it.",
       "Paste Buildium's signing secret into the field below and click 'Save Secret'.",
     ],
@@ -764,7 +764,7 @@ export default function CompanyIntegrations() {
                         <Label className="text-sm font-semibold">Configure the webhook in Buildium</Label>
                       </div>
                       <p className="text-xs text-muted-foreground ml-7">
-                        In Buildium, go to <strong>Settings → Integrations → Webhooks</strong>, click <strong>Add Webhook</strong>, paste the URL above, select <em>Maintenance Request Created</em> and <em>Maintenance Request Updated</em> events, then click Save. Buildium will display a <strong>Signing Secret</strong>.
+                        In Buildium, go to <strong>Settings → Integrations → Webhooks</strong>, click <strong>Add Webhook</strong>, paste the URL above, then under the <strong>Tasks</strong> section select <em>Task.Created</em> and <em>Task.Updated</em> events, then click Save. Buildium will display a <strong>Signing Secret</strong>.
                       </p>
                     </div>
 
