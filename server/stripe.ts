@@ -5,8 +5,24 @@ import { platformSettings, companies, contractorProfiles } from "../drizzle/sche
 import { eq } from "drizzle-orm";
 
 // ─── Stripe client ─────────────────────────────────────────────────────────
-export const stripe = new Stripe(ENV.stripeSecretKey, {
-  apiVersion: "2026-02-25.clover",
+// Lazy-initialize Stripe to avoid crashing at startup if key is missing
+let _stripe: Stripe | null = null;
+export function getStripe(): Stripe {
+  if (!_stripe) {
+    if (!ENV.stripeSecretKey) {
+      throw new Error("STRIPE_SECRET_KEY is not configured");
+    }
+    _stripe = new Stripe(ENV.stripeSecretKey, {
+      apiVersion: "2026-02-25.clover",
+    });
+  }
+  return _stripe;
+}
+// Backward-compatible alias — resolves lazily on first access
+export const stripe = new Proxy({} as Stripe, {
+  get(_target, prop) {
+    return (getStripe() as any)[prop];
+  },
 });
 
 // ─── Platform Settings helpers ─────────────────────────────────────────────
