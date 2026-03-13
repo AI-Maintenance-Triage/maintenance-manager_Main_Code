@@ -6,7 +6,6 @@ import { Wrench, ArrowRight, Loader2, Eye, EyeOff, Mail, Lock } from "lucide-rea
 import { useState } from "react";
 import { useLocation } from "wouter";
 import { toast } from "sonner";
-import { getLoginUrl } from "@/const";
 
 export default function SignIn() {
   const [, setLocation] = useLocation();
@@ -147,29 +146,6 @@ export default function SignIn() {
                 )}
               </Button>
             </form>
-
-            {/* Divider */}
-            <div className="relative my-6">
-              <div className="absolute inset-0 flex items-center">
-                <span className="w-full border-t border-border" />
-              </div>
-              <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-card px-2 text-muted-foreground">Or</span>
-              </div>
-            </div>
-
-            {/* Manus OAuth - for admin access */}
-            <Button
-              variant="outline"
-              className="w-full gap-2 h-11 border-border text-foreground hover:bg-accent"
-              onClick={() => { window.location.href = getLoginUrl(); }}
-            >
-              <Wrench className="h-4 w-4 text-primary" />
-              Sign in with Manus (Admin)
-            </Button>
-            <p className="text-xs text-muted-foreground text-center mt-2">
-              For platform administrators only
-            </p>
 
             <div className="mt-4 text-center text-sm text-muted-foreground">
               Don't have an account?{" "}

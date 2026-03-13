@@ -13,7 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Separator } from "@/components/ui/separator";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
-import { Building2, HardHat, ClipboardList, DollarSign, Plus, Wrench, Pencil, Trash2, MapPin, Loader2, Settings, Clock, CreditCard, Check, X, RefreshCw } from "lucide-react";
+import { Building2, HardHat, ClipboardList, DollarSign, Plus, Wrench, Pencil, Trash2, MapPin, Loader2, Settings, Clock, CreditCard, Check, X, RefreshCw, KeyRound, Eye, EyeOff } from "lucide-react";
 
 const TRADE_OPTIONS = [
   "General Handyman", "Plumbing", "Electrical", "HVAC",
@@ -184,6 +184,21 @@ export default function PlatformDashboard() {
     onError: (err) => toast.error(err.message),
   });
 
+  // ─── Set Admin Password ─────────────────────────────────────────────
+  const [adminPwOpen, setAdminPwOpen] = useState(false);
+  const [adminNewPw, setAdminNewPw] = useState("");
+  const [adminConfirmPw, setAdminConfirmPw] = useState("");
+  const [showAdminPw, setShowAdminPw] = useState(false);
+  const setAdminPassword = trpc.auth.setAdminPassword.useMutation({
+    onSuccess: () => {
+      toast.success("Admin password set! You can now log in at /admin/login");
+      setAdminPwOpen(false);
+      setAdminNewPw("");
+      setAdminConfirmPw("");
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
   const bulkReGeocode = trpc.admin.bulkReGeocode.useMutation({
     onSuccess: (result) => {
       toast.success(
@@ -274,6 +289,76 @@ export default function PlatformDashboard() {
           <p className="text-muted-foreground mt-1">Overview of the entire platform</p>
         </div>
         <div className="flex gap-2">
+          {/* Set Admin Password Dialog */}
+          <Dialog open={adminPwOpen} onOpenChange={setAdminPwOpen}>
+            <DialogTrigger asChild>
+              <Button variant="outline" size="sm" className="gap-2 border-amber-500/30 text-amber-400 hover:bg-amber-500/10">
+                <KeyRound className="h-4 w-4" /> Set Admin Password
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="bg-card border-border sm:max-w-sm">
+              <DialogHeader>
+                <DialogTitle className="text-card-foreground flex items-center gap-2">
+                  <KeyRound className="h-5 w-5 text-amber-400" /> Set Admin Login Password
+                </DialogTitle>
+              </DialogHeader>
+              <p className="text-sm text-muted-foreground">
+                Set a password for your admin account so you can log in at{" "}
+                <span className="font-mono text-primary">/admin/login</span>{" "}
+                without needing Manus OAuth.
+              </p>
+              <div className="space-y-4 pt-2">
+                <div className="space-y-2">
+                  <Label>New Password (min 8 characters)</Label>
+                  <div className="relative">
+                    <Input
+                      type={showAdminPw ? "text" : "password"}
+                      value={adminNewPw}
+                      onChange={e => setAdminNewPw(e.target.value)}
+                      placeholder="Enter new password"
+                      className="pr-10"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowAdminPw(!showAdminPw)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    >
+                      {showAdminPw ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label>Confirm Password</Label>
+                  <Input
+                    type={showAdminPw ? "text" : "password"}
+                    value={adminConfirmPw}
+                    onChange={e => setAdminConfirmPw(e.target.value)}
+                    placeholder="Confirm new password"
+                  />
+                </div>
+                <Button
+                  className="w-full"
+                  disabled={
+                    !adminNewPw ||
+                    adminNewPw.length < 8 ||
+                    adminNewPw !== adminConfirmPw ||
+                    setAdminPassword.isPending
+                  }
+                  onClick={() => setAdminPassword.mutate({ newPassword: adminNewPw })}
+                >
+                  {setAdminPassword.isPending ? (
+                    <><Loader2 className="h-4 w-4 animate-spin" /> Setting...</>
+                  ) : (
+                    <><KeyRound className="h-4 w-4" /> Set Password</>
+                  )}
+                </Button>
+                {adminNewPw && adminConfirmPw && adminNewPw !== adminConfirmPw && (
+                  <p className="text-xs text-destructive">Passwords do not match</p>
+                )}
+              </div>
+            </DialogContent>
+          </Dialog>
+
           {/* Bulk Re-Geocode Button */}
           <Button
             variant="outline"

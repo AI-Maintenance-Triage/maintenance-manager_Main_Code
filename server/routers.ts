@@ -3709,6 +3709,22 @@ export const appRouter = router({
         await db.markPasswordResetTokenUsed(record.id);
         return { success: true };
       }),
+    // ─── Set Admin Password ────────────────────────────────────────────────────
+    // Allows the platform admin to set their own password so they can log in
+    // via /admin/login without needing Manus OAuth.
+    setAdminPassword: protectedProcedure
+      .input(z.object({
+        newPassword: z.string().min(8, 'Password must be at least 8 characters'),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        if (ctx.user.role !== 'admin') {
+          throw new TRPCError({ code: 'FORBIDDEN', message: 'Only platform administrators can use this endpoint.' });
+        }
+        const bcrypt = await import('bcryptjs');
+        const passwordHash = await bcrypt.hash(input.newPassword, 12);
+        await db.updateUserPassword(ctx.user.id, passwordHash);
+        return { success: true };
+      }),
   }),
   company: companyRouter,
   settings: settingsRouter,
