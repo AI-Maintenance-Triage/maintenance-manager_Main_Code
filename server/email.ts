@@ -1,14 +1,14 @@
 import { Resend } from "resend";
 import { ENV } from "./_core/env";
 
-// ─── Resend client (lazy-init so missing key doesn't crash on import) ──────
+// --- Resend client (lazy-init so missing key doesn't crash on import) ------
 let _resend: Resend | null = null;
 function getResend() {
   if (!_resend) _resend = new Resend(ENV.resendApiKey);
   return _resend;
 }
 
-// ─── Shared layout ────────────────────────────────────────────────────────
+// --- Shared layout --------------------------------------------------------
 function layout(title: string, body: string): string {
   return `<!DOCTYPE html>
 <html lang="en">
@@ -42,7 +42,7 @@ function layout(title: string, body: string): string {
   <div class="wrapper">
     <div class="card">
       <div class="logo">
-        <div class="logo-icon">🔧</div>
+        <div class="logo-icon"></div>
         <span class="logo-text">Maintenance Manager</span>
       </div>
       ${body}
@@ -56,14 +56,14 @@ function layout(title: string, body: string): string {
 </html>`;
 }
 
-// ─── Core send helper ─────────────────────────────────────────────────────
+// --- Core send helper -----------------------------------------------------
 export async function sendEmail(opts: {
   to: string;
   subject: string;
   html: string;
 }): Promise<boolean> {
   if (!ENV.resendApiKey) {
-    console.warn("[Email] RESEND_API_KEY not set — skipping email to", opts.to);
+    console.warn("[Email] RESEND_API_KEY not set -- skipping email to", opts.to);
     return false;
   }
   try {
@@ -76,7 +76,7 @@ export async function sendEmail(opts: {
     if (error) {
       console.error("[Email] Send error:", JSON.stringify(error));
       if ((error as any).statusCode === 403 || (error as any).name === 'validation_error') {
-        console.error("[Email] DOMAIN NOT VERIFIED — To send to external recipients, verify a domain at resend.com/domains and update EMAIL_FROM in Settings &rarr; Secrets.");
+        console.error("[Email] DOMAIN NOT VERIFIED -- To send to external recipients, verify a domain at resend.com/domains and update EMAIL_FROM in Settings &rarr; Secrets.");
       }
       return false;
     }
@@ -88,11 +88,11 @@ export async function sendEmail(opts: {
   }
 }
 
-// ─── Welcome email ────────────────────────────────────────────────────────
+// --- Welcome email --------------------------------------------------------
 export async function sendWelcomeEmail(opts: { to: string; name: string; role: string }) {
   const roleLabel = opts.role === "contractor" ? "Contractor" : "Company Admin";
   const html = layout("Welcome to Maintenance Manager", `
-    <h1>Welcome, ${opts.name}! 👋</h1>
+    <h1>Welcome, ${opts.name}! </h1>
     <p>Your <strong>${roleLabel}</strong> account is ready. Here's what you can do next:</p>
     ${opts.role === "contractor" ? `
       <ul style="color:#a3a3a3;font-size:15px;line-height:2;">
@@ -112,7 +112,7 @@ export async function sendWelcomeEmail(opts: { to: string; name: string; role: s
   return sendEmail({ to: opts.to, subject: "Welcome to Maintenance Manager", html });
 }
 
-// ─── Password reset email ─────────────────────────────────────────────────
+// --- Password reset email -------------------------------------------------
 export async function sendPasswordResetEmail(opts: { to: string; name: string; resetUrl: string }) {
   const html = layout("Reset your password", `
     <h1>Reset your password</h1>
@@ -125,7 +125,7 @@ export async function sendPasswordResetEmail(opts: { to: string; name: string; r
   return sendEmail({ to: opts.to, subject: "Reset your Maintenance Manager password", html });
 }
 
-// ─── Job assigned to contractor ───────────────────────────────────────────
+// --- Job assigned to contractor -------------------------------------------
 export async function sendJobAssignedEmail(opts: {
   to: string;
   contractorName: string;
@@ -148,7 +148,7 @@ export async function sendJobAssignedEmail(opts: {
   return sendEmail({ to: opts.to, subject: `New Job: ${opts.jobTitle}`, html });
 }
 
-// ─── Job submitted for verification ──────────────────────────────────────
+// --- Job submitted for verification --------------------------------------
 export async function sendJobSubmittedEmail(opts: {
   to: string;
   companyAdminName: string;
@@ -170,7 +170,7 @@ export async function sendJobSubmittedEmail(opts: {
   return sendEmail({ to: opts.to, subject: `Job Submitted for Review: ${opts.jobTitle}`, html });
 }
 
-// ─── Job verified and paid ────────────────────────────────────────────────
+// --- Job verified and paid ------------------------------------------------
 export async function sendJobPaidEmail(opts: {
   to: string;
   contractorName: string;
@@ -179,7 +179,7 @@ export async function sendJobPaidEmail(opts: {
   appUrl: string;
 }) {
   const html = layout("Payment Confirmed", `
-    <h1>Your payment is on the way 💰</h1>
+    <h1>Your payment is on the way </h1>
     <p>Hi ${opts.contractorName}, your job has been verified and payment has been processed.</p>
     <div style="margin:20px 0;">
       <div class="detail-row"><span class="detail-label">Job</span><span class="detail-value">${opts.jobTitle}</span></div>
@@ -190,7 +190,7 @@ export async function sendJobPaidEmail(opts: {
   return sendEmail({ to: opts.to, subject: `Payment Confirmed: ${opts.jobTitle}`, html });
 }
 
-// ─── New comment on a job ─────────────────────────────────────────────────
+// --- New comment on a job -------------------------------------------------
 export async function sendNewCommentEmail(opts: {
   to: string;
   recipientName: string;
@@ -213,7 +213,7 @@ export async function sendNewCommentEmail(opts: {
   return sendEmail({ to: opts.to, subject: `New comment on: ${opts.jobTitle}`, html });
 }
 
-// ─── Job disputed ─────────────────────────────────────────────────────────
+// --- Job disputed ---------------------------------------------------------
 export async function sendJobDisputedEmail(opts: {
   to: string;
   contractorName: string;
@@ -233,7 +233,7 @@ export async function sendJobDisputedEmail(opts: {
   return sendEmail({ to: opts.to, subject: `Job Disputed: ${opts.jobTitle}`, html });
 }
 
-// ─── Dispute resubmitted (notify company) ────────────────────────────────
+// --- Dispute resubmitted (notify company) --------------------------------
 export async function sendDisputeResubmittedEmail(opts: {
   to: string;
   companyAdminName: string;
@@ -252,7 +252,7 @@ export async function sendDisputeResubmittedEmail(opts: {
   `);
   return sendEmail({ to: opts.to, subject: `Dispute Response: ${opts.jobTitle}`, html });
 }
-// ─── Trial expiry warning (3 days before) ─────────────────────────────────
+// --- Trial expiry warning (3 days before) ---------------------------------
 export async function sendTrialExpiryWarningEmail(opts: {
   to: string;
   name: string;
@@ -263,7 +263,7 @@ export async function sendTrialExpiryWarningEmail(opts: {
   const html = layout("Your trial is ending soon", `
     <h1>Your trial ends in ${opts.daysRemaining} day${opts.daysRemaining !== 1 ? "s" : ""}</h1>
     <p>Hi ${opts.name}, your <strong>${opts.planName}</strong> trial on Maintenance Manager will expire in <strong>${opts.daysRemaining} day${opts.daysRemaining !== 1 ? "s" : ""}</strong>.</p>
-    <p>To keep uninterrupted access to all your plan features — including GPS time tracking, AI job classification, expense reports, and more — subscribe before your trial ends.</p>
+    <p>To keep uninterrupted access to all your plan features -- including GPS time tracking, AI job classification, expense reports, and more -- subscribe before your trial ends.</p>
     <a href="${opts.billingUrl}" class="btn">Subscribe Now</a>
     <hr class="divider" />
     <p style="font-size:13px;color:#737373;">After your trial expires, feature access will be restricted until a subscription is active. Your data is always safe and will remain intact.</p>
@@ -271,7 +271,7 @@ export async function sendTrialExpiryWarningEmail(opts: {
   return sendEmail({ to: opts.to, subject: `Your ${opts.planName} trial ends in ${opts.daysRemaining} day${opts.daysRemaining !== 1 ? "s" : ""}`, html });
 }
 
-// ─── Trial expired ────────────────────────────────────────────────────────
+// --- Trial expired --------------------------------------------------------
 export async function sendTrialExpiredEmail(opts: {
   to: string;
   name: string;
@@ -286,10 +286,10 @@ export async function sendTrialExpiredEmail(opts: {
     <hr class="divider" />
     <p style="font-size:13px;color:#737373;">Your account data is safe. Subscribing will immediately restore all features.</p>
   `);
-  return sendEmail({ to: opts.to, subject: `Your ${opts.planName} trial has expired — reactivate now`, html });
+  return sendEmail({ to: opts.to, subject: `Your ${opts.planName} trial has expired -- reactivate now`, html });
 }
 
-// ─── Contractor Invite ────────────────────────────────────────────────────
+// --- Contractor Invite ----------------------------------------------------
 export async function sendContractorInviteEmail(opts: {
   to: string;
   name: string;
@@ -300,7 +300,7 @@ export async function sendContractorInviteEmail(opts: {
   const html = layout("You've been invited to join Maintenance Manager", `
     <h1>You're invited!</h1>
     <p>Hi ${opts.name || "there"},</p>
-    <p><strong>${opts.companyName}</strong> has invited you to join their contractor network on <strong>Maintenance Manager</strong> — the AI-powered platform for property maintenance.</p>
+    <p><strong>${opts.companyName}</strong> has invited you to join their contractor network on <strong>Maintenance Manager</strong> -- the AI-powered platform for property maintenance.</p>
     <p>As a connected contractor you'll be able to:</p>
     <ul style="margin:12px 0 16px 0;padding-left:20px;color:#a3a3a3;">
       <li>Receive and accept maintenance jobs from ${opts.companyName}</li>
@@ -319,7 +319,7 @@ export async function sendContractorInviteEmail(opts: {
   });
 }
 
-// ─── New Job Posted Notification ─────────────────────────────────────────
+// --- New Job Posted Notification -----------------------------------------
 export async function sendNewJobPostedEmail(opts: {
   to: string;
   contractorName: string;
@@ -331,12 +331,12 @@ export async function sendNewJobPostedEmail(opts: {
   jobBoardUrl: string;
 }) {
   const urgencyLabel =
-    opts.urgency === "emergency" ? "🚨 EMERGENCY" :
-    opts.urgency === "high" ? "⚡ HIGH PRIORITY" : "📋 Standard";
+    opts.urgency === "emergency" ? " EMERGENCY" :
+    opts.urgency === "high" ? " HIGH PRIORITY" : " Standard";
 
-  const html = layout("New Job Available — Act Fast!", `
+  const html = layout("New Job Available -- Act Fast!", `
     <h1 style="font-size:22px;margin:0 0 8px 0;">New Job Available Near You</h1>
-    <p style="color:#a3a3a3;margin:0 0 24px 0;">A new maintenance job has been posted in your service area. Jobs are claimed first-come, first-served — act quickly!</p>
+    <p style="color:#a3a3a3;margin:0 0 24px 0;">A new maintenance job has been posted in your service area. Jobs are claimed first-come, first-served -- act quickly!</p>
 
     <div style="background:#1c1c1c;border:1px solid #2a2a2a;border-radius:10px;padding:20px;margin:0 0 24px 0;">
       <p style="font-size:18px;font-weight:700;color:#ffffff;margin:0 0 12px 0;">${opts.jobTitle}</p>
@@ -361,7 +361,7 @@ export async function sendNewJobPostedEmail(opts: {
     </div>
 
     <div style="background:#0f2a1a;border:1px solid #166534;border-radius:8px;padding:14px 18px;margin:0 0 24px 0;">
-      <p style="margin:0;color:#86efac;font-size:13px;font-weight:600;">⏱ First come, first served — the first contractor to accept gets the job.</p>
+      <p style="margin:0;color:#86efac;font-size:13px;font-weight:600;"> First come, first served -- the first contractor to accept gets the job.</p>
     </div>
 
     <a href="${opts.jobBoardUrl}" class="btn" style="font-size:16px;padding:14px 32px;">View &amp; Accept Job Now &rarr;</a>
@@ -372,12 +372,12 @@ export async function sendNewJobPostedEmail(opts: {
 
   return sendEmail({
     to: opts.to,
-    subject: `🔔 New Job Near You: ${opts.jobTitle} — Accept Before Someone Else Does`,
+    subject: ` New Job Near You: ${opts.jobTitle} -- Accept Before Someone Else Does`,
     html,
   });
 }
 
-// ─── Job Escalation Email ─────────────────────────────────────────────────────
+// --- Job Escalation Email -----------------------------------------------------
 export async function sendJobEscalationEmail(params: {
   to: string;
   companyName: string;
@@ -393,7 +393,7 @@ export async function sendJobEscalationEmail(params: {
 
   return sendEmail({
     to: params.to,
-    subject: `⚠️ Job Not Yet Accepted: ${params.jobTitle}`,
+    subject: ` Job Not Yet Accepted: ${params.jobTitle}`,
     html: `
       <div style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:24px">
         <h2 style="color:#f59e0b;margin-bottom:8px">Job Escalation Alert</h2>
@@ -420,7 +420,7 @@ export async function sendJobEscalationEmail(params: {
   });
 }
 
-// ─── Trusted Contractor Notification ─────────────────────────────────────
+// --- Trusted Contractor Notification -------------------------------------
 export async function sendTrustedContractorEmail(opts: {
   to: string;
   contractorName: string;
@@ -428,7 +428,7 @@ export async function sendTrustedContractorEmail(opts: {
   appUrl: string;
 }) {
   const html = layout("You've been marked as a Trusted Contractor", `
-    <h1>You're now a Trusted Contractor! 🌟</h1>
+    <h1>You're now a Trusted Contractor! </h1>
     <p>Hi ${opts.contractorName},</p>
     <p><strong>${opts.companyName}</strong> has marked you as a <strong>Trusted Contractor</strong> on Maintenance Manager.</p>
     <div style="background:#0f2a1a;border:1px solid #166534;border-radius:10px;padding:20px;margin:20px 0;">
@@ -439,19 +439,19 @@ export async function sendTrustedContractorEmail(opts: {
         <li>Priority consideration for future assignments</li>
       </ul>
     </div>
-    <p>Log in now to check the Private Jobs tab on your job board — new opportunities may already be waiting for you.</p>
+    <p>Log in now to check the Private Jobs tab on your job board -- new opportunities may already be waiting for you.</p>
     <a href="${opts.appUrl}/contractor/jobs" class="btn">View Private Job Board &rarr;</a>
     <hr class="divider" />
     <p style="font-size:13px;color:#737373;">You received this email because your contractor account on Maintenance Manager was marked as trusted by ${opts.companyName}.</p>
   `);
   return sendEmail({
     to: opts.to,
-    subject: `🌟 You're now a Trusted Contractor with ${opts.companyName}`,
+    subject: ` You're now a Trusted Contractor with ${opts.companyName}`,
     html,
   });
 }
 
-// ─── Job Re-opened Notification ───────────────────────────────────────────────
+// --- Job Re-opened Notification -----------------------------------------------
 export async function sendJobReopenedEmail(opts: {
   to: string;
   contractorName: string;
@@ -459,14 +459,14 @@ export async function sendJobReopenedEmail(opts: {
   companyName: string;
   appUrl: string;
 }) {
-  const html = layout("Job Re-opened — Returned to Board", `
+  const html = layout("Job Re-opened -- Returned to Board", `
     <h1>Job Returned to the Board</h1>
     <p>Hi ${opts.contractorName},</p>
     <p><strong>${opts.companyName}</strong> has re-opened the following job and returned it to the job board:</p>
     <div style="background:#1c1c1c;border:1px solid #2a2a2a;border-radius:10px;padding:18px;margin:16px 0;">
       <p style="font-size:17px;font-weight:700;color:#ffffff;margin:0;">${opts.jobTitle}</p>
     </div>
-    <p style="color:#a3a3a3;">This job is no longer assigned to you. If you're still interested, you can re-accept it from the job board — but act quickly as other contractors can now claim it.</p>
+    <p style="color:#a3a3a3;">This job is no longer assigned to you. If you're still interested, you can re-accept it from the job board -- but act quickly as other contractors can now claim it.</p>
     <a href="${opts.appUrl}/contractor/jobs" class="btn">View Job Board &rarr;</a>
     <hr class="divider" />
     <p style="font-size:13px;color:#737373;">You received this email because you were previously assigned to this job on Maintenance Manager.</p>
@@ -478,7 +478,7 @@ export async function sendJobReopenedEmail(opts: {
   });
 }
 
-// ─── Admin-Created Account Welcome ───────────────────────────────────────────
+// --- Admin-Created Account Welcome -------------------------------------------
 export async function sendAdminCreatedAccountEmail(opts: {
   to: string;
   name: string;
@@ -488,7 +488,7 @@ export async function sendAdminCreatedAccountEmail(opts: {
 }) {
   const roleLabel = opts.role === "contractor" ? "Contractor" : "Company Admin";
   const html = layout("Your Maintenance Manager account is ready", `
-    <h1>Welcome, ${opts.name}! 👋</h1>
+    <h1>Welcome, ${opts.name}! </h1>
     <p>An administrator has created a <strong>${roleLabel}</strong> account for you on Maintenance Manager.</p>
     <p>Here are your login credentials:</p>
     <div style="background:#1c1c1c;border:1px solid #2a2a2a;border-radius:10px;padding:18px;margin:16px 0;">
@@ -509,4 +509,16 @@ export async function sendAdminCreatedAccountEmail(opts: {
   });
 }
 
-
+// --- Email Verification Code Email ----------------------------------------
+export async function sendEmailVerificationCode(opts: { to: string; name: string; code: string }) {
+  const html = layout("Verify your email", `
+    <h1>Verify your email address</h1>
+    <p>Hi ${opts.name}, use the code below to verify your email address. It expires in 15 minutes.</p>
+    <div style="background:#1c1c1c;border:1px solid #2a2a2a;border-radius:10px;padding:24px;margin:16px 0;text-align:center;">
+      <p style="margin:0 0 8px;color:#a3a3a3;font-size:13px;text-transform:uppercase;letter-spacing:1px;">Your verification code</p>
+      <p style="margin:0;font-size:36px;font-weight:700;color:#22c55e;letter-spacing:8px;">${opts.code}</p>
+    </div>
+    <p style="color:#a3a3a3;font-size:14px;">If you did not create an account, you can safely ignore this email.</p>
+  `);
+  return sendEmail({ to: opts.to, subject: "Your verification code - Maintenance Manager", html });
+}

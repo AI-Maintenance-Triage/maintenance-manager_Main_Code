@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Building2, Calendar, Settings, Percent, Receipt, X, AlertCircle, Plus } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
+import AddressAutocomplete, { type AddressResult } from "@/components/AddressAutocomplete";
 
 interface FeeOverrideDialogProps {
   company: any;
@@ -229,6 +230,10 @@ function CreateCompanyDialog({ open, onOpenChange, onCreated }: { open: boolean;
     onError: (err: any) => toast.error(err.message),
   });
 
+  const handleAddressSelect = (result: AddressResult) => {
+    setAddress(result.formattedAddress);
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     create.mutate({ companyName, adminName, email: emailVal, password, phone: phone || undefined, address: address || undefined, sendWelcomeEmail: sendWelcome });
@@ -257,15 +262,18 @@ function CreateCompanyDialog({ open, onOpenChange, onCreated }: { open: boolean;
             <Label>Password * (min 8 characters)</Label>
             <Input type="password" placeholder="Temporary password" value={password} onChange={e => setPassword(e.target.value)} minLength={8} required />
           </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <Label>Phone</Label>
-              <Input placeholder="(555) 000-0000" value={phone} onChange={e => setPhone(e.target.value)} />
-            </div>
-            <div className="space-y-1.5">
-              <Label>Address</Label>
-              <Input placeholder="123 Main St" value={address} onChange={e => setAddress(e.target.value)} />
-            </div>
+          <div className="space-y-1.5">
+            <Label>Phone</Label>
+            <Input placeholder="(555) 000-0000" value={phone} onChange={e => setPhone(e.target.value)} />
+          </div>
+          <div className="space-y-1.5">
+            <Label>Office Address</Label>
+            <AddressAutocomplete
+              value={address}
+              onChange={setAddress}
+              onSelect={handleAddressSelect}
+              placeholder="Start typing the company address..."
+            />
           </div>
           <div className="flex items-center justify-between rounded-lg border border-border p-3">
             <div>

@@ -3823,3 +3823,36 @@ export async function upsertPropertyUnit(data: InsertPropertyUnit) {
   const result = await db.insert(propertyUnits).values(data);
   return result[0].insertId;
 }
+
+// --- Email Verification Helpers -------------------------------------------
+export async function setEmailVerificationCode(userId: number, code: string, expiresAt: Date) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  await db.update(users).set({
+    emailVerificationCode: code,
+    emailVerificationExpiry: expiresAt,
+    emailVerified: false,
+  }).where(eq(users.id, userId));
+}
+
+export async function verifyEmailCode(userId: number, code: string): Promise<"ok" | "expired" | "invalid"> {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  const result = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+  const user = result[0];
+  if (!user) return "invalid";
+  if (user.emailVerificationCode !== code) return "invalid";
+  if (!user.emailVerificationExpiry || user.emailVerificationExpiry < new Date()) return "expired";
+  await db.update(users).set({
+    emailVerified: true,
+    emailVerificationCode: null,
+    emailVerificationExpiry: null,
+  }).where(eq(users.id, userId));
+  return "ok";
+}
+
+export async function markEmailVerified(userId: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(users).set({ emailVerified: true, emailVerificationCode: null, emailVerificationExpiry: null }).where(eq(users.id, userId));
+}

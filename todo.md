@@ -1591,13 +1591,19 @@
 - [x] AdminContractors page (/admin/contractors) created with full list view and Create Contractor dialog
 - [x] Contractors nav item added to admin sidebar under Platform Admin section
 
+## Google Maps Address Autocomplete Audit & Fix
+- [x] Audit all forms/dialogs that require address input and confirm Google Maps autocomplete is wired
+- [x] Add Google Maps address autocomplete to Create Company admin dialog (AdminCompanies.tsx)
+- [x] Add business address field + Google Maps autocomplete to Create Contractor admin dialog (AdminContractors.tsx)
+- [x] Verify autocomplete works on company self-registration, contractor self-registration, and property add/edit forms
+
 ## Email Verification on Self-Registration
-- [ ] Add email_verification_code, email_verification_expires_at, and email_verified columns to users table
-- [ ] On company self-registration: after form submission, generate a random 6-digit code, store it, and send it via Resend to the provided email address
-- [ ] On contractor self-registration: same 6-digit code flow via Resend
-- [ ] Show an on-site code entry screen after registration form submission; block account creation until code is confirmed
-- [ ] Codes expire after 15 minutes; add "Resend code" button
-- [ ] Skip email verification entirely when admin creates a company or contractor account from the admin dashboard
+- [x] Add email_verification_code, email_verification_expires_at, and email_verified columns to users table
+- [x] On company self-registration: after form submission, generate a random 6-digit code, store it, and send it via Resend to the provided email address
+- [x] On contractor self-registration: same 6-digit code flow via Resend
+- [x] Show an on-site code entry screen after registration form submission; block account creation until code is confirmed
+- [x] Codes expire after 15 minutes; add "Resend code" button
+- [x] Skip email verification entirely when admin creates a company or contractor account from the admin dashboard
 
 ## Company Team / Multi-User Access
 - [ ] Schema: add company_users join table (company_id, user_id, role, invited_by, accepted_at)

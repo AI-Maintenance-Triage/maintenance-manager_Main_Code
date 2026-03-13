@@ -1,0 +1,1 @@
+ALTER TABLE `contractor_profiles` ADD `address` text;

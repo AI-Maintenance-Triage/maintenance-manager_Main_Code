@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { HardHat, Calendar, Plus, Star, MapPin } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
+import AddressAutocomplete, { type AddressResult } from "@/components/AddressAutocomplete";
 
 const TRADE_OPTIONS = [
   "General Handyman", "Plumbing", "Electrical", "HVAC",
@@ -27,7 +28,12 @@ function CreateContractorDialog({ open, onOpenChange, onCreated }: { open: boole
   const [licenseNumber, setLicenseNumber] = useState("");
   const [selectedTrades, setSelectedTrades] = useState<string[]>([]);
   const [serviceZips, setServiceZips] = useState("");
+  const [address, setAddress] = useState("");
   const [sendWelcome, setSendWelcome] = useState(true);
+
+  const handleAddressSelect = (result: AddressResult) => {
+    setAddress(result.formattedAddress);
+  };
 
   const toggleTrade = (trade: string) => {
     setSelectedTrades(prev =>
@@ -38,7 +44,7 @@ function CreateContractorDialog({ open, onOpenChange, onCreated }: { open: boole
   const create = trpc.adminViewAs.adminCreateContractor.useMutation({
     onSuccess: () => {
       toast.success("Contractor account created successfully!");
-      setName(""); setEmailVal(""); setPassword(""); setBusinessName(""); setPhone(""); setLicenseNumber(""); setSelectedTrades([]); setServiceZips("");
+      setName(""); setEmailVal(""); setPassword(""); setBusinessName(""); setPhone(""); setLicenseNumber(""); setSelectedTrades([]); setServiceZips(""); setAddress("");
       onCreated();
       onOpenChange(false);
     },
@@ -55,6 +61,7 @@ function CreateContractorDialog({ open, onOpenChange, onCreated }: { open: boole
       businessName: businessName || undefined,
       phone: phone || undefined,
       licenseNumber: licenseNumber || undefined,
+      address: address || undefined,
       trades: selectedTrades.length > 0 ? selectedTrades : undefined,
       serviceAreaZips: zips.length > 0 ? zips : undefined,
       sendWelcomeEmail: sendWelcome,
@@ -93,6 +100,15 @@ function CreateContractorDialog({ open, onOpenChange, onCreated }: { open: boole
               <Label>License #</Label>
               <Input placeholder="LIC-12345" value={licenseNumber} onChange={e => setLicenseNumber(e.target.value)} />
             </div>
+          </div>
+          <div className="space-y-1.5">
+            <Label>Business Address</Label>
+            <AddressAutocomplete
+              value={address}
+              onChange={setAddress}
+              onSelect={handleAddressSelect}
+              placeholder="Start typing the contractor's address..."
+            />
           </div>
           <div className="space-y-2">
             <Label>Trades / Skills</Label>

@@ -35,6 +35,9 @@ export const users = mysqlTable("users", {
   }>(),
   resetPasswordToken: varchar("resetPasswordToken", { length: 128 }),
   resetPasswordExpiry: timestamp("resetPasswordExpiry"),
+  emailVerificationCode: varchar("emailVerificationCode", { length: 6 }),
+  emailVerificationExpiry: timestamp("emailVerificationExpiry"),
+  emailVerified: boolean("emailVerified").default(false).notNull(),
 });
 
 export type User = typeof users.$inferSelect;
@@ -176,6 +179,7 @@ export const contractorProfiles = mysqlTable("contractor_profiles", {
   serviceRadiusMiles: int("serviceRadiusMiles").default(25),
   latitude: decimal("latitude", { precision: 10, scale: 7 }),
   longitude: decimal("longitude", { precision: 10, scale: 7 }),
+  address: text("address"),
   licenseNumber: varchar("licenseNumber", { length: 128 }),
   insuranceInfo: text("insuranceInfo"),
   stripeAccountId: varchar("stripeAccountId", { length: 128 }),
