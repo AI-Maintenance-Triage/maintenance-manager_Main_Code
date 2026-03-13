@@ -25,8 +25,8 @@ async function createLocalSessionToken(user: { openId: string; name: string | nu
   const expirationSeconds = Math.floor((Date.now() + ONE_YEAR_MS) / 1000);
   return new SignJWT({
     openId: user.openId,
-    appId: ENV.appId,
-    name: user.name || "",
+    appId: ENV.appId || "local", // fallback so verifySession passes non-empty check
+    name: user.name || "User",  // fallback so verifySession passes non-empty check
   })
     .setProtectedHeader({ alg: "HS256", typ: "JWT" })
     .setExpirationTime(expirationSeconds)
