@@ -47,9 +47,9 @@
 - [x] Transaction history and invoices
 
 ## Financial Reporting
-- [ ] Company expense reports and per-property cost analysis
-- [ ] Contractor income dashboard and payment history
-- [ ] 1099-K placeholder for year-end
+- [x] Company expense reports and per-property cost analysis
+- [x] Contractor income dashboard and payment history
+- [x] 1099-K placeholder for year-end
 
 ## Integration Framework
 - [x] Pluggable connector architecture
@@ -231,63 +231,63 @@
 - [x] onMouseDown + preventDefault prevents input blur before click fires (key trick for Dialog compatibility)
 
 ## Job Completion Workflow
-- [ ] Schema: add completionNotes, completionPhotos (JSON array of S3 URLs), verificationNotes, disputeNotes to maintenance_requests
-- [ ] Schema: extend status enum to include "pending_verification", "disputed", "completed", "cancelled"
-- [ ] Backend: contractor.markComplete mutation (uploads photos to S3, sets status=pending_verification)
-- [ ] Backend: company.verifyJob mutation (approve → status=completed, reject → status=disputed)
-- [ ] Backend: company.getJobsAwaitingVerification query
-- [ ] Frontend: contractor My Jobs page — Mark Complete button with notes + photo upload
+- [x] Schema: add completionNotes, completionPhotos (JSON array of S3 URLs), verificationNotes, disputeNotes to maintenance_requests
+- [x] Schema: extend status enum to include "pending_verification", "disputed", "completed", "cancelled"
+- [x] Backend: contractor.markComplete mutation (uploads photos to S3, sets status=pending_verification)
+- [x] Backend: company.verifyJob mutation (approve → status=completed, reject → status=disputed)
+- [x] Backend: company.getJobsAwaitingVerification query
+- [x] Frontend: contractor My Jobs page — Mark Complete button with notes + photo upload
 - [x] Frontend: company Jobs page — Pending Verification tab with approve/reject actions
-- [ ] Notify company owner when a job is marked complete (built-in notification)
-- [ ] Notify contractor when a job is verified or disputed
+- [x] Notify company owner when a job is marked complete (built-in notification)
+- [x] Notify contractor when a job is verified or disputed
 
 ## Stripe Connect Payment Split
-- [ ] Add Stripe Connect integration (webdev_add_feature stripe)
-- [ ] Schema: add stripePaymentIntentId, platformFeePercent, payoutAmount to maintenance_requests
-- [ ] Backend: charge company on job verification, split payout to contractor minus platform fee
+- [x] Add Stripe Connect integration (webdev_add_feature stripe)
+- [x] Schema: add stripePaymentIntentId, platformFeePercent, payoutAmount to maintenance_requests
+- [x] Backend: charge company on job verification, split payout to contractor minus platform fee
 - [ ] Frontend: contractor onboarding — connect Stripe account to receive payouts
 - [ ] Frontend: company billing — payment method setup
 
 ## Distance on Job Board Cards
-- [ ] Show "X miles away" on each job card in the contractor job board
-- [ ] Backend: include distance in jobBoard.list response
+- [x] Show "X miles away" on each job card in the contractor job board
+- [x] Backend: include distance in jobBoard.list response
 
 ## Contractor Address Autocomplete
-- [ ] Replace ZIP code field in contractor profile with full address autocomplete
-- [ ] Store full base address + geocode on save
+- [x] Replace ZIP code field in contractor profile with full address autocomplete
+- [x] Store full base address + geocode on save
 
 ## AI Job Categorization
-- [ ] On job creation, call LLM to suggest skill tier and urgency level
-- [ ] Show AI suggestion as pre-filled defaults in the job creation form
-- [ ] Allow company to accept or override the suggestion
+- [x] On job creation, call LLM to suggest skill tier and urgency level
+- [x] Show AI suggestion as pre-filled defaults in the job creation form
+- [x] Allow company to accept or override the suggestion
 
 ## Stripe Connect Payment System (Full)
-- [ ] Schema: add stripeCustomerId to companies, stripeAccountId + stripeOnboardingComplete to contractor_profiles
-- [ ] Schema: add platform_settings table (platformFeePercent, perListingFeeEnabled, perListingFeeAmount, autoClockOutMinutes)
-- [ ] Backend: Stripe Connect Express account creation + onboarding link for contractors
-- [ ] Backend: Stripe Customer + SetupIntent for company card on file
-- [ ] Backend: On job verification — charge company (job cost + platform % fee + per-listing fee if enabled), transfer full job cost to contractor Stripe account
+- [x] Schema: add stripeCustomerId to companies, stripeAccountId + stripeOnboardingComplete to contractor_profiles
+- [x] Schema: add platform_settings table (platformFeePercent, perListingFeeEnabled, perListingFeeAmount, autoClockOutMinutes)
+- [x] Backend: Stripe Connect Express account creation + onboarding link for contractors
+- [x] Backend: Stripe Customer + SetupIntent for company card on file
+- [x] Backend: On job verification — charge company (job cost + platform % fee + per-listing fee if enabled), transfer full job cost to contractor Stripe account
 - [x] Backend: Stripe webhook handler at /api/stripe/webhook
-- [ ] Frontend: Contractor "Connect Bank Account" button in profile settings
-- [ ] Frontend: Company "Payment Setup" section in company settings
-- [ ] Frontend: Payment summary shown at verification step (breakdown: job cost + fees = total)
+- [x] Frontend: Contractor "Connect Bank Account" button in profile settings
+- [x] Frontend: Company "Payment Setup" section in company settings
+- [x] Frontend: Payment summary shown at verification step (breakdown: job cost + fees = total)
 
 ## GPS Clock-In/Out & Live Tracking
-- [ ] Schema: add clockedInAt, clockedOutAt, startLat, startLng, totalHours to time_sessions
-- [ ] Schema: locationPings table (jobId, contractorProfileId, lat, lng, timestamp, accuracy)
-- [ ] Backend: contractor.clockIn mutation (stores GPS start location + timestamp)
-- [ ] Backend: contractor.clockOut mutation (calculates totalHours, marks job in_progress → ready for verification)
-- [ ] Backend: contractor.pingLocation mutation (stores GPS ping every ~30s while clocked in)
-- [ ] Backend: auto-clock-out check — if contractor returns within 200m of start location and autoClockOutMinutes pass without manual clock-out, auto clock out
-- [ ] Frontend: Contractor job page — Clock In / Clock Out button with browser GPS permission request
-- [ ] Frontend: Company live map — shows contractor's current GPS position on Google Map, route status badge (En Route / On Site / Returning)
+- [x] Schema: add clockedInAt, clockedOutAt, startLat, startLng, totalHours to time_sessions
+- [x] Schema: locationPings table (jobId, contractorProfileId, lat, lng, timestamp, accuracy)
+- [x] Backend: contractor.clockIn mutation (stores GPS start location + timestamp)
+- [x] Backend: contractor.clockOut mutation (calculates totalHours, marks job in_progress → ready for verification)
+- [x] Backend: contractor.pingLocation mutation (stores GPS ping every ~30s while clocked in)
+- [x] Backend: auto-clock-out check — if contractor returns within 200m of start location and autoClockOutMinutes pass without manual clock-out, auto clock out
+- [x] Frontend: Contractor job page — Clock In / Clock Out button with browser GPS permission request
+- [x] Frontend: Company live map — shows contractor's current GPS position on Google Map, route status badge (En Route / On Site / Returning)
 
 ## Admin Platform Settings
-- [ ] Platform fee % (default 5%, live-editable from admin dashboard)
-- [ ] Per-listing fee toggle + dollar amount (default off, $0)
-- [ ] Auto-clock-out timeout in minutes (default 15 min, adjustable)
-- [ ] All settings stored in platform_settings table, read on every job verification
-- [ ] Admin dashboard settings panel for all three controls
+- [x] Platform fee % (default 5%, live-editable from admin dashboard)
+- [x] Per-listing fee toggle + dollar amount (default off, $0)
+- [x] Auto-clock-out timeout in minutes (default 15 min, adjustable)
+- [x] All settings stored in platform_settings table, read on every job verification
+- [x] Admin dashboard settings panel for all three controls
 
 ## GPS Live Tracking & Auto Clock-Out (Session 7)
 - [x] Switch GPS tracking from interval pings to continuous watchPosition (mirrors Google Maps live tracking)
@@ -339,19 +339,19 @@
 - [x] Backend respects notification preferences before sending alerts
 
 ## Session 10: Photos, Earnings Dashboard, Dispute Workflow
-- [ ] Schema: add completionPhotos (JSON array of S3 URLs) to maintenance_requests
-- [ ] Schema: add disputeNotes, disputedAt fields to maintenance_requests
-- [ ] Schema: extend status enum to include "disputed"
-- [ ] Backend: jobs.uploadPhoto mutation — accepts file upload, stores in S3, appends URL to completionPhotos
-- [ ] Backend: jobs.getCompletionPhotos query — returns photo URLs for a job
-- [ ] Backend: jobs.dispute mutation — sets status=disputed, stores disputeNotes, notifies contractor
-- [ ] Frontend: contractor clock-out dialog — photo upload UI (before/after, multiple files)
-- [ ] Frontend: company verification card — show completion photos with lightbox viewer
-- [ ] Frontend: company verification card — "Dispute" button with notes dialog
-- [ ] Frontend: contractor My Jobs — show disputed badge and dispute notes on disputed jobs
-- [ ] Frontend: /contractor/earnings page — total earnings, pending payouts, per-job breakdown
-- [ ] Frontend: /contractor/earnings — monthly earnings chart
-- [ ] Frontend: contractor sidebar — Earnings nav item
+- [x] Schema: add completionPhotos (JSON array of S3 URLs) to maintenance_requests
+- [x] Schema: add disputeNotes, disputedAt fields to maintenance_requests
+- [x] Schema: extend status enum to include "disputed"
+- [x] Backend: jobs.uploadPhoto mutation — accepts file upload, stores in S3, appends URL to completionPhotos
+- [x] Backend: jobs.getCompletionPhotos query — returns photo URLs for a job
+- [x] Backend: jobs.dispute mutation — sets status=disputed, stores disputeNotes, notifies contractor
+- [x] Frontend: contractor clock-out dialog — photo upload UI (before/after, multiple files)
+- [x] Frontend: company verification card — show completion photos with lightbox viewer
+- [x] Frontend: company verification card — "Dispute" button with notes dialog
+- [x] Frontend: contractor My Jobs — show disputed badge and dispute notes on disputed jobs
+- [x] Frontend: /contractor/earnings page — total earnings, pending payouts, per-job breakdown
+- [x] Frontend: /contractor/earnings — monthly earnings chart
+- [x] Frontend: contractor sidebar — Earnings nav item
 
 ## Session 10 Bug Fixes
 - [x] Bug: Live Tracking "Live Jobs" tab shows verified/paid jobs that are already completed
@@ -372,12 +372,12 @@
 - [x] Invoice PDF: auth-protected endpoint (company owner or admin only)
 
 ## Session 12: Verification Cost Breakdown Bug Fix
-- [ ] Bug: verification dialog shows $0 labor — fix getJobsPendingVerification to join time sessions and sum totalLaborMinutes
-- [ ] Bug: hourly rate not shown — ensure hourlyRate from job is passed to verification dialog
-- [ ] Fix: cost breakdown shows Labor Time (hours:minutes), Hourly Rate, Parts & Materials, Platform Fee (live %), Total
-- [ ] Fix: platform fee % is live-fetched from platformSettings (admin-adjustable, default 5%)
-- [ ] Fix: if no time session exists, show "No time recorded" with explanation instead of $0
-- [ ] Add: View Route button on verification card (before approving) opens RouteReplayDialog
+- [x] Bug: verification dialog shows $0 labor — fix getJobsPendingVerification to join time sessions and sum totalLaborMinutes
+- [x] Bug: hourly rate not shown — ensure hourlyRate from job is passed to verification dialog
+- [x] Fix: cost breakdown shows Labor Time (hours:minutes), Hourly Rate, Parts & Materials, Platform Fee (live %), Total
+- [x] Fix: platform fee % is live-fetched from platformSettings (admin-adjustable, default 5%)
+- [x] Fix: if no time session exists, show "No time recorded" with explanation instead of $0
+- [x] Add: View Route button on verification card (before approving) opens RouteReplayDialog
 
 ## Session 12: Expense Report, Ratings, Job Comments
 - [x] Company expense report: /company/reports page
@@ -385,8 +385,8 @@
 - [x] Expense report: per-property cost breakdown table
 - [x] Expense report: CSV export button
 - [x] Contractor rating: 1-5 star rating + review text after job paid
-- [ ] Contractor rating: ratings visible on contractor profile and job board cards
-- [ ] Contractor rating: average rating shown in company's contractor list
+- [x] Contractor rating: ratings visible on contractor profile and job board cards
+- [x] Contractor rating: average rating shown in company's contractor list
 - [x] Job comments: back-and-forth message thread on each job card
 - [x] Job comments: visible to both company and contractor
 - [x] Job comments: real-time-style polling (15s refresh while open)
@@ -404,10 +404,10 @@
 - [x] Notifications: Trigger notification to other party when a new comment is posted
 - [x] Notifications: Poll every 30s for new notifications while app is open
 - [x] Ratings: Show star average on contractor cards in company Contractors page
-- [ ] Ratings: Show star average on job board listing cards (contractor view)
-- [ ] Verification dialog: fix $0 labor — join time sessions and sum totalLaborMinutes
-- [ ] Verification dialog: show Labor Time (h:mm), Hourly Rate, Parts, Platform Fee %, Total
-- [ ] Verification dialog: show "No time recorded" if no session exists
+- [x] Ratings: Show star average on job board listing cards (contractor view)
+- [x] Verification dialog: fix $0 labor — join time sessions and sum totalLaborMinutes
+- [x] Verification dialog: show Labor Time (h:mm), Hourly Rate, Parts, Platform Fee %, Total
+- [x] Verification dialog: show "No time recorded" if no session exists
 - [x] Contractor receipt PDF: server-side PDF at /api/receipt/:jobId (contractor auth only)
 - [x] Contractor receipt PDF: titled "Payment Receipt" with same fields as company invoice (job details, labor, parts, platform fee, payout amount, Stripe refs)
 - [x] Contractor receipt PDF: "Receipt" download button on paid/verified job cards in ContractorMyJobs
@@ -509,9 +509,9 @@
 - [x] Company billing page: show "Contact us to upgrade" CTA or upgrade flow
 - [x] Add stripePriceIdMonthly and stripePriceIdAnnual columns to subscription_plans table
 - [x] Admin plan form: add Stripe Price ID fields
-- [ ] Stripe webhook: handle checkout.session.completed to assign plan to company
+- [x] Stripe webhook: handle checkout.session.completed to assign plan to company
 - [ ] Stripe checkout: create session tied to a plan (company can subscribe from billing page)
-- [ ] Handle subscription cancellation/expiry via webhook
+- [x] Handle subscription cancellation/expiry via webhook
 
 ## Fee-Per-Plan Migration (Session N+1 addendum)
 - [x] Add platformFeePercent and perListingFeeEnabled/perListingFeeAmount to subscription_plans features JSON
@@ -729,14 +729,14 @@
 
 ## PMS Inbound Webhook Receiver (Current Session)
 - [x] Backend: POST /api/webhooks/pms/:provider — generic inbound webhook endpoint
-- [ ] Backend: validate webhook secret per provider (stored in integration connector settings)
+- [x] Backend: validate webhook secret per provider (stored in integration connector settings)
 - [ ] Backend: parse payload and create maintenanceRequest + auto-classify with AI
 - [ ] Backend: map provider-specific fields to internal schema (unit, description, priority, tenant name)
-- [ ] Backend: log webhook events to a pms_webhook_events table for audit/debugging
-- [ ] Schema: pms_webhook_events table (id, provider, companyId, rawPayload, status, createdAt)
+- [x] Backend: log webhook events to a pms_webhook_events table for audit/debugging
+- [x] Schema: pms_webhook_events table (id, provider, companyId, rawPayload, status, createdAt)
 - [x] Schema: push migration
 - [x] Frontend: company Settings integrations page — show webhook URL + secret for each connected provider
-- [ ] Frontend: admin platform dashboard — webhook events log viewer (recent events, status, provider)
+- [x] Frontend: admin platform dashboard — webhook events log viewer (recent events, status, provider)
 
 ## Admin Webhook Events UI (Session 18)
 - [x] Backend: db.getPmsWebhookEvents helper (paginated, optional companyId filter)
@@ -895,7 +895,7 @@
 
 ### PMS Self-Service Integration
 - [ ] Schema: pms_integrations table (id, companyId, provider, authType, credentials encrypted, status, lastSyncAt, createdAt)
-- [ ] Schema: pms_webhook_events table (id, companyId, provider, rawPayload, status, errorMessage, createdAt)
+- [x] Schema: pms_webhook_events table (id, companyId, provider, rawPayload, status, errorMessage, createdAt)
 - [x] Schema: push migration
 - [x] Backend: pms.listIntegrations — list company's connected PMS integrations
 - [x] Backend: pms.connect — save API key / OAuth credentials for a provider
@@ -1137,20 +1137,20 @@
 ## Session 34: Admin Impersonation Audit & Fixes
 
 ### Impersonation Audit — Company Side
-- [ ] CompanyJobs.tsx: priority override dropdown visible and functional when admin impersonates company
-- [ ] CompanyJobs.tsx: visibility badge (Public/Private) shows correctly when impersonating
-- [ ] CompanyJobs.tsx: setVisibility toggle works when impersonating
-- [ ] CompanyContractors.tsx: Mark/Remove Trust button works when impersonating
-- [ ] CompanyDashboard.tsx: Trusted Contractors KPI card shows correct count when impersonating
-- [ ] CompanySettings.tsx: defaultJobBoardVisibility setting saves when impersonating
+- [x] CompanyJobs.tsx: priority override dropdown visible and functional when admin impersonates company
+- [x] CompanyJobs.tsx: visibility badge (Public/Private) shows correctly when impersonating
+- [x] CompanyJobs.tsx: setVisibility toggle works when impersonating
+- [x] CompanyContractors.tsx: Mark/Remove Trust button works when impersonating
+- [x] CompanyDashboard.tsx: Trusted Contractors KPI card shows correct count when impersonating
+- [x] CompanySettings.tsx: defaultJobBoardVisibility setting saves when impersonating
 - [ ] All company mutations use getEffectiveCompanyId (not ctx.user.companyId directly)
 
 ### Impersonation Audit — Contractor Side
-- [ ] ContractorJobBoard.tsx: Public Jobs tab loads when impersonating contractor
-- [ ] ContractorJobBoard.tsx: Private Jobs tab loads when impersonating contractor
-- [ ] ContractorMyJobs.tsx: priority badge (with override) shows when impersonating
-- [ ] ContractorEarnings.tsx: earnings data loads when impersonating
-- [ ] ContractorDashboard.tsx: Free Plan / plan widget shows when impersonating
+- [x] ContractorJobBoard.tsx: Public Jobs tab loads when impersonating contractor
+- [x] ContractorJobBoard.tsx: Private Jobs tab loads when impersonating contractor
+- [x] ContractorMyJobs.tsx: priority badge (with override) shows when impersonating
+- [x] ContractorEarnings.tsx: earnings data loads when impersonating
+- [x] ContractorDashboard.tsx: Free Plan / plan widget shows when impersonating
 - [ ] All contractor queries use getEffectiveContractorProfile (not ctx.user directly)
 
 ### Root Cause Investigation
@@ -1330,8 +1330,8 @@
 - [ ] Move priority override and skill tier override to the 3-dots dropdown menu only
 
 ### Route Replay
-- [ ] Fix route replay black screen (likely Google Maps API not initializing inside the modal)
-- [ ] Ensure the map container has a non-zero height before initializing the map
+- [x] Fix route replay black screen (likely Google Maps API not initializing inside the modal)
+- [x] Ensure the map container has a non-zero height before initializing the map
 
 ### Contractor Tracking (Company Side)
 - [ ] Fix contractor tracking page to populate past completed jobs
@@ -1383,12 +1383,12 @@
 - [x] Add proper loading/error/no-pings states as z-index overlays instead of conditional renders
 - [x] Deduplicate Maps script loading with module-level singleton promise
 ## Session 44: Geofence Enforcement, Heatmap, Property Edit
-- [ ] Add property lat/lng + geofenceRadiusFeet + billableTimePolicy to allMyJobs response
-- [ ] Backend clockIn: enforce geofence if billableTimePolicy=on_site_only (reject if outside radius)
-- [ ] Frontend ContractorMyJobs: show "Proceed to property" message with exact radius when outside geofence
-- [ ] Frontend ContractorMyJobs: auto-enable clock-in when contractor enters geofence (polling)
-- [ ] Add GPS heatmap toggle to Route Replay dialog
-- [ ] Add 3-dot edit menu to each property card on company Properties page
+- [x] Add property lat/lng + geofenceRadiusFeet + billableTimePolicy to allMyJobs response
+- [x] Backend clockIn: enforce geofence if billableTimePolicy=on_site_only (reject if outside radius)
+- [x] Frontend ContractorMyJobs: show "Proceed to property" message with exact radius when outside geofence
+- [x] Frontend ContractorMyJobs: auto-enable clock-in when contractor enters geofence (polling)
+- [x] Add GPS heatmap toggle to Route Replay dialog
+- [x] Add 3-dot edit menu to each property card on company Properties page
 
 ## Session 44: Heatmap, Geofence Enforcement & Property Edit
 - [x] Add GPS heatmap toggle to Route Replay dialog (uses Google Maps visualization library)
@@ -1473,10 +1473,10 @@
 - [x] 0 TypeScript errors
 
 ## Session 51: Buildium Unit Import - Deep Fix
-- [ ] Trace full sync path: adapter → sync engine → DB helpers
-- [ ] Add debug logging to capture raw Buildium API response for units
-- [ ] Fix root cause of unit numbers not importing
-- [ ] Verify units appear in property_units table after resync
+- [x] Trace full sync path: adapter → sync engine → DB helpers
+- [x] Add debug logging to capture raw Buildium API response for units
+- [x] Fix root cause of unit numbers not importing
+- [x] Verify units appear in property_units table after resync
 
 ## Session 52: Buildium PascalCase Fix, Units Endpoint, Auto-Push Webhooks
 - [x] CONFIRMED from debug tool: Buildium API returns PascalCase (Id, Name, NumberUnits, RentalType, RentalSubType, Address.AddressLine1)
@@ -1490,12 +1490,12 @@
 - [x] 0 TypeScript errors
 
 ## Session 53: Global PMS Auto-Sync Interval
-- [ ] Schema: add pmsSyncIntervalHours (int, default 24) to platformSettings table
-- [ ] Backend: getPlatformSettings / updatePlatformSettings procedures include pmsSyncIntervalHours
-- [ ] Cron: replace 15-min fixed PMS sync with dynamic interval read from platformSettings
-- [ ] Cron: on each tick, run runPmsSync for every company with a connected PMS integration
-- [ ] Admin UI: add "PMS Auto-Sync Interval" number input (hours) to Platform Settings page
-- [ ] Admin UI: show last sync time per company on the admin Companies list
+- [x] Schema: add pmsSyncIntervalHours (int, default 24) to platformSettings table
+- [x] Backend: getPlatformSettings / updatePlatformSettings procedures include pmsSyncIntervalHours
+- [x] Cron: replace 15-min fixed PMS sync with dynamic interval read from platformSettings
+- [x] Cron: on each tick, run runPmsSync for every company with a connected PMS integration
+- [x] Admin UI: add "PMS Auto-Sync Interval" number input (hours) to Platform Settings page
+- [x] Admin UI: show last sync time per company on the admin Companies list
 
 ## Session 53 Completion: Global PMS Auto-Sync Interval + Buildium Units Fix
 - [x] Fixed Buildium units endpoint: now uses /rentals/units?propertyids={id} (was /rentals/{id}/units which returned 404)
@@ -1571,6 +1571,103 @@
 - [x] Seed admin account in new DO database
 - [x] Test full app on DO staging URL
 - [x] Point custom domain at DO App Platform
-- [ ] Verify SSL certificate on DO
+- [x] Verify SSL certificate on DO
 - [x] Swap to OpenAI GPT-4o-mini for job classification (LLM_API_KEY + LLM_API_URL + LLM_MODEL configured)
-- [ ] Final smoke test and go live
+- [x] Final smoke test and go live
+
+## Customer Communication & Email
+- [ ] Set up customer service email inbox (e.g. support@firstgrabmaintenance.ai or hello@firstgrabmaintenance.ai) — options: Google Workspace, Zoho Mail, or Squarespace Email
+- [ ] Build Contact Us page/form on the public-facing site (name, email, message)
+- [ ] Wire Contact Us form to forward submissions to admin email via Resend
+- [ ] Decide on and document customer-facing support email address
+
+## Homepage / Public Site Bugs
+- [ ] Fix pricing plans not showing on homepage — currently displays "Plans coming soon" instead of actual plan cards (Property Managers and Contractors tabs both empty)
+
+## Admin: Direct Account Creation from Dashboard
+- [x] Admin dashboard: Add "Create Company" button that opens a form (company name, email, password, plan) and creates the account instantly — no email verification required when admin creates it
+- [x] Admin dashboard: Add "Create Contractor" button that opens a form (name, email, password, trade/skills) and creates the account instantly — no email verification required when admin creates it
+- [x] Newly created companies/contractors appear immediately in the admin list and in View As dropdowns
+- [x] AdminContractors page (/admin/contractors) created with full list view and Create Contractor dialog
+- [x] Contractors nav item added to admin sidebar under Platform Admin section
+
+## Email Verification on Self-Registration
+- [ ] Add email_verification_code, email_verification_expires_at, and email_verified columns to users table
+- [ ] On company self-registration: after form submission, generate a random 6-digit code, store it, and send it via Resend to the provided email address
+- [ ] On contractor self-registration: same 6-digit code flow via Resend
+- [ ] Show an on-site code entry screen after registration form submission; block account creation until code is confirmed
+- [ ] Codes expire after 15 minutes; add "Resend code" button
+- [ ] Skip email verification entirely when admin creates a company or contractor account from the admin dashboard
+
+## Company Team / Multi-User Access
+- [ ] Schema: add company_users join table (company_id, user_id, role, invited_by, accepted_at)
+- [ ] Schema: add company_invitations table (company_id, email, token, expires_at, accepted_at)
+- [ ] Company settings: add "Users" tab listing current team members with their role and a Remove button
+- [ ] Company settings Users tab: "Invite User" button opens a form to enter an email address
+- [ ] Backend: send branded invitation email via Resend — welcome invitee to join "[Company Name]" on First Grab Maintenance with an "Accept Invitation" link
+- [ ] Invitation acceptance page: invitee sets their name + password, then goes through 6-digit email verification before gaining access to the company account
+- [ ] Invited users share the same company account data and appear in the company's Users list
+- [ ] Primary company owner can remove team members from the Users settings page
+
+## DigitalOcean Cleanup (Post-Migration)
+- [x] Delete empty database "maintenance-manager-db" (without -1 suffix) — user confirmed done
+- [x] Delete DigitalOcean Personal Access Token "maintenance-manager-agent" from API settings — user confirmed done
+- [ ] Change admin password from default (FirstGrab2026!) — do this if not done yet
+
+## Feature Request Forum
+- [ ] Schema: add feature_requests table (id, title, description, authorId, authorRole [company/contractor], upvotes, createdAt, status [open/planned/completed/declined])
+- [ ] Schema: add feature_request_votes table (id, featureRequestId, userId, createdAt) — one vote per user per request
+- [ ] Backend: featureRequests.create procedure — authenticated company or contractor users can submit a new feature request
+- [ ] Backend: featureRequests.list procedure — returns requests filtered by authorRole (company or contractor); sorted by upvotes desc by default
+- [ ] Backend: featureRequests.vote procedure — toggle upvote on/off for the current user (one vote per request per user)
+- [ ] Backend: featureRequests.listAll procedure (admin only) — returns all requests from both companies and contractors, sortable by upvotes, role, or date
+- [ ] Frontend: "Request a Feature" button in the top-right header on both the company dashboard and the contractor dashboard
+- [x] Frontend: Company Feature Forum page (/company/feature-requests) — protected route; unauthenticated users are redirected to the login page; shows only company-submitted requests; each card shows title, description, author company name, upvote count, and an upvote button
+- [x] Frontend: Contractor Feature Forum page (/contractor/feature-requests) — protected route; unauthenticated users are redirected to the login page; shows only contractor-submitted requests; same card layout
+- [ ] Backend: featureRequests.list and featureRequests.vote procedures use protectedProcedure — unauthenticated API calls are rejected with 401
+- [ ] Backend: company users cannot access contractor forum data and vice versa — role check enforced on all featureRequests procedures
+- [ ] Frontend: Both forum pages have a "Submit a Feature Request" button that opens a dialog with title + description fields
+- [ ] Frontend: Upvote button is highlighted/filled when the current user has already voted; clicking again removes the vote
+- [ ] Frontend: Forum pages show the current user's own submissions with an edit/delete option
+- [ ] Admin dashboard: add "Feature Requests" menu item in the admin sidebar
+- [ ] Admin Feature Requests page (/admin/feature-requests) — shows all requests from both companies and contractors in a unified view
+- [ ] Admin view: filter tabs for All / Companies / Contractors
+- [ ] Admin view: sort by Most Upvoted (default), Newest, and Status
+- [ ] Admin view: ability to change status of any request (open → planned → completed → declined) with a status badge on each card
+- [ ] Admin view: status changes are visible to the user who submitted the request on their forum page
+
+## AI-Powered Contractor License Verification
+- [ ] Schema: add contractor_licenses table (id, contractorProfileId, fileUrl, fileKey, mimeType, detectedLicenseType, detectedExpiration, detectedSkills JSON array, verificationStatus [pending/verified/flagged/expired], adminNotes, uploadedAt, reviewedAt)
+- [ ] Schema: add license_skill_mappings table (id, licenseKeyword, skillTier) — maps detected license types to allowed skill tiers (e.g. "Master Electrician" → "Electrical")
+- [ ] Backend: contractor.uploadLicense mutation — accepts PDF/JPG/PNG upload, stores file to S3, creates a contractor_licenses record with status=pending, triggers AI extraction
+- [ ] Backend: AI extraction job — send uploaded file to OpenAI GPT-4o vision API with a structured prompt to extract license type, issuing authority, license number, expiration date, and authorized trades/scopes of work; return JSON
+- [ ] Backend: skill unlock logic — after AI extraction, map detected license type to allowed skill tiers using license_skill_mappings; update contractor's allowedSkills field (or equivalent) to include newly unlocked skills
+- [ ] Backend: multi-license accumulation — each license unlocks additional skills on top of existing ones; skills are never removed unless the license that granted them is deleted or expired
+- [ ] Backend: expiration monitoring — nightly cron job checks contractor_licenses for licenses expiring within 30 days; sends email reminder to contractor via Resend; locks associated skills when license is expired
+- [ ] Backend: contractor.getLicenses query — returns all uploaded licenses for a contractor with their verification status and skills granted
+- [ ] Backend: admin.reviewLicense mutation — admin can manually set verificationStatus to verified or flagged, add adminNotes, and override the detected skills if AI extraction was incorrect
+- [ ] Frontend: contractor profile / registration — "Upload License" section with drag-and-drop or file picker (accepts PDF, JPG, PNG); shows upload progress and AI processing status
+- [ ] Frontend: contractor profile — each uploaded license shows as a card with detected license type, issuing authority, expiration date, skills it grants, and verification status badge
+- [ ] Frontend: contractor profile — skill/trade checkboxes are locked and auto-populated based on verified licenses; contractor cannot manually check a skill that no uploaded license grants
+- [ ] Frontend: contractor profile — skills from unverified/pending licenses are shown as "Pending Verification" and not yet active on the job board
+- [ ] Frontend: contractor profile — "Upload Another License" button allows adding multiple licenses; each is scanned independently and skills accumulate
+- [ ] Frontend: contractor profile — expired license cards show a red "Expired" badge and the skills they granted are automatically locked out
+- [ ] Admin dashboard: add "License Review" queue — lists all licenses with status=pending or status=flagged, sorted by upload date
+- [ ] Admin license review: each row shows contractor name, license file preview, AI-detected type and skills, expiration date, and Verify / Flag buttons
+- [ ] Admin license review: admin can override AI-detected skills before approving, add a note, and mark as verified — contractor's allowed skills update immediately
+- [ ] Admin license review: flagged licenses trigger an email to the contractor via Resend explaining the issue and requesting a clearer upload
+- [ ] Seed license_skill_mappings table with a default mapping covering common US contractor license types (General Contractor, Handyman, Master Electrician, Journeyman Electrician, Master Plumber, Plumbing Contractor, HVAC Technician, EPA 608, Roofing Contractor, Pest Control Operator, Landscaping/Irrigation, Appliance Repair)
+
+### License Jurisdiction & Reciprocity Enforcement
+- [ ] Schema: add license_reciprocity table (id, fromState, toState, tradeType, isReciprocal, notes, sourceUrl, lastVerifiedAt) — keyed on (fromState, toState, tradeType) since reciprocity is trade-specific, not just state-to-state
+- [ ] Schema: add zip_to_state lookup table (zipCode, state, stateAbbr) — used to resolve any service area ZIP to its state for jurisdiction checks
+- [ ] Research and seed license_reciprocity table with all known US state reciprocity agreements per trade type (General Contractor, Electrical, Plumbing, HVAC, Roofing, Pest Control, etc.) — sourced from state licensing board publications; flag each record with lastVerifiedAt date for future auditing
+- [ ] Backend: jurisdiction check helper — given a contractor's verified license (issuing state + trade type) and a target ZIP code, resolves ZIP → state, then queries license_reciprocity to determine if the license is valid in that state
+- [ ] Backend: updateServiceArea mutation — before saving any new service ZIP code, run the jurisdiction check against all of the contractor's active verified licenses; reject the ZIP with a clear error message if no license covers that state
+- [ ] Backend: bulk re-validation job — when a license is deleted, expires, or is flagged, re-run jurisdiction checks on all existing service area ZIP codes and remove any that are no longer covered; notify the contractor via email (Resend) listing which ZIP codes were removed and why
+- [ ] Backend: admin.updateReciprocity mutation (admin only) — allows admin to add, edit, or remove reciprocity records as state laws change without a code deployment
+- [ ] Frontend: contractor profile service area — when a ZIP is blocked by jurisdiction check, show a clear inline error: e.g. "Your WV Electrical license is not recognized in Pennsylvania. Upload a PA license or an applicable reciprocal license to service this area."
+- [ ] Frontend: contractor profile service area — ZIP codes that are currently valid show a small state badge (e.g. "WV") indicating which license covers them
+- [ ] Frontend: contractor profile licenses — each license card shows the states it is valid in (home state + all reciprocal states for that trade) as a compact tag list
+- [ ] Admin dashboard: add "Reciprocity Table" management page under platform settings — allows admin to view, search, and edit all (fromState, toState, tradeType) reciprocity records with last-verified dates
+- [ ] Ongoing enforcement: nightly cron re-validates all contractor service area ZIP codes against their current active licenses; flags any mismatches for admin review and notifies affected contractors

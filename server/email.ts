@@ -76,11 +76,11 @@ export async function sendEmail(opts: {
     if (error) {
       console.error("[Email] Send error:", JSON.stringify(error));
       if ((error as any).statusCode === 403 || (error as any).name === 'validation_error') {
-        console.error("[Email] DOMAIN NOT VERIFIED — To send to external recipients, verify a domain at resend.com/domains and update EMAIL_FROM in Settings → Secrets.");
+        console.error("[Email] DOMAIN NOT VERIFIED — To send to external recipients, verify a domain at resend.com/domains and update EMAIL_FROM in Settings &rarr; Secrets.");
       }
       return false;
     }
-    console.log("[Email] Sent:", opts.subject, "→", opts.to);
+    console.log("[Email] Sent:", opts.subject, "&rarr;", opts.to);
     return true;
   } catch (err) {
     console.error("[Email] Exception:", err);
@@ -364,7 +364,7 @@ export async function sendNewJobPostedEmail(opts: {
       <p style="margin:0;color:#86efac;font-size:13px;font-weight:600;">⏱ First come, first served — the first contractor to accept gets the job.</p>
     </div>
 
-    <a href="${opts.jobBoardUrl}" class="btn" style="font-size:16px;padding:14px 32px;">View &amp; Accept Job Now →</a>
+    <a href="${opts.jobBoardUrl}" class="btn" style="font-size:16px;padding:14px 32px;">View &amp; Accept Job Now &rarr;</a>
 
     <hr class="divider" />
     <p style="font-size:12px;color:#525252;">You're receiving this because your service area covers this job's location. To manage your notification preferences, visit your contractor settings.</p>
@@ -440,7 +440,7 @@ export async function sendTrustedContractorEmail(opts: {
       </ul>
     </div>
     <p>Log in now to check the Private Jobs tab on your job board — new opportunities may already be waiting for you.</p>
-    <a href="${opts.appUrl}/contractor/jobs" class="btn">View Private Job Board →</a>
+    <a href="${opts.appUrl}/contractor/jobs" class="btn">View Private Job Board &rarr;</a>
     <hr class="divider" />
     <p style="font-size:13px;color:#737373;">You received this email because your contractor account on Maintenance Manager was marked as trusted by ${opts.companyName}.</p>
   `);
@@ -467,7 +467,7 @@ export async function sendJobReopenedEmail(opts: {
       <p style="font-size:17px;font-weight:700;color:#ffffff;margin:0;">${opts.jobTitle}</p>
     </div>
     <p style="color:#a3a3a3;">This job is no longer assigned to you. If you're still interested, you can re-accept it from the job board — but act quickly as other contractors can now claim it.</p>
-    <a href="${opts.appUrl}/contractor/jobs" class="btn">View Job Board →</a>
+    <a href="${opts.appUrl}/contractor/jobs" class="btn">View Job Board &rarr;</a>
     <hr class="divider" />
     <p style="font-size:13px;color:#737373;">You received this email because you were previously assigned to this job on Maintenance Manager.</p>
   `);
@@ -477,3 +477,36 @@ export async function sendJobReopenedEmail(opts: {
     html,
   });
 }
+
+// ─── Admin-Created Account Welcome ───────────────────────────────────────────
+export async function sendAdminCreatedAccountEmail(opts: {
+  to: string;
+  name: string;
+  role: "company_admin" | "contractor";
+  loginUrl: string;
+  temporaryPassword: string;
+}) {
+  const roleLabel = opts.role === "contractor" ? "Contractor" : "Company Admin";
+  const html = layout("Your Maintenance Manager account is ready", `
+    <h1>Welcome, ${opts.name}! 👋</h1>
+    <p>An administrator has created a <strong>${roleLabel}</strong> account for you on Maintenance Manager.</p>
+    <p>Here are your login credentials:</p>
+    <div style="background:#1c1c1c;border:1px solid #2a2a2a;border-radius:10px;padding:18px;margin:16px 0;">
+      <p style="margin:0 0 8px;color:#a3a3a3;font-size:13px;">Email</p>
+      <p style="margin:0 0 16px;font-size:16px;font-weight:600;color:#ffffff;">${opts.to}</p>
+      <p style="margin:0 0 8px;color:#a3a3a3;font-size:13px;">Temporary Password</p>
+      <p style="margin:0;font-size:16px;font-weight:600;color:#ffffff;letter-spacing:2px;">${opts.temporaryPassword}</p>
+    </div>
+    <p style="color:#a3a3a3;font-size:14px;">Please sign in and change your password as soon as possible.</p>
+    <a href="${opts.loginUrl}" class="btn">Sign In Now &rarr;</a>
+    <hr class="divider" />
+    <p style="font-size:12px;color:#525252;">If you did not expect this email, please contact support.</p>
+  `);
+  return sendEmail({
+    to: opts.to,
+    subject: "Your Maintenance Manager account is ready",
+    html,
+  });
+}
+
+

@@ -45,6 +45,7 @@ const adminSections: MenuSection[] = [
     items: [
       { icon: Shield, label: "Overview", path: "/admin" },
       { icon: Building2, label: "Companies", path: "/admin/companies" },
+      { icon: HardHat, label: "Contractors", path: "/admin/contractors" },
       { icon: CreditCard, label: "Plans", path: "/admin/plans" },
       { icon: BarChart3, label: "Revenue", path: "/admin/revenue" },
       { icon: Tag, label: "Promo Codes", path: "/admin/promo-codes" },

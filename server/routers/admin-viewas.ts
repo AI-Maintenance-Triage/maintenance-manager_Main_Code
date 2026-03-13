@@ -3,8 +3,10 @@ import { adminProcedure, router } from "../_core/trpc";
 import * as db from "../db";
 import * as email from "../email";
 import Stripe from "stripe";
+import bcrypt from "bcryptjs";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY ?? "");
+const SALT_ROUNDS = 12;
 
 /**
  * Sync a plan's name/description to its Stripe Product.
@@ -115,6 +117,104 @@ export const adminViewAsRouter = router({
       await db.updateUserRole(testUser.id, "contractor", undefined, profileId);
 
       return { id: profileId };
+    }),
+
+  // ─── Admin Direct Account Creation (no email verification required) ─────────
+
+  /** Create a real company account with a login directly from the admin dashboard */
+  adminCreateCompany: adminProcedure
+    .input(z.object({
+      companyName: z.string().min(1),
+      adminName: z.string().min(1),
+      email: z.string().email(),
+      password: z.string().min(8),
+      phone: z.string().optional(),
+      address: z.string().optional(),
+      sendWelcomeEmail: z.boolean().default(true),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const existing = await db.getUserByEmail(input.email);
+      if (existing) throw new Error(`A user with email ${input.email} already exists.`);
+
+      const passwordHash = await bcrypt.hash(input.password, SALT_ROUNDS);
+      const userId = await db.createLocalUser({
+        name: input.adminName,
+        email: input.email,
+        passwordHash,
+      });
+
+      const companyId = await db.createCompany({
+        name: input.companyName,
+        phone: input.phone ?? null,
+        address: input.address ?? null,
+        email: input.email,
+      });
+
+      await db.updateUserRole(userId, "company_admin", companyId);
+
+      if (input.sendWelcomeEmail) {
+        const origin = (ctx.req as any).headers?.origin ?? "https://maintenance-manager.manus.space";
+        await email.sendAdminCreatedAccountEmail({
+          to: input.email,
+          name: input.adminName,
+          role: "company_admin",
+          loginUrl: `${origin}/login`,
+          temporaryPassword: input.password,
+        });
+      }
+
+      return { userId, companyId };
+    }),
+
+  /** Create a real contractor account with a login directly from the admin dashboard */
+  adminCreateContractor: adminProcedure
+    .input(z.object({
+      name: z.string().min(1),
+      email: z.string().email(),
+      password: z.string().min(8),
+      businessName: z.string().optional(),
+      phone: z.string().optional(),
+      trades: z.array(z.string()).optional(),
+      serviceAreaZips: z.array(z.string()).optional(),
+      licenseNumber: z.string().optional(),
+      sendWelcomeEmail: z.boolean().default(true),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const existing = await db.getUserByEmail(input.email);
+      if (existing) throw new Error(`A user with email ${input.email} already exists.`);
+
+      const passwordHash = await bcrypt.hash(input.password, SALT_ROUNDS);
+      const userId = await db.createLocalUser({
+        name: input.name,
+        email: input.email,
+        passwordHash,
+      });
+
+      const profileId = await db.createContractorProfile({
+        userId,
+        businessName: input.businessName ?? null,
+        phone: input.phone ?? null,
+        trades: input.trades ?? null,
+        serviceAreaZips: input.serviceAreaZips ?? null,
+        serviceRadiusMiles: 25,
+        licenseNumber: input.licenseNumber ?? null,
+        insuranceInfo: null,
+      });
+
+      await db.updateUserRole(userId, "contractor", undefined, profileId);
+
+      if (input.sendWelcomeEmail) {
+        const origin = (ctx.req as any).headers?.origin ?? "https://maintenance-manager.manus.space";
+        await email.sendAdminCreatedAccountEmail({
+          to: input.email,
+          name: input.name,
+          role: "contractor",
+          loginUrl: `${origin}/login`,
+          temporaryPassword: input.password,
+        });
+      }
+
+      return { userId, profileId };
     }),
 
   /** Create a test maintenance request for a company (admin can test AI classification) */

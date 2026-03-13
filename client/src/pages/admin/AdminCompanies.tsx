@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Building2, Calendar, Settings, Percent, Receipt, X, AlertCircle } from "lucide-react";
+import { Building2, Calendar, Settings, Percent, Receipt, X, AlertCircle, Plus } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -209,16 +209,98 @@ function FeeOverrideDialog({ company, open, onOpenChange, onSaved }: FeeOverride
   );
 }
 
+// ─── Create Company Dialog ────────────────────────────────────────────────────
+function CreateCompanyDialog({ open, onOpenChange, onCreated }: { open: boolean; onOpenChange: (v: boolean) => void; onCreated: () => void }) {
+  const [companyName, setCompanyName] = useState("");
+  const [adminName, setAdminName] = useState("");
+  const [emailVal, setEmailVal] = useState("");
+  const [password, setPassword] = useState("");
+  const [phone, setPhone] = useState("");
+  const [address, setAddress] = useState("");
+  const [sendWelcome, setSendWelcome] = useState(true);
+
+  const create = trpc.adminViewAs.adminCreateCompany.useMutation({
+    onSuccess: () => {
+      toast.success("Company account created successfully!");
+      setCompanyName(""); setAdminName(""); setEmailVal(""); setPassword(""); setPhone(""); setAddress("");
+      onCreated();
+      onOpenChange(false);
+    },
+    onError: (err: any) => toast.error(err.message),
+  });
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    create.mutate({ companyName, adminName, email: emailVal, password, phone: phone || undefined, address: address || undefined, sendWelcomeEmail: sendWelcome });
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2"><Building2 className="h-5 w-5 text-primary" /> Create Company Account</DialogTitle>
+        </DialogHeader>
+        <form onSubmit={handleSubmit} className="space-y-4 py-2">
+          <div className="space-y-1.5">
+            <Label>Company Name *</Label>
+            <Input placeholder="Acme Property Management" value={companyName} onChange={e => setCompanyName(e.target.value)} required />
+          </div>
+          <div className="space-y-1.5">
+            <Label>Admin Contact Name *</Label>
+            <Input placeholder="Jane Smith" value={adminName} onChange={e => setAdminName(e.target.value)} required />
+          </div>
+          <div className="space-y-1.5">
+            <Label>Email Address *</Label>
+            <Input type="email" placeholder="jane@acme.com" value={emailVal} onChange={e => setEmailVal(e.target.value)} required />
+          </div>
+          <div className="space-y-1.5">
+            <Label>Password * (min 8 characters)</Label>
+            <Input type="password" placeholder="Temporary password" value={password} onChange={e => setPassword(e.target.value)} minLength={8} required />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label>Phone</Label>
+              <Input placeholder="(555) 000-0000" value={phone} onChange={e => setPhone(e.target.value)} />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Address</Label>
+              <Input placeholder="123 Main St" value={address} onChange={e => setAddress(e.target.value)} />
+            </div>
+          </div>
+          <div className="flex items-center justify-between rounded-lg border border-border p-3">
+            <div>
+              <p className="text-sm font-medium">Send welcome email</p>
+              <p className="text-xs text-muted-foreground">Email credentials to the new user</p>
+            </div>
+            <Switch checked={sendWelcome} onCheckedChange={setSendWelcome} />
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+            <Button type="submit" disabled={create.isPending}>{create.isPending ? "Creating..." : "Create Company"}</Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 export default function AdminCompanies() {
   const { data: companies, isLoading, refetch } = trpc.platform.companies.useQuery();
   const [managingCompany, setManagingCompany] = useState<any | null>(null);
+  const [createOpen, setCreateOpen] = useState(false);
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-foreground">Companies</h1>
-        <p className="text-muted-foreground mt-1">Manage all registered property management companies</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-foreground">Companies</h1>
+          <p className="text-muted-foreground mt-1">Manage all registered property management companies</p>
+        </div>
+        <Button onClick={() => setCreateOpen(true)} className="gap-2">
+          <Plus className="h-4 w-4" /> Create Company
+        </Button>
       </div>
+      <CreateCompanyDialog open={createOpen} onOpenChange={setCreateOpen} onCreated={() => refetch()} />
 
       {isLoading ? (
         <div className="space-y-3">

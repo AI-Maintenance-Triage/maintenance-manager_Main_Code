@@ -30,6 +30,7 @@ import ContractorBilling from "./pages/contractor/ContractorBilling";
 import ContractorPayouts from "./pages/contractor/ContractorPayouts";
 import PlatformDashboard from "./pages/admin/PlatformDashboard";
 import AdminCompanies from "./pages/admin/AdminCompanies";
+import AdminContractors from "./pages/admin/AdminContractors";
 import AdminSubscriptionPlans from "./pages/admin/AdminSubscriptionPlans";
 import AdminRevenue from "./pages/admin/AdminRevenue";
 import AdminPromoCodes from "./pages/admin/AdminPromoCodes";
@@ -129,6 +130,9 @@ function Router() {
       {/* Platform Admin Routes */}
       <Route path="/admin/companies">
         <DashboardLayout><AdminCompanies /></DashboardLayout>
+      </Route>
+      <Route path="/admin/contractors">
+        <DashboardLayout><AdminContractors /></DashboardLayout>
       </Route>
       <Route path="/admin/plans">
         <DashboardLayout><AdminSubscriptionPlans /></DashboardLayout>

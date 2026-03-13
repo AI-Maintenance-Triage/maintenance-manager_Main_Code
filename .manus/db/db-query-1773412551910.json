@@ -1,0 +1,75 @@
+{
+  "query": "SELECT id, planType, name, priceMonthly, priceAnnual, isActive, sortOrder, earlyNotificationMinutes, stripeProductId, stripePriceIdMonthly, stripePriceIdAnnual FROM subscription_plans ORDER BY planType, sortOrder;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user sHLCts4RR6iL2PA.1ead08cf1a54 --database bBuQZrfKLoBs6LmtvQ4y6E --execute SELECT id, planType, name, priceMonthly, priceAnnual, isActive, sortOrder, earlyNotificationMinutes, stripeProductId, stripePriceIdMonthly, stripePriceIdAnnual FROM subscription_plans ORDER BY planType, sortOrder;",
+  "rows": [
+    {
+      "id": "2",
+      "planType": "company",
+      "name": "Starter",
+      "priceMonthly": "99.00",
+      "priceAnnual": "1069.20",
+      "isActive": "1",
+      "sortOrder": "1",
+      "earlyNotificationMinutes": "0",
+      "stripeProductId": "prod_U4MW2vaSwBSpkm",
+      "stripePriceIdMonthly": "price_1T6K4wKAKVvgAItHdLYJJgbh",
+      "stripePriceIdAnnual": "price_1T6KCvKAKVvgAItHvRjXbRcf"
+    },
+    {
+      "id": "3",
+      "planType": "company",
+      "name": "Pro",
+      "priceMonthly": "199.00",
+      "priceAnnual": "2029.80",
+      "isActive": "1",
+      "sortOrder": "2",
+      "earlyNotificationMinutes": "0",
+      "stripeProductId": "prod_U4M24No9XfNOD4",
+      "stripePriceIdMonthly": "price_1T6K8QKAKVvgAItH1SvRwy9r",
+      "stripePriceIdAnnual": "price_1T6KDHKAKVvgAItHW7NtJFNV"
+    },
+    {
+      "id": "4",
+      "planType": "company",
+      "name": "Enterprise",
+      "priceMonthly": "399.00",
+      "priceAnnual": "3591.00",
+      "isActive": "1",
+      "sortOrder": "3",
+      "earlyNotificationMinutes": "0",
+      "stripeProductId": "prod_U4MW33GudTmekh",
+      "stripePriceIdMonthly": "price_1T6K8wKAKVvgAItHy17s83Pc",
+      "stripePriceIdAnnual": "price_1T6KDPKAKVvgAItHxKyPnmtq"
+    },
+    {
+      "id": "5",
+      "planType": "contractor",
+      "name": "Free",
+      "priceMonthly": "0.00",
+      "priceAnnual": "0.00",
+      "isActive": "1",
+      "sortOrder": "1",
+      "earlyNotificationMinutes": "0",
+      "stripeProductId": "NULL",
+      "stripePriceIdMonthly": "NULL",
+      "stripePriceIdAnnual": "NULL"
+    },
+    {
+      "id": "6",
+      "planType": "contractor",
+      "name": "Pro",
+      "priceMonthly": "29.00",
+      "priceAnnual": "290.00",
+      "isActive": "1",
+      "sortOrder": "2",
+      "earlyNotificationMinutes": "20",
+      "stripeProductId": "prod_U4MXbDxS7ayLaf",
+      "stripePriceIdMonthly": "price_1T6DnwKAKVvgAItHavrJivlb",
+      "stripePriceIdAnnual": "price_1T6DnwKAKVvgAItH2PK4DafB"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tplanType\tname\tpriceMonthly\tpriceAnnual\tisActive\tsortOrder\tearlyNotificationMinutes\tstripeProductId\tstripePriceIdMonthly\tstripePriceIdAnnual\n2\tcompany\tStarter\t99.00\t1069.20\t1\t1\t0\tprod_U4MW2vaSwBSpkm\tprice_1T6K4wKAKVvgAItHdLYJJgbh\tprice_1T6KCvKAKVvgAItHvRjXbRcf\n3\tcompany\tPro\t199.00\t2029.80\t1\t2\t0\tprod_U4M24No9XfNOD4\tprice_1T6K8QKAKVvgAItH1SvRwy9r\tprice_1T6KDHKAKVvgAItHW7NtJFNV\n4\tcompany\tEnterprise\t399.00\t3591.00\t1\t3\t0\tprod_U4MW33GudTmekh\tprice_1T6K8wKAKVvgAItHy17s83Pc\tprice_1T6KDPKAKVvgAItHxKyPnmtq\n5\tcontractor\tFree\t0.00\t0.00\t1\t1\t0\tNULL\tNULL\tNULL\n6\tcontractor\tPro\t29.00\t290.00\t1\t2\t20\tprod_U4MXbDxS7ayLaf\tprice_1T6DnwKAKVvgAItHavrJivlb\tprice_1T6DnwKAKVvgAItH2PK4DafB\n",
+  "stderr": "",
+  "execution_time_ms": 110
+}
