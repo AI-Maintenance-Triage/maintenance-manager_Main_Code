@@ -539,3 +539,26 @@ export async function sendOnboardingCompleteEmail(opts: { to: string; name: stri
   `);
   return sendEmail({ to: opts.to, subject: "You're all set on Maintenance Manager! 🎉", html });
 }
+
+// --- Team invitation email ------------------------------------------------
+export async function sendTeamInviteEmail(opts: {
+  to: string;
+  inviterName: string;
+  companyName: string;
+  acceptUrl: string;
+  role: string;
+}) {
+  const html = layout(`You're invited to join ${opts.companyName}`, `
+    <h1>You've been invited!</h1>
+    <p>Hi there, <strong>${opts.inviterName}</strong> has invited you to join <strong>${opts.companyName}</strong> on Maintenance Manager as a team ${opts.role}.</p>
+    <p>Click the button below to accept the invitation, set up your account, and get started:</p>
+    <a href="${opts.acceptUrl}" class="btn">Accept Invitation</a>
+    <hr class="divider" />
+    <p style="font-size:13px;color:#525252;">This invitation link expires in <strong>7 days</strong>. If you didn't expect this invitation, you can safely ignore this email.</p>
+  `);
+  return sendEmail({
+    to: opts.to,
+    subject: `You've been invited to join ${opts.companyName} on Maintenance Manager`,
+    html,
+  });
+}

@@ -52,6 +52,7 @@ import CompanyAnalytics from "./pages/company/CompanyAnalytics";
 import ResetPassword from "./pages/ResetPassword";
 import ForgotPassword from "./pages/ForgotPassword";
 import InviteAccept from "./pages/InviteAccept";
+import TeamInviteAccept from "./pages/TeamInviteAccept";
 import AdminLogin from "./pages/AdminLogin";
 import { PWAInstallBanner } from "./components/PWAInstallBanner";
 
@@ -67,6 +68,7 @@ function Router() {
       <Route path="/reset-password" component={ResetPassword} />
       <Route path="/forgot-password" component={ForgotPassword} />
       <Route path="/invite/:token" component={InviteAccept} />
+      <Route path="/team-invite/:token" component={TeamInviteAccept} />
       <Route path="/admin/login" component={AdminLogin} />
       {/* Company Admin Routes */}
       <Route path="/company">

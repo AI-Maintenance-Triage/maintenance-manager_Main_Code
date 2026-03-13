@@ -792,3 +792,35 @@ export const jobChangeHistory = mysqlTable("job_change_history", {
 });
 export type JobChangeHistory = typeof jobChangeHistory.$inferSelect;
 export type InsertJobChangeHistory = typeof jobChangeHistory.$inferInsert;
+
+// ─── Company Team Members ─────────────────────────────────────────────────────
+// Join table linking additional users to a company account.
+// The primary owner is the user with role=company_admin and companyId set on the users table.
+// Additional team members are stored here with their role within the company.
+export const companyUsers = mysqlTable("company_users", {
+  id: int("id").autoincrement().primaryKey(),
+  companyId: int("companyId").notNull(),
+  userId: int("userId").notNull(),
+  teamRole: mysqlEnum("teamRole", ["owner", "admin", "member"]).default("member").notNull(),
+  invitedBy: int("invitedBy"),                              // userId of who sent the invite
+  acceptedAt: timestamp("acceptedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type CompanyUser = typeof companyUsers.$inferSelect;
+export type InsertCompanyUser = typeof companyUsers.$inferInsert;
+
+// ─── Company Invitations ──────────────────────────────────────────────────────
+// Pending invitations sent to email addresses to join a company account.
+export const companyInvitations = mysqlTable("company_invitations", {
+  id: int("id").autoincrement().primaryKey(),
+  companyId: int("companyId").notNull(),
+  email: varchar("email", { length: 320 }).notNull(),
+  token: varchar("token", { length: 128 }).notNull().unique(),
+  teamRole: mysqlEnum("teamRole", ["admin", "member"]).default("member").notNull(),
+  invitedBy: int("invitedBy").notNull(),                    // userId of who sent the invite
+  expiresAt: timestamp("expiresAt").notNull(),
+  acceptedAt: timestamp("acceptedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type CompanyInvitation = typeof companyInvitations.$inferSelect;
+export type InsertCompanyInvitation = typeof companyInvitations.$inferInsert;

@@ -37,6 +37,8 @@ import {
   passwordResetTokens, InsertPasswordResetToken,
   jobChangeHistory, InsertJobChangeHistory,
   propertyUnits, InsertPropertyUnit,
+  companyUsers, InsertCompanyUser,
+  companyInvitations, InsertCompanyInvitation,
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
@@ -3982,4 +3984,97 @@ export async function markEmailVerified(userId: number) {
   const db = await getDb();
   if (!db) return;
   await db.update(users).set({ emailVerified: true, emailVerificationCode: null, emailVerificationExpiry: null }).where(eq(users.id, userId));
+}
+
+// ─── Company Team (Multi-User Access) ─────────────────────────────────────
+export async function createCompanyInvitation(data: InsertCompanyInvitation) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  const result = await db.insert(companyInvitations).values(data);
+  return result[0].insertId;
+}
+
+export async function getCompanyInvitationByToken(token: string) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(companyInvitations).where(eq(companyInvitations.token, token)).limit(1);
+  return result[0];
+}
+
+export async function getCompanyInvitationByEmailAndCompany(email: string, companyId: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(companyInvitations)
+    .where(and(eq(companyInvitations.email, email), eq(companyInvitations.companyId, companyId), isNull(companyInvitations.acceptedAt)))
+    .limit(1);
+  return result[0];
+}
+
+export async function listCompanyInvitations(companyId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(companyInvitations).where(eq(companyInvitations.companyId, companyId)).orderBy(desc(companyInvitations.createdAt));
+}
+
+export async function acceptCompanyInvitation(token: string) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  await db.update(companyInvitations).set({ acceptedAt: new Date() }).where(eq(companyInvitations.token, token));
+}
+
+export async function addCompanyUser(data: InsertCompanyUser) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  const result = await db.insert(companyUsers).values(data);
+  return result[0].insertId;
+}
+
+export async function getCompanyUser(companyId: number, userId: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(companyUsers)
+    .where(and(eq(companyUsers.companyId, companyId), eq(companyUsers.userId, userId)))
+    .limit(1);
+  return result[0];
+}
+
+export async function listCompanyTeamMembers(companyId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  const result = await db
+    .select({
+      id: companyUsers.id,
+      companyId: companyUsers.companyId,
+      userId: companyUsers.userId,
+      teamRole: companyUsers.teamRole,
+      invitedBy: companyUsers.invitedBy,
+      acceptedAt: companyUsers.acceptedAt,
+      createdAt: companyUsers.createdAt,
+      userName: users.name,
+      userEmail: users.email,
+    })
+    .from(companyUsers)
+    .leftJoin(users, eq(companyUsers.userId, users.id))
+    .where(eq(companyUsers.companyId, companyId))
+    .orderBy(companyUsers.createdAt);
+  return result;
+}
+
+export async function removeCompanyUser(companyId: number, userId: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.delete(companyUsers).where(and(eq(companyUsers.companyId, companyId), eq(companyUsers.userId, userId)));
+}
+
+export async function updateCompanyUserTeamRole(companyId: number, userId: number, teamRole: "owner" | "admin" | "member") {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(companyUsers).set({ teamRole }).where(and(eq(companyUsers.companyId, companyId), eq(companyUsers.userId, userId)));
+}
+
+export async function getUserCompanyMembership(userId: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(companyUsers).where(eq(companyUsers.userId, userId)).limit(1);
+  return result[0];
 }

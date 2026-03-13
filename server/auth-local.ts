@@ -41,7 +41,7 @@ function getSecretKey() {
   return new TextEncoder().encode(ENV.cookieSecret);
 }
 
-async function createLocalSessionToken(user: { openId: string; name: string | null }) {
+export async function createLocalSessionToken(user: { openId: string; name: string | null }) {
   const secretKey = getSecretKey();
   const expirationSeconds = Math.floor((Date.now() + ONE_YEAR_MS) / 1000);
   return new SignJWT({

@@ -8,9 +8,10 @@ import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Badge } from "@/components/ui/badge";
 import { useViewAs } from "@/contexts/ViewAsContext";
-import { Plus, Trash2, Settings, DollarSign, MapPin, Clock, Link2, Pencil, Bell, Wallet, ExternalLink } from "lucide-react";
+import { Plus, Trash2, Settings, DollarSign, MapPin, Clock, Link2, Pencil, Bell, Wallet, ExternalLink, Users, UserPlus, Crown, Shield, User, Mail, X } from "lucide-react";
 import { useLocation } from "wouter";
 import PaymentMethodManager from "@/components/PaymentMethodManager";
 import { useEffect, useState } from "react";
@@ -39,6 +40,7 @@ export default function CompanySettings() {
           <TabsTrigger value="notifications"><Bell className="h-4 w-4 mr-1.5" />Notifications</TabsTrigger>
           <TabsTrigger value="integrations" onClick={() => setLocation("/company/integrations")}><Link2 className="h-4 w-4 mr-1.5" />Integrations <ExternalLink className="h-3 w-3 ml-1 opacity-50" /></TabsTrigger>
           <TabsTrigger value="payment-methods"><Wallet className="h-4 w-4 mr-1.5" />Payment Methods</TabsTrigger>
+          <TabsTrigger value="team"><Users className="h-4 w-4 mr-1.5" />Team</TabsTrigger>
         </TabsList>
         <TabsContent value="general"><GeneralSettings readOnly={false} companyId={isViewingAsCompany ? viewAs.companyId! : undefined} /></TabsContent>
         <TabsContent value="rates"><SkillTiersSettings readOnly={false} isAdmin={isAdmin} companyId={isViewingAsCompany ? viewAs.companyId! : undefined} /></TabsContent>
@@ -59,6 +61,9 @@ export default function CompanySettings() {
               <PaymentMethodManager />
             </CardContent>
           </Card>
+        </TabsContent>
+        <TabsContent value="team">
+          <TeamSettings />
         </TabsContent>
       </Tabs>
     </div>
@@ -601,6 +606,292 @@ function IntegrationSettings({ readOnly, companyId }: { readOnly: boolean; compa
           </CardContent>
         </Card>
       )}
+    </div>
+  );
+}
+
+// ─── Team Settings ────────────────────────────────────────────────────────────
+function TeamSettings() {
+  const { user } = useAuth();
+  const utils = trpc.useUtils();
+  const [inviteOpen, setInviteOpen] = useState(false);
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteRole, setInviteRole] = useState<"admin" | "member">("member");
+  const [removeConfirmUserId, setRemoveConfirmUserId] = useState<number | null>(null);
+
+  const { data, isLoading } = trpc.team.listMembers.useQuery();
+
+  const inviteMutation = trpc.team.inviteUser.useMutation({
+    onSuccess: () => {
+      toast.success("Invitation sent! They'll receive an email to join your team.");
+      setInviteOpen(false);
+      setInviteEmail("");
+      setInviteRole("member");
+      utils.team.listMembers.invalidate();
+    },
+    onError: (err) => toast.error(err.message ?? "Failed to send invitation."),
+  });
+
+  const removeMutation = trpc.team.removeMember.useMutation({
+    onSuccess: () => {
+      toast.success("Team member removed.");
+      setRemoveConfirmUserId(null);
+      utils.team.listMembers.invalidate();
+    },
+    onError: (err) => toast.error(err.message ?? "Failed to remove member."),
+  });
+
+  const cancelInviteMutation = trpc.team.cancelInvite.useMutation({
+    onSuccess: () => {
+      toast.success("Invitation cancelled.");
+      utils.team.listMembers.invalidate();
+    },
+    onError: (err) => toast.error(err.message ?? "Failed to cancel invitation."),
+  });
+
+  const updateRoleMutation = trpc.team.updateMemberRole.useMutation({
+    onSuccess: () => {
+      toast.success("Role updated.");
+      utils.team.listMembers.invalidate();
+    },
+    onError: (err) => toast.error(err.message ?? "Failed to update role."),
+  });
+
+  const handleInvite = (e: React.FormEvent) => {
+    e.preventDefault();
+    inviteMutation.mutate({ email: inviteEmail, teamRole: inviteRole, origin: window.location.origin });
+  };
+
+  const roleIcon = (role: string) => {
+    if (role === "owner") return <Crown className="h-3.5 w-3.5 text-yellow-500" />;
+    if (role === "admin") return <Shield className="h-3.5 w-3.5 text-blue-400" />;
+    return <User className="h-3.5 w-3.5 text-muted-foreground" />;
+  };
+
+  const roleBadgeVariant = (role: string): "default" | "secondary" | "outline" => {
+    if (role === "owner") return "default";
+    if (role === "admin") return "secondary";
+    return "outline";
+  };
+
+  return (
+    <div className="space-y-6">
+      <Card className="bg-card border-border">
+        <CardHeader className="flex flex-row items-start justify-between gap-4">
+          <div>
+            <CardTitle className="flex items-center gap-2 text-card-foreground">
+              <Users className="h-5 w-5 text-primary" />
+              Team Members
+            </CardTitle>
+            <CardDescription>
+              Invite colleagues to access and manage your company's maintenance operations. Team admins have full access; members have read-only access to jobs and properties.
+            </CardDescription>
+          </div>
+          <Dialog open={inviteOpen} onOpenChange={setInviteOpen}>
+            <DialogTrigger asChild>
+              <Button size="sm" className="shrink-0">
+                <UserPlus className="h-4 w-4 mr-1.5" /> Invite Member
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-md">
+              <DialogHeader>
+                <DialogTitle>Invite a Team Member</DialogTitle>
+                <DialogDescription>
+                  They'll receive an email with a link to create their account and join your team.
+                </DialogDescription>
+              </DialogHeader>
+              <form onSubmit={handleInvite} className="space-y-4 pt-2">
+                <div className="space-y-2">
+                  <Label htmlFor="invite-email">Email Address</Label>
+                  <Input
+                    id="invite-email"
+                    type="email"
+                    placeholder="colleague@example.com"
+                    value={inviteEmail}
+                    onChange={(e) => setInviteEmail(e.target.value)}
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="invite-role">Role</Label>
+                  <Select value={inviteRole} onValueChange={(v) => setInviteRole(v as "admin" | "member")}>
+                    <SelectTrigger id="invite-role">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="admin">
+                        <div className="flex items-center gap-2">
+                          <Shield className="h-4 w-4 text-blue-400" />
+                          <div>
+                            <div className="font-medium">Admin</div>
+                            <div className="text-xs text-muted-foreground">Full access to all company features</div>
+                          </div>
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="member">
+                        <div className="flex items-center gap-2">
+                          <User className="h-4 w-4 text-muted-foreground" />
+                          <div>
+                            <div className="font-medium">Member</div>
+                            <div className="text-xs text-muted-foreground">Can view jobs, properties, and reports</div>
+                          </div>
+                        </div>
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <DialogFooter>
+                  <Button type="button" variant="outline" onClick={() => setInviteOpen(false)}>Cancel</Button>
+                  <Button type="submit" disabled={inviteMutation.isPending || !inviteEmail}>
+                    {inviteMutation.isPending ? "Sending…" : "Send Invitation"}
+                  </Button>
+                </DialogFooter>
+              </form>
+            </DialogContent>
+          </Dialog>
+        </CardHeader>
+        <CardContent>
+          {isLoading ? (
+            <div className="space-y-3">
+              {[1, 2].map((i) => (
+                <div key={i} className="flex items-center gap-3 p-3 rounded-lg border border-border">
+                  <Skeleton className="h-9 w-9 rounded-full" />
+                  <div className="flex-1 space-y-1.5">
+                    <Skeleton className="h-4 w-32" />
+                    <Skeleton className="h-3 w-48" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {(data?.members ?? []).map((member) => {
+                const isCurrentUser = member.userId === user?.id;
+                const isOwner = member.teamRole === "owner";
+                return (
+                  <div key={member.userId} className="flex items-center gap-3 p-3 rounded-lg border border-border bg-background/50 hover:bg-background transition-colors">
+                    <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                      <span className="text-sm font-semibold text-primary">
+                        {(member.userName ?? member.userEmail ?? "?")[0].toUpperCase()}
+                      </span>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-sm font-medium text-foreground truncate">
+                          {member.userName ?? member.userEmail ?? "Unknown"}
+                        </span>
+                        {isCurrentUser && <span className="text-xs text-muted-foreground">(you)</span>}
+                        <Badge variant={roleBadgeVariant(member.teamRole)} className="text-xs flex items-center gap-1 capitalize">
+                          {roleIcon(member.teamRole)}{member.teamRole}
+                        </Badge>
+                      </div>
+                      <p className="text-xs text-muted-foreground truncate">{member.userEmail}</p>
+                    </div>
+                    {!isOwner && !isCurrentUser && (
+                      <div className="flex items-center gap-2 shrink-0">
+                        <Select
+                          value={member.teamRole}
+                          onValueChange={(v) => updateRoleMutation.mutate({ userId: member.userId, teamRole: v as "admin" | "member" })}
+                          disabled={updateRoleMutation.isPending}
+                        >
+                          <SelectTrigger className="h-7 text-xs w-24">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="admin">Admin</SelectItem>
+                            <SelectItem value="member">Member</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 text-destructive hover:text-destructive hover:bg-destructive/10"
+                          onClick={() => setRemoveConfirmUserId(member.userId)}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+              {(data?.members ?? []).length === 0 && (
+                <div className="text-center py-8 text-muted-foreground">
+                  <Users className="h-10 w-10 mx-auto mb-3 opacity-30" />
+                  <p className="text-sm">No team members yet.</p>
+                  <p className="text-xs mt-1">Invite colleagues to collaborate on maintenance operations.</p>
+                </div>
+              )}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Pending Invitations */}
+      {(data?.pendingInvites ?? []).length > 0 && (
+        <Card className="bg-card border-border">
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2 text-card-foreground">
+              <Mail className="h-4 w-4 text-primary" />
+              Pending Invitations
+            </CardTitle>
+            <CardDescription>These invitations have been sent but not yet accepted.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              {(data?.pendingInvites ?? []).map((invite) => (
+                <div key={invite.id} className="flex items-center gap-3 p-3 rounded-lg border border-border bg-background/50">
+                  <div className="h-9 w-9 rounded-full bg-muted flex items-center justify-center shrink-0">
+                    <Mail className="h-4 w-4 text-muted-foreground" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-sm font-medium text-foreground truncate">{invite.email}</span>
+                      <Badge variant="outline" className="text-xs capitalize">{invite.teamRole}</Badge>
+                      <Badge variant="secondary" className="text-xs">Pending</Badge>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Expires {new Date(invite.expiresAt).toLocaleDateString()}
+                    </p>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7 text-muted-foreground hover:text-destructive shrink-0"
+                    onClick={() => cancelInviteMutation.mutate({ inviteId: invite.id })}
+                    disabled={cancelInviteMutation.isPending}
+                    title="Cancel invitation"
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Remove Confirmation Dialog */}
+      <Dialog open={removeConfirmUserId !== null} onOpenChange={(o) => { if (!o) setRemoveConfirmUserId(null); }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Remove Team Member</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to remove this person from your team? They will lose access to your company's data immediately.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRemoveConfirmUserId(null)}>Cancel</Button>
+            <Button
+              variant="destructive"
+              onClick={() => { if (removeConfirmUserId) removeMutation.mutate({ userId: removeConfirmUserId }); }}
+              disabled={removeMutation.isPending}
+            >
+              {removeMutation.isPending ? "Removing…" : "Remove Member"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

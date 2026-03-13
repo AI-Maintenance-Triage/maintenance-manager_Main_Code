@@ -11,6 +11,7 @@ import { notifyOwner } from "./_core/notification";
 import * as email from "./email";
 import { ENV } from "./_core/env";
 import { adminViewAsRouter } from "./routers/admin-viewas";
+import { teamRouter } from "./routers/team";
 import { SUPPORTED_PROVIDERS, getAdapter, encodeCredentials, decodeCredentials, runPmsSync, notifyPmsJobComplete, notifyPmsJobReopen } from "./pms/index";
 import {
   stripe,
@@ -3913,6 +3914,7 @@ export const appRouter = router({
   stripePayments: stripeRouter,
   invites: invitesRouter,
   adminViewAs: adminViewAsRouter,
+  team: teamRouter,
   promoCodes: promoCodesRouter,
   adminControl: adminControlRouter,
   announcements: announcementsRouter,
