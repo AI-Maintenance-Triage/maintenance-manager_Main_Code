@@ -564,11 +564,9 @@ function PlansTab({ planType }: { planType: "company" | "contractor" }) {
   });
 
   const countForPlan = (planId: number) => {
-    if (planType === "company") {
-      return (companiesWithPlans ?? []).filter((r: any) => r.company?.planId === planId).length;
-    }
-    // For contractor plans we don't have a direct list yet — show 0
-    return 0;
+    // Use the subscriberCount returned directly from the backend (includes both company + contractor counts)
+    const plan = (plans ?? []).find((p: any) => p.id === planId);
+    return plan?.subscriberCount ?? 0;
   };
 
   return (

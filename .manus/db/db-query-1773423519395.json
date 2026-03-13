@@ -1,0 +1,9 @@
+{
+  "query": "INSERT INTO platform_settings (platformFeePercent, perListingFeeEnabled, perListingFeeAmount, autoClockOutMinutes, autoClockOutRadiusMeters, pmsSyncIntervalHours)\nVALUES (5.00, FALSE, 0.00, 15, 200, 24);\n\nINSERT INTO maintenance_mode (isEnabled, message) VALUES (FALSE, NULL);",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user sHLCts4RR6iL2PA.1ead08cf1a54 --database bBuQZrfKLoBs6LmtvQ4y6E --execute INSERT INTO platform_settings (platformFeePercent, perListingFeeEnabled, perListingFeeAmount, autoClockOutMinutes, autoClockOutRadiusMeters, pmsSyncIntervalHours)\nVALUES (5.00, FALSE, 0.00, 15, 200, 24);\n\nINSERT INTO maintenance_mode (isEnabled, message) VALUES (FALSE, NULL);",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 86
+}

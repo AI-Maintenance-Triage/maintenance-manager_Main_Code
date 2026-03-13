@@ -1,0 +1,158 @@
+{
+  "query": "SELECT TABLE_NAME, GROUP_CONCAT(COLUMN_NAME ORDER BY ORDINAL_POSITION SEPARATOR ', ') as columns\nFROM information_schema.COLUMNS \nWHERE TABLE_SCHEMA = DATABASE() \nGROUP BY TABLE_NAME\nORDER BY TABLE_NAME;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user sHLCts4RR6iL2PA.1ead08cf1a54 --database bBuQZrfKLoBs6LmtvQ4y6E --execute SELECT TABLE_NAME, GROUP_CONCAT(COLUMN_NAME ORDER BY ORDINAL_POSITION SEPARATOR ', ') as columns\nFROM information_schema.COLUMNS \nWHERE TABLE_SCHEMA = DATABASE() \nGROUP BY TABLE_NAME\nORDER BY TABLE_NAME;",
+  "rows": [
+    {
+      "TABLE_NAME": "__drizzle_migrations",
+      "columns": "id, hash, created_at"
+    },
+    {
+      "TABLE_NAME": "account_credits",
+      "columns": "id, companyId, amountCents, reason, issuedBy, appliedToJobId, createdAt"
+    },
+    {
+      "TABLE_NAME": "account_suspensions",
+      "columns": "id, targetType, targetId, reason, suspendedBy, suspendedAt, reinstatedAt, reinstatedBy, isActive"
+    },
+    {
+      "TABLE_NAME": "activity_events",
+      "columns": "id, eventType, title, description, actorId, actorName, relatedId, relatedType, createdAt"
+    },
+    {
+      "TABLE_NAME": "audit_log",
+      "columns": "id, actorId, actorName, action, targetType, targetId, targetName, details, createdAt"
+    },
+    {
+      "TABLE_NAME": "companies",
+      "columns": "id, name, logoUrl, address, phone, email, stripeAccountId, subscriptionTier, subscriptionStatus, createdAt, updatedAt, stripeCustomerId, planId, planPriceOverride, planNotes, planStatus, planAssignedAt, planExpiresAt, stripeSubscriptionId, feeOverridePercent, feeOverridePerListingEnabled, feeOverridePerListingAmount"
+    },
+    {
+      "TABLE_NAME": "company_payment_methods",
+      "columns": "id, companyId, stripePaymentMethodId, type, brand, last4, bankName, label, isDefault, createdAt"
+    },
+    {
+      "TABLE_NAME": "company_promo_redemptions",
+      "columns": "id, companyId, promoCodeId, redeemedAt, cyclesRemaining, isActive"
+    },
+    {
+      "TABLE_NAME": "company_settings",
+      "columns": "id, companyId, geofenceRadiusFeet, autoClockOutMinutes, maxSessionDurationHours, timesheetReviewEnabled, billableTimePolicy, hybridCapMinutes, partsMarkupPercent, autoApproveContractors, escalationTimeoutMinutes, platformFeePercent, createdAt, updatedAt, notifyOnClockIn, notifyOnClockOut, notifyOnJobSubmitted, notifyOnNewContractor, defaultJobBoardVisibility, excludeOutOfGeofenceSessions"
+    },
+    {
+      "TABLE_NAME": "contractor_companies",
+      "columns": "id, contractorProfileId, companyId, status, isPreferred, invitedBy, createdAt, updatedAt, isTrusted"
+    },
+    {
+      "TABLE_NAME": "contractor_invites",
+      "columns": "id, companyId, email, name, token, status, expiresAt, acceptedAt, createdAt, updatedAt"
+    },
+    {
+      "TABLE_NAME": "contractor_profiles",
+      "columns": "id, userId, businessName, phone, trades, serviceAreaZips, serviceRadiusMiles, latitude, longitude, licenseNumber, insuranceInfo, stripeAccountId, isAvailable, rating, completedJobs, createdAt, updatedAt, stripeOnboardingComplete, planId, planPriceOverride, planNotes, planStatus, planAssignedAt, planExpiresAt, stripeSubscriptionId, address"
+    },
+    {
+      "TABLE_NAME": "contractor_ratings",
+      "columns": "id, maintenanceRequestId, contractorProfileId, companyId, ratedByUserId, stars, review, createdAt"
+    },
+    {
+      "TABLE_NAME": "dismissed_announcements",
+      "columns": "id, userId, announcementId, dismissedAt"
+    },
+    {
+      "TABLE_NAME": "feature_flags",
+      "columns": "id, key, label, description, enabledForCompanies, enabledForContractors, updatedAt, updatedBy"
+    },
+    {
+      "TABLE_NAME": "integration_connectors",
+      "columns": "id, companyId, provider, apiKey, apiSecret, baseUrl, isActive, lastSyncAt, syncStatus, syncError, config, createdAt, updatedAt, webhookSecret"
+    },
+    {
+      "TABLE_NAME": "job_change_history",
+      "columns": "id, jobId, companyId, userId, changeType, fromValue, toValue, note, createdAt"
+    },
+    {
+      "TABLE_NAME": "job_comments",
+      "columns": "id, maintenanceRequestId, authorUserId, authorRole, authorName, message, createdAt"
+    },
+    {
+      "TABLE_NAME": "location_pings",
+      "columns": "id, timeSessionId, latitude, longitude, timestamp, locationType"
+    },
+    {
+      "TABLE_NAME": "maintenance_mode",
+      "columns": "id, isEnabled, message, enabledBy, enabledAt, updatedAt"
+    },
+    {
+      "TABLE_NAME": "maintenance_requests",
+      "columns": "id, companyId, propertyId, externalId, source, tenantName, tenantPhone, tenantEmail, unitNumber, title, description, photoUrls, aiPriority, aiSkillTier, aiSkillTierId, aiReasoning, aiClassifiedAt, status, assignedContractorId, assignedAt, completedAt, skillTierId, hourlyRate, isEmergency, totalLaborMinutes, totalLaborCost, totalPartsCost, platformFee, totalCost, createdAt, updatedAt, postedToBoard, completionNotes, completionPhotoUrls, verifiedAt, verifiedByUserId, verificationNotes, disputeNotes, stripePaymentIntentId, paidAt, disputedAt, disputeResponseNote, resubmittedAt, escalationNotifiedAt, jobBoardVisibility, overridePriority, overrideHourlyRate, overrideReason, overriddenAt, overriddenByUserId, overrideSkillTierId"
+    },
+    {
+      "TABLE_NAME": "notifications",
+      "columns": "id, userId, type, title, body, linkRoute, metadata, isRead, createdAt"
+    },
+    {
+      "TABLE_NAME": "parts_receipts",
+      "columns": "id, maintenanceRequestId, contractorProfileId, companyId, storeName, description, amount, receiptImageUrl, approved, approvedBy, createdAt"
+    },
+    {
+      "TABLE_NAME": "password_reset_tokens",
+      "columns": "id, userId, token, expiresAt, usedAt, createdAt"
+    },
+    {
+      "TABLE_NAME": "payout_holds",
+      "columns": "id, contractorId, reason, placedBy, placedAt, releasedAt, releasedBy, isActive"
+    },
+    {
+      "TABLE_NAME": "platform_announcements",
+      "columns": "id, title, message, type, targetAudience, isActive, expiresAt, createdAt, updatedAt"
+    },
+    {
+      "TABLE_NAME": "platform_settings",
+      "columns": "id, platformFeePercent, perListingFeeEnabled, perListingFeeAmount, autoClockOutMinutes, autoClockOutRadiusMeters, createdAt, updatedAt, pmsSyncIntervalHours"
+    },
+    {
+      "TABLE_NAME": "pms_integrations",
+      "columns": "id, companyId, provider, authType, credentialsJson, webhookSecret, status, lastSyncAt, lastErrorMessage, createdAt, updatedAt"
+    },
+    {
+      "TABLE_NAME": "pms_webhook_events",
+      "columns": "id, provider, companyId, rawPayload, status, errorMessage, createdJobId, createdAt"
+    },
+    {
+      "TABLE_NAME": "promo_codes",
+      "columns": "id, code, description, affectsSubscription, affectsServiceCharge, affectsListingFee, discountPercent, billingCycles, isActive, maxRedemptions, redemptionCount, expiresAt, createdAt, updatedAt"
+    },
+    {
+      "TABLE_NAME": "properties",
+      "columns": "id, companyId, name, address, city, state, zipCode, latitude, longitude, units, externalId, createdAt, updatedAt, propertyType"
+    },
+    {
+      "TABLE_NAME": "property_units",
+      "columns": "id, propertyId, companyId, unitNumber, bedrooms, bathrooms, sqft, externalId, createdAt, updatedAt"
+    },
+    {
+      "TABLE_NAME": "skill_tiers",
+      "columns": "id, companyId, name, description, hourlyRate, emergencyMultiplier, sortOrder, createdAt, updatedAt"
+    },
+    {
+      "TABLE_NAME": "subscription_plans",
+      "columns": "id, name, description, priceMonthly, priceAnnual, features, isActive, sortOrder, createdAt, updatedAt, platformFeePercent, perListingFeeEnabled, perListingFeeAmount, stripePriceIdMonthly, stripePriceIdAnnual, planType, earlyNotificationMinutes, stripeProductId"
+    },
+    {
+      "TABLE_NAME": "time_sessions",
+      "columns": "id, maintenanceRequestId, contractorProfileId, companyId, clockInTime, clockInLat, clockInLng, clockInVerified, clockOutTime, clockOutLat, clockOutLng, clockOutVerified, clockOutMethod, status, totalMinutes, billableMinutes, contractorApproved, contractorNotes, createdAt, updatedAt"
+    },
+    {
+      "TABLE_NAME": "transactions",
+      "columns": "id, maintenanceRequestId, companyId, contractorProfileId, laborCost, partsCost, platformFee, stripeFee, totalCharged, contractorPayout, stripePaymentIntentId, stripeTransferId, status, paidAt, createdAt, updatedAt"
+    },
+    {
+      "TABLE_NAME": "users",
+      "columns": "id, openId, name, email, loginMethod, role, companyId, contractorProfileId, createdAt, updatedAt, lastSignedIn, passwordHash, emailPreferences, resetPasswordToken, resetPasswordExpiry, emailVerificationCode, emailVerificationExpiry, emailVerified"
+    }
+  ],
+  "messages": [],
+  "stdout": "TABLE_NAME\tcolumns\n__drizzle_migrations\tid, hash, created_at\naccount_credits\tid, companyId, amountCents, reason, issuedBy, appliedToJobId, createdAt\naccount_suspensions\tid, targetType, targetId, reason, suspendedBy, suspendedAt, reinstatedAt, reinstatedBy, isActive\nactivity_events\tid, eventType, title, description, actorId, actorName, relatedId, relatedType, createdAt\naudit_log\tid, actorId, actorName, action, targetType, targetId, targetName, details, createdAt\ncompanies\tid, name, logoUrl, address, phone, email, stripeAccountId, subscriptionTier, subscriptionStatus, createdAt, updatedAt, stripeCustomerId, planId, planPriceOverride, planNotes, planStatus, planAssignedAt, planExpiresAt, stripeSubscriptionId, feeOverridePercent, feeOverridePerListingEnabled, feeOverridePerListingAmount\ncompany_payment_methods\tid, companyId, stripePaymentMethodId, type, brand, last4, bankName, label, isDefault, createdAt\ncompany_promo_redemptions\tid, companyId, promoCodeId, redeemedAt, cyclesRemaining, isActive\ncompany_settings\tid, companyId, geofenceRadiusFeet, autoClockOutMinutes, maxSessionDurationHours, timesheetReviewEnabled, billableTimePolicy, hybridCapMinutes, partsMarkupPercent, autoApproveContractors, escalationTimeoutMinutes, platformFeePercent, createdAt, updatedAt, notifyOnClockIn, notifyOnClockOut, notifyOnJobSubmitted, notifyOnNewContractor, defaultJobBoardVisibility, excludeOutOfGeofenceSessions\ncontractor_companies\tid, contractorProfileId, companyId, status, isPreferred, invitedBy, createdAt, updatedAt, isTrusted\ncontractor_invites\tid, companyId, email, name, token, status, expiresAt, acceptedAt, createdAt, updatedAt\ncontractor_profiles\tid, userId, businessName, phone, trades, serviceAreaZips, serviceRadiusMiles, latitude, longitude, licenseNumber, insuranceInfo, stripeAccountId, isAvailable, rating, completedJobs, createdAt, updatedAt, stripeOnboardingComplete, planId, planPriceOverride, planNotes, planStatus, planAssignedAt, planExpiresAt, stripeSubscriptionId, address\ncontractor_ratings\tid, maintenanceRequestId, contractorProfileId, companyId, ratedByUserId, stars, review, createdAt\ndismissed_announcements\tid, userId, announcementId, dismissedAt\nfeature_flags\tid, key, label, description, enabledForCompanies, enabledForContractors, updatedAt, updatedBy\nintegration_connectors\tid, companyId, provider, apiKey, apiSecret, baseUrl, isActive, lastSyncAt, syncStatus, syncError, config, createdAt, updatedAt, webhookSecret\njob_change_history\tid, jobId, companyId, userId, changeType, fromValue, toValue, note, createdAt\njob_comments\tid, maintenanceRequestId, authorUserId, authorRole, authorName, message, createdAt\nlocation_pings\tid, timeSessionId, latitude, longitude, timestamp, locationType\nmaintenance_mode\tid, isEnabled, message, enabledBy, enabledAt, updatedAt\nmaintenance_requests\tid, companyId, propertyId, externalId, source, tenantName, tenantPhone, tenantEmail, unitNumber, title, description, photoUrls, aiPriority, aiSkillTier, aiSkillTierId, aiReasoning, aiClassifiedAt, status, assignedContractorId, assignedAt, completedAt, skillTierId, hourlyRate, isEmergency, totalLaborMinutes, totalLaborCost, totalPartsCost, platformFee, totalCost, createdAt, updatedAt, postedToBoard, completionNotes, completionPhotoUrls, verifiedAt, verifiedByUserId, verificationNotes, disputeNotes, stripePaymentIntentId, paidAt, disputedAt, disputeResponseNote, resubmittedAt, escalationNotifiedAt, jobBoardVisibility, overridePriority, overrideHourlyRate, overrideReason, overriddenAt, overriddenByUserId, overrideSkillTierId\nnotifications\tid, userId, type, title, body, linkRoute, metadata, isRead, createdAt\nparts_receipts\tid, maintenanceRequestId, contractorProfileId, companyId, storeName, description, amount, receiptImageUrl, approved, approvedBy, createdAt\npassword_reset_tokens\tid, userId, token, expiresAt, usedAt, createdAt\npayout_holds\tid, contractorId, reason, placedBy, placedAt, releasedAt, releasedBy, isActive\nplatform_announcements\tid, title, message, type, targetAudience, isActive, expiresAt, createdAt, updatedAt\nplatform_settings\tid, platformFeePercent, perListingFeeEnabled, perListingFeeAmount, autoClockOutMinutes, autoClockOutRadiusMeters, createdAt, updatedAt, pmsSyncIntervalHours\npms_integrations\tid, companyId, provider, authType, credentialsJson, webhookSecret, status, lastSyncAt, lastErrorMessage, createdAt, updatedAt\npms_webhook_events\tid, provider, companyId, rawPayload, status, errorMessage, createdJobId, createdAt\npromo_codes\tid, code, description, affectsSubscription, affectsServiceCharge, affectsListingFee, discountPercent, billingCycles, isActive, maxRedemptions, redemptionCount, expiresAt, createdAt, updatedAt\nproperties\tid, companyId, name, address, city, state, zipCode, latitude, longitude, units, externalId, createdAt, updatedAt, propertyType\nproperty_units\tid, propertyId, companyId, unitNumber, bedrooms, bathrooms, sqft, externalId, createdAt, updatedAt\nskill_tiers\tid, companyId, name, description, hourlyRate, emergencyMultiplier, sortOrder, createdAt, updatedAt\nsubscription_plans\tid, name, description, priceMonthly, priceAnnual, features, isActive, sortOrder, createdAt, updatedAt, platformFeePercent, perListingFeeEnabled, perListingFeeAmount, stripePriceIdMonthly, stripePriceIdAnnual, planType, earlyNotificationMinutes, stripeProductId\ntime_sessions\tid, maintenanceRequestId, contractorProfileId, companyId, clockInTime, clockInLat, clockInLng, clockInVerified, clockOutTime, clockOutLat, clockOutLng, clockOutVerified, clockOutMethod, status, totalMinutes, billableMinutes, contractorApproved, contractorNotes, createdAt, updatedAt\ntransactions\tid, maintenanceRequestId, companyId, contractorProfileId, laborCost, partsCost, platformFee, stripeFee, totalCharged, contractorPayout, stripePaymentIntentId, stripeTransferId, status, paidAt, createdAt, updatedAt\nusers\tid, openId, name, email, loginMethod, role, companyId, contractorProfileId, createdAt, updatedAt, lastSignedIn, passwordHash, emailPreferences, resetPasswordToken, resetPasswordExpiry, emailVerificationCode, emailVerificationExpiry, emailVerified\n",
+  "stderr": "",
+  "execution_time_ms": 70
+}

@@ -13,6 +13,27 @@ import { ENV } from "./_core/env";
 import { getSessionCookieOptions } from "./_core/cookies";
 import * as db from "./db";
 import * as emailService from "./email";
+import rateLimit, { ipKeyGenerator } from "express-rate-limit";
+
+// Rate limiter: max 3 password reset requests per email per hour
+// Keyed by email (from body) so each email address is limited independently
+const passwordResetLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hour
+  max: 3,
+  keyGenerator: (req: Request) => {
+    const email = (req.body?.email ?? "").trim().toLowerCase();
+    // Use email as key if provided; fall back to IP (with IPv6 normalization)
+    return email || ipKeyGenerator(req.ip ?? "unknown");
+  },
+  handler: (_req: Request, res: Response) => {
+    res.status(429).json({
+      error: "Too many password reset requests. Please wait before trying again.",
+    });
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+  skip: () => process.env.NODE_ENV === "test",
+});
 
 const SALT_ROUNDS = 12;
 
@@ -187,7 +208,8 @@ export function registerLocalAuthRoutes(app: Express) {
   });
 
   // --- Forgot Password -------------------------------------------------------
-  app.post("/api/auth/forgot-password", async (req: Request, res: Response) => {
+  // Rate limited: 3 requests per email per hour (see passwordResetLimiter above)
+  app.post("/api/auth/forgot-password", passwordResetLimiter, async (req: Request, res: Response) => {
     try {
       const { email, origin } = req.body;
       if (!email) {
@@ -195,9 +217,13 @@ export function registerLocalAuthRoutes(app: Express) {
         return;
       }
       const normalizedEmail = email.trim().toLowerCase();
+      // Always return the same generic message regardless of whether the email exists
+      // This prevents email enumeration attacks
+      const SAFE_MESSAGE = "If that email exists, you'll receive a link shortly.";
       const user = await db.getUserByEmail(normalizedEmail);
       if (!user || !user.passwordHash) {
-        res.json({ success: true });
+        // Email not found or OAuth-only account — return safe message without revealing this
+        res.json({ success: true, message: SAFE_MESSAGE });
         return;
       }
       const token = crypto.randomBytes(32).toString("hex");
@@ -210,7 +236,7 @@ export function registerLocalAuthRoutes(app: Express) {
         name: user.name ?? "there",
         resetUrl,
       }).catch(err => console.error("[Email] Password reset email failed:", err));
-      res.json({ success: true });
+      res.json({ success: true, message: SAFE_MESSAGE });
     } catch (error) {
       console.error("[Auth] Forgot password failed:", error);
       res.status(500).json({ error: "Failed to process request. Please try again." });

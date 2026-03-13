@@ -1,0 +1,79 @@
+{
+  "query": "SELECT COLUMN_NAME FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME IN ('platform_settings','feature_flags','maintenance_mode') ORDER BY TABLE_NAME, ORDINAL_POSITION;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user sHLCts4RR6iL2PA.1ead08cf1a54 --database bBuQZrfKLoBs6LmtvQ4y6E --execute SELECT COLUMN_NAME FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME IN ('platform_settings','feature_flags','maintenance_mode') ORDER BY TABLE_NAME, ORDINAL_POSITION;",
+  "rows": [
+    {
+      "COLUMN_NAME": "id"
+    },
+    {
+      "COLUMN_NAME": "key"
+    },
+    {
+      "COLUMN_NAME": "label"
+    },
+    {
+      "COLUMN_NAME": "description"
+    },
+    {
+      "COLUMN_NAME": "enabledForCompanies"
+    },
+    {
+      "COLUMN_NAME": "enabledForContractors"
+    },
+    {
+      "COLUMN_NAME": "updatedAt"
+    },
+    {
+      "COLUMN_NAME": "updatedBy"
+    },
+    {
+      "COLUMN_NAME": "id"
+    },
+    {
+      "COLUMN_NAME": "isEnabled"
+    },
+    {
+      "COLUMN_NAME": "message"
+    },
+    {
+      "COLUMN_NAME": "enabledBy"
+    },
+    {
+      "COLUMN_NAME": "enabledAt"
+    },
+    {
+      "COLUMN_NAME": "updatedAt"
+    },
+    {
+      "COLUMN_NAME": "id"
+    },
+    {
+      "COLUMN_NAME": "platformFeePercent"
+    },
+    {
+      "COLUMN_NAME": "perListingFeeEnabled"
+    },
+    {
+      "COLUMN_NAME": "perListingFeeAmount"
+    },
+    {
+      "COLUMN_NAME": "autoClockOutMinutes"
+    },
+    {
+      "COLUMN_NAME": "autoClockOutRadiusMeters"
+    },
+    {
+      "COLUMN_NAME": "createdAt"
+    },
+    {
+      "COLUMN_NAME": "updatedAt"
+    },
+    {
+      "COLUMN_NAME": "pmsSyncIntervalHours"
+    }
+  ],
+  "messages": [],
+  "stdout": "COLUMN_NAME\nid\nkey\nlabel\ndescription\nenabledForCompanies\nenabledForContractors\nupdatedAt\nupdatedBy\nid\nisEnabled\nmessage\nenabledBy\nenabledAt\nupdatedAt\nid\nplatformFeePercent\nperListingFeeEnabled\nperListingFeeAmount\nautoClockOutMinutes\nautoClockOutRadiusMeters\ncreatedAt\nupdatedAt\npmsSyncIntervalHours\n",
+  "stderr": "",
+  "execution_time_ms": 59
+}

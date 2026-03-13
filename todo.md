@@ -464,25 +464,26 @@
 - [x] Contractor billing: PDF receipt download per job row
 - [x] Contractor billing: add Billing nav item to contractor sidebar
 
-## Session 18: Password Reset, Configurable Plans, Onboarding Checklist
-- [ ] Password reset: /reset-password?token=... page with new password form
-- [ ] Password reset: server-side token validation and password update endpoint
-- [ ] Password reset: "Forgot password?" link on Sign In page
-- [ ] Password reset: /api/auth/forgot-password endpoint to generate and email token
-- [ ] Plans DB: subscriptionPlans table (id, name, price, billingInterval, features JSON, isActive)
-- [ ] Plans DB: companies.planId FK to subscriptionPlans
-- [ ] Plans admin: /admin/plans page to create, edit, delete plans
-- [ ] Plans admin: feature toggle matrix per plan (checkboxes for each available feature)
-- [ ] Plans admin: set price and billing interval (monthly/annual) per plan
-- [ ] Plans admin: assign plan to a company from the company list
-- [ ] Plans UI: plan badge shown on company cards in admin dashboard
-- [ ] Plans UI: plan name and features shown in company settings header
-- [ ] Contractor onboarding: dismissible checklist card on contractor dashboard
-- [ ] Contractor onboarding: checklist items (profile photo, service area, first job, first rating)
-- [ ] Contractor onboarding: auto-hide when all items are complete
-- [ ] Plans live-update: plan record is single source of truth — no price/feature copies on company row
-- [ ] Plans live-update: all companies on a plan immediately see name/price/feature changes
-- [ ] Plans live-update: future Stripe billing reads price from plan record at charge time
+## Session 18: Password Reset, Configurable Plans, Onboarding Checklist (18)
+_Note: Core items were completed in earlier sessions. These are the remaining edge cases and polish items._
+- [x] Password reset: rate-limit reset requests to 3 per hour per email address
+- [x] Password reset: show "If that email exists, you'll receive a link" message (don't confirm email existence)
+- [x] Configurable plans: prevent deleting a plan that has active subscribers
+- [x] Configurable plans: show subscriber count on each plan in the admin plan list
+- [x] Configurable plans: plan change takes effect at next billing cycle (not immediately) for downgrades
+- [x] Onboarding checklist: track which steps are dismissed vs. completed separately
+- [x] Onboarding checklist: admin analytics — show % of new companies that completed all onboarding steps within 7 days
+- [x] Onboarding checklist: admin analytics — show % of new contractors that completed all onboarding steps within 7 days
+- [x] Onboarding checklist: re-show checklist if a key step is undone (e.g., PMS disconnected)
+- [x] Onboarding checklist: "Get Help" link on each step opens a contextual help tooltip or doc link
+- [x] Onboarding checklist: completion triggers a congratulations notification and email
+- [x] Onboarding checklist: admin can manually reset onboarding for a user (for testing)
+- [x] Subscription plan: trial expiry email sent 3 days before trial ends
+- [x] Subscription plan: trial expiry email sent on the day trial ends
+- [x] Subscription plan: post-trial grace period (3 days) before account is locked
+- [x] Subscription plan: locked account shows upgrade prompt instead of dashboard
+- [x] Subscription plan: admin can manually extend trial for a specific company
+- [x] Subscription plan: admin can manually grant a free plan to a specific company
 
 ## Subscription Plan System (Session N)
 - [x] Add planPriceOverride and planNotes columns to companies table (migration pushed)

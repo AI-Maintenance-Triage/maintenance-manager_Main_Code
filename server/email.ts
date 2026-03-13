@@ -522,3 +522,20 @@ export async function sendEmailVerificationCode(opts: { to: string; name: string
   `);
   return sendEmail({ to: opts.to, subject: "Your verification code - Maintenance Manager", html });
 }
+
+export async function sendOnboardingCompleteEmail(opts: { to: string; name: string }) {
+  const html = layout("You're all set! 🎉", `
+    <h1>You're all set, ${opts.name}!</h1>
+    <p>Congratulations — you've completed all the steps to set up your contractor profile on Maintenance Manager.</p>
+    <div style="background:#1c1c1c;border:1px solid #2a2a2a;border-radius:10px;padding:24px;margin:16px 0;">
+      <h2 style="margin:0 0 12px;color:#22c55e;font-size:18px;">What's next?</h2>
+      <ul style="margin:0;padding-left:20px;color:#a3a3a3;font-size:14px;line-height:1.8;">
+        <li>Browse available jobs on your dashboard</li>
+        <li>Accept job invitations from property management companies</li>
+        <li>Track your earnings and request payouts via Stripe</li>
+      </ul>
+    </div>
+    <p style="color:#a3a3a3;font-size:14px;">If you have any questions, reply to this email or use the Help link in your dashboard.</p>
+  `);
+  return sendEmail({ to: opts.to, subject: "You're all set on Maintenance Manager! 🎉", html });
+}

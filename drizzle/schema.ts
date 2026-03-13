@@ -65,10 +65,15 @@ export const companies = mysqlTable("companies", {
   feeOverridePerListingEnabled: boolean("feeOverridePerListingEnabled"),
   feeOverridePerListingAmount: decimal("feeOverridePerListingAmount", { precision: 8, scale: 2 }),
   // Plan lifecycle
-  planStatus: mysqlEnum("planStatus", ["active", "trialing", "expired", "canceled"]).default("trialing").notNull(),
+  planStatus: mysqlEnum("planStatus", ["active", "trialing", "expired", "grace_period", "locked", "canceled"]).default("trialing").notNull(),
   planAssignedAt: bigint("planAssignedAt", { mode: "number" }),
   planExpiresAt: bigint("planExpiresAt", { mode: "number" }),
+  planGraceEndsAt: bigint("planGraceEndsAt", { mode: "number" }), // UTC ms — 3 days after trial expires
   stripeSubscriptionId: varchar("stripeSubscriptionId", { length: 255 }),
+  // Pending downgrade: set when a company downgrades mid-cycle; applied at next billing date
+  pendingPlanId: int("pendingPlanId"),
+  pendingBillingInterval: mysqlEnum("pendingBillingInterval", ["monthly", "annual"]),
+  pendingPlanEffectiveAt: bigint("pendingPlanEffectiveAt", { mode: "number" }), // UTC ms timestamp
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
@@ -192,10 +197,14 @@ export const contractorProfiles = mysqlTable("contractor_profiles", {
   planPriceOverride: decimal("planPriceOverride", { precision: 10, scale: 2 }), // null = use plan default
   planNotes: text("planNotes"),                              // internal admin notes
   // Plan lifecycle
-  planStatus: mysqlEnum("planStatus", ["active", "trialing", "expired", "canceled"]).default("trialing").notNull(),
+  planStatus: mysqlEnum("planStatus", ["active", "trialing", "expired", "grace_period", "locked", "canceled"]).default("trialing").notNull(),
   planAssignedAt: bigint("planAssignedAt", { mode: "number" }),
   planExpiresAt: bigint("planExpiresAt", { mode: "number" }),
+  planGraceEndsAt: bigint("planGraceEndsAt", { mode: "number" }), // UTC ms — 3 days after trial expires
   stripeSubscriptionId: varchar("stripeSubscriptionId", { length: 255 }),
+  // Onboarding checklist tracking
+  onboardingDismissedSteps: json("onboardingDismissedSteps").$type<string[]>().default([]),  // step IDs dismissed by user
+  onboardingCompletedAt: bigint("onboardingCompletedAt", { mode: "number" }),               // UTC ms when all steps first completed
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });

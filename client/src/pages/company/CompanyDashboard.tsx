@@ -206,6 +206,12 @@ function PlanUsageWidget() {
           {planStatus === "expired" && (
             <Badge className="bg-red-500/15 text-red-400 border-red-500/30 text-xs gap-1"><XCircle className="h-3 w-3" /> Expired</Badge>
           )}
+          {planStatus === "grace_period" && (
+            <Badge className="bg-orange-500/15 text-orange-400 border-orange-500/30 text-xs gap-1"><XCircle className="h-3 w-3" /> Grace Period</Badge>
+          )}
+          {planStatus === "locked" && (
+            <Badge className="bg-red-600/20 text-red-500 border-red-600/40 text-xs gap-1"><XCircle className="h-3 w-3" /> Account Locked</Badge>
+          )}
         </div>
       </CardHeader>
       <CardContent className="space-y-3">
@@ -230,13 +236,13 @@ function PlanUsageWidget() {
                 )}
               </div>
             ))}
-            {(isNearLimit || planStatus === "expired") && (
+            {(isNearLimit || planStatus === "expired" || planStatus === "grace_period" || planStatus === "locked") && (
               <button
                 onClick={() => setLocation("/company/billing")}
                 className="w-full mt-1 flex items-center justify-center gap-1.5 text-xs text-primary hover:underline"
               >
                 <ArrowUpRight className="h-3 w-3" />
-                {planStatus === "expired" ? "Renew subscription" : "Upgrade plan"}
+                {planStatus === "locked" ? "Reactivate account" : planStatus === "grace_period" ? "Subscribe before account locks" : planStatus === "expired" ? "Renew subscription" : "Upgrade plan"}
               </button>
             )}
           </>
@@ -256,8 +262,44 @@ function PlanUsageWidget() {
   );
 }
 
+function LockedAccountWall({ billingUrl, userType }: { billingUrl: string; userType: "company" | "contractor" }) {
+  const [, setLocation] = useLocation();
+  return (
+    <div className="flex flex-col items-center justify-center min-h-[60vh] text-center space-y-6 px-4">
+      <div className="rounded-full bg-red-500/10 p-6">
+        <XCircle className="h-16 w-16 text-red-500" />
+      </div>
+      <div className="space-y-2">
+        <h1 className="text-2xl font-bold text-foreground">Account Locked</h1>
+        <p className="text-muted-foreground max-w-md">
+          Your free trial has ended and the 3-day grace period has passed. Your account is now locked.
+          Subscribe to a plan to restore full access.
+        </p>
+      </div>
+      <div className="flex flex-col sm:flex-row gap-3">
+        <button
+          onClick={() => setLocation(billingUrl)}
+          className="inline-flex items-center gap-2 px-6 py-3 rounded-lg bg-primary text-primary-foreground font-semibold hover:bg-primary/90 transition-colors"
+        >
+          <ArrowUpRight className="h-4 w-4" />
+          Choose a Plan
+        </button>
+      </div>
+      <p className="text-xs text-muted-foreground">
+        Need help? Contact support or visit your billing page for options.
+      </p>
+    </div>
+  );
+}
+
 function CompanyDashboardContent() {
   const { data: stats, isLoading } = trpc.company.dashboardStats.useQuery();
+  const { data: planData } = trpc.company.getMyPlan.useQuery();
+  const planStatus = planData?.planStatus ?? null;
+
+  if (planStatus === "locked") {
+    return <LockedAccountWall billingUrl="/company/billing" userType="company" />;
+  }
 
   if (isLoading) {
     return (

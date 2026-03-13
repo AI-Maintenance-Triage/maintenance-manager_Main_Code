@@ -1,0 +1,121 @@
+{
+  "query": "SELECT TABLE_NAME FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() ORDER BY TABLE_NAME;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user sHLCts4RR6iL2PA.1ead08cf1a54 --database bBuQZrfKLoBs6LmtvQ4y6E --execute SELECT TABLE_NAME FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() ORDER BY TABLE_NAME;",
+  "rows": [
+    {
+      "TABLE_NAME": "__drizzle_migrations"
+    },
+    {
+      "TABLE_NAME": "account_credits"
+    },
+    {
+      "TABLE_NAME": "account_suspensions"
+    },
+    {
+      "TABLE_NAME": "activity_events"
+    },
+    {
+      "TABLE_NAME": "audit_log"
+    },
+    {
+      "TABLE_NAME": "companies"
+    },
+    {
+      "TABLE_NAME": "company_payment_methods"
+    },
+    {
+      "TABLE_NAME": "company_promo_redemptions"
+    },
+    {
+      "TABLE_NAME": "company_settings"
+    },
+    {
+      "TABLE_NAME": "contractor_companies"
+    },
+    {
+      "TABLE_NAME": "contractor_invites"
+    },
+    {
+      "TABLE_NAME": "contractor_profiles"
+    },
+    {
+      "TABLE_NAME": "contractor_ratings"
+    },
+    {
+      "TABLE_NAME": "dismissed_announcements"
+    },
+    {
+      "TABLE_NAME": "feature_flags"
+    },
+    {
+      "TABLE_NAME": "integration_connectors"
+    },
+    {
+      "TABLE_NAME": "job_change_history"
+    },
+    {
+      "TABLE_NAME": "job_comments"
+    },
+    {
+      "TABLE_NAME": "location_pings"
+    },
+    {
+      "TABLE_NAME": "maintenance_mode"
+    },
+    {
+      "TABLE_NAME": "maintenance_requests"
+    },
+    {
+      "TABLE_NAME": "notifications"
+    },
+    {
+      "TABLE_NAME": "parts_receipts"
+    },
+    {
+      "TABLE_NAME": "password_reset_tokens"
+    },
+    {
+      "TABLE_NAME": "payout_holds"
+    },
+    {
+      "TABLE_NAME": "platform_announcements"
+    },
+    {
+      "TABLE_NAME": "platform_settings"
+    },
+    {
+      "TABLE_NAME": "pms_integrations"
+    },
+    {
+      "TABLE_NAME": "pms_webhook_events"
+    },
+    {
+      "TABLE_NAME": "promo_codes"
+    },
+    {
+      "TABLE_NAME": "properties"
+    },
+    {
+      "TABLE_NAME": "property_units"
+    },
+    {
+      "TABLE_NAME": "skill_tiers"
+    },
+    {
+      "TABLE_NAME": "subscription_plans"
+    },
+    {
+      "TABLE_NAME": "time_sessions"
+    },
+    {
+      "TABLE_NAME": "transactions"
+    },
+    {
+      "TABLE_NAME": "users"
+    }
+  ],
+  "messages": [],
+  "stdout": "TABLE_NAME\n__drizzle_migrations\naccount_credits\naccount_suspensions\nactivity_events\naudit_log\ncompanies\ncompany_payment_methods\ncompany_promo_redemptions\ncompany_settings\ncontractor_companies\ncontractor_invites\ncontractor_profiles\ncontractor_ratings\ndismissed_announcements\nfeature_flags\nintegration_connectors\njob_change_history\njob_comments\nlocation_pings\nmaintenance_mode\nmaintenance_requests\nnotifications\nparts_receipts\npassword_reset_tokens\npayout_holds\nplatform_announcements\nplatform_settings\npms_integrations\npms_webhook_events\npromo_codes\nproperties\nproperty_units\nskill_tiers\nsubscription_plans\ntime_sessions\ntransactions\nusers\n",
+  "stderr": "",
+  "execution_time_ms": 196
+}

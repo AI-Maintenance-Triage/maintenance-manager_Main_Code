@@ -8,10 +8,89 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Building2, Calendar, Settings, Percent, Receipt, X, AlertCircle, Plus } from "lucide-react";
+import { Building2, Calendar, Settings, Percent, Receipt, X, AlertCircle, Plus, Clock, Gift } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import AddressAutocomplete, { type AddressResult } from "@/components/AddressAutocomplete";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+
+// ─── Extend Trial Dialog ─────────────────────────────────────────────────────
+function ExtendTrialDialog({ company, open, onOpenChange, onSaved }: { company: any; open: boolean; onOpenChange: (v: boolean) => void; onSaved: () => void }) {
+  const [days, setDays] = useState("14");
+  const extendTrial = trpc.adminViewAs.extendTrial.useMutation({
+    onSuccess: (data) => {
+      toast.success(`Trial extended. New expiry: ${new Date(data.newExpiresAt).toLocaleDateString()}`);
+      onSaved();
+      onOpenChange(false);
+    },
+    onError: (e) => toast.error(e.message),
+  });
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-sm">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2"><Clock className="h-5 w-5 text-primary" /> Extend Trial</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4 py-2">
+          <p className="text-sm text-muted-foreground">Extend the trial for <strong>{company.name}</strong>.</p>
+          <div className="space-y-1">
+            <Label>Days to add</Label>
+            <Input type="number" min="1" max="365" value={days} onChange={(e) => setDays(e.target.value)} />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+          <Button onClick={() => extendTrial.mutate({ entityType: "company", entityId: company.id, days: parseInt(days) || 14 })} disabled={extendTrial.isPending}>
+            {extendTrial.isPending ? "Extending..." : "Extend Trial"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ─── Grant Free Plan Dialog ───────────────────────────────────────────────────
+function GrantFreePlanDialog({ company, open, onOpenChange, onSaved }: { company: any; open: boolean; onOpenChange: (v: boolean) => void; onSaved: () => void }) {
+  const { data: plans } = trpc.adminViewAs.listCompanyPlans.useQuery();
+  const [selectedPlanId, setSelectedPlanId] = useState<string>("");
+  const grantFree = trpc.adminViewAs.grantFreePlan.useMutation({
+    onSuccess: () => {
+      toast.success(`Free plan granted to ${company.name}`);
+      onSaved();
+      onOpenChange(false);
+    },
+    onError: (e) => toast.error(e.message),
+  });
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-sm">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2"><Gift className="h-5 w-5 text-primary" /> Grant Free Plan</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4 py-2">
+          <p className="text-sm text-muted-foreground">Grant <strong>{company.name}</strong> a free (no-expiry) plan.</p>
+          <div className="space-y-1">
+            <Label>Plan (optional — keep current if blank)</Label>
+            <Select value={selectedPlanId} onValueChange={setSelectedPlanId}>
+              <SelectTrigger><SelectValue placeholder="Keep current plan" /></SelectTrigger>
+              <SelectContent>
+                {(plans ?? []).map((p: any) => (
+                  <SelectItem key={p.id} value={String(p.id)}>{p.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+          <Button onClick={() => grantFree.mutate({ entityType: "company", entityId: company.id, planId: selectedPlanId ? parseInt(selectedPlanId) : undefined })} disabled={grantFree.isPending}>
+            {grantFree.isPending ? "Granting..." : "Grant Free Plan"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
 
 interface FeeOverrideDialogProps {
   company: any;
@@ -295,6 +374,8 @@ function CreateCompanyDialog({ open, onOpenChange, onCreated }: { open: boolean;
 export default function AdminCompanies() {
   const { data: companies, isLoading, refetch } = trpc.platform.companies.useQuery();
   const [managingCompany, setManagingCompany] = useState<any | null>(null);
+  const [extendingCompany, setExtendingCompany] = useState<any | null>(null);
+  const [grantingCompany, setGrantingCompany] = useState<any | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
 
   return (
@@ -375,14 +456,34 @@ export default function AdminCompanies() {
                       >
                         {company.subscriptionStatus || "No subscription"}
                       </Badge>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="text-xs gap-1 h-7"
-                        onClick={() => setManagingCompany(company)}
-                      >
-                        <Settings className="h-3 w-3" /> Manage
-                      </Button>
+                      <div className="flex items-center gap-1">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="text-xs gap-1 h-7"
+                          onClick={() => setManagingCompany(company)}
+                        >
+                          <Settings className="h-3 w-3" /> Manage
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="text-xs gap-1 h-7"
+                          onClick={() => setExtendingCompany(company)}
+                          title="Extend trial"
+                        >
+                          <Clock className="h-3 w-3" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="text-xs gap-1 h-7"
+                          onClick={() => setGrantingCompany(company)}
+                          title="Grant free plan"
+                        >
+                          <Gift className="h-3 w-3" />
+                        </Button>
+                      </div>
                     </div>
                   </div>
                 </CardContent>
@@ -397,6 +498,22 @@ export default function AdminCompanies() {
           company={managingCompany}
           open={!!managingCompany}
           onOpenChange={(v) => { if (!v) setManagingCompany(null); }}
+          onSaved={() => refetch()}
+        />
+      )}
+      {extendingCompany && (
+        <ExtendTrialDialog
+          company={extendingCompany}
+          open={!!extendingCompany}
+          onOpenChange={(v) => { if (!v) setExtendingCompany(null); }}
+          onSaved={() => refetch()}
+        />
+      )}
+      {grantingCompany && (
+        <GrantFreePlanDialog
+          company={grantingCompany}
+          open={!!grantingCompany}
+          onOpenChange={(v) => { if (!v) setGrantingCompany(null); }}
           onSaved={() => refetch()}
         />
       )}

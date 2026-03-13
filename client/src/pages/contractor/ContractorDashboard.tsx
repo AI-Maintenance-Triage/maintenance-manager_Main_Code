@@ -11,6 +11,19 @@ import { AnnouncementBanner } from "@/components/AnnouncementBanner";
 import { ContractorOnboardingChecklist } from "@/components/ContractorOnboardingChecklist";
 import { ContractorPayoutStatusCard } from "@/components/ContractorPayoutStatusCard";
 
+function LockedAccountButton({ billingUrl }: { billingUrl: string }) {
+  const [, setLocation] = useLocation();
+  return (
+    <button
+      onClick={() => setLocation(billingUrl)}
+      className="inline-flex items-center gap-2 px-6 py-3 rounded-lg bg-primary text-primary-foreground font-semibold hover:bg-primary/90 transition-colors"
+    >
+      <ArrowUpRight className="h-4 w-4" />
+      Choose a Plan
+    </button>
+  );
+}
+
 export default function ContractorDashboard() {
   const { user } = useAuth();
   const viewAs = useViewAs();
@@ -68,6 +81,29 @@ export default function ContractorDashboard() {
 
   const activeJobs = jobs?.filter((j: any) => j.status === "in_progress" || j.status === "assigned") ?? [];
   const completedJobs = jobs?.filter((j: any) => j.status === "completed" || j.status === "paid") ?? [];
+
+  // Locked account wall — show upgrade prompt instead of dashboard
+  const contractorPlanStatus = (profile as any)?.planStatus ?? null;
+  if (!isViewingAsContractor && contractorPlanStatus === "locked") {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] text-center space-y-6 px-4">
+        <div className="rounded-full bg-red-500/10 p-6">
+          <XCircle className="h-16 w-16 text-red-500" />
+        </div>
+        <div className="space-y-2">
+          <h1 className="text-2xl font-bold text-foreground">Account Locked</h1>
+          <p className="text-muted-foreground max-w-md">
+            Your free trial has ended and the 3-day grace period has passed. Your account is now locked.
+            Subscribe to a plan to restore full access.
+          </p>
+        </div>
+        <LockedAccountButton billingUrl="/contractor/billing" />
+        <p className="text-xs text-muted-foreground">
+          Need help? Contact support or visit your billing page for options.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

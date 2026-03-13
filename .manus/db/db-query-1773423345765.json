@@ -1,0 +1,114 @@
+{
+  "query": "SELECT COLUMN_NAME, COLUMN_TYPE FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'contractor_profiles' ORDER BY ORDINAL_POSITION;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user sHLCts4RR6iL2PA.1ead08cf1a54 --database bBuQZrfKLoBs6LmtvQ4y6E --execute SELECT COLUMN_NAME, COLUMN_TYPE FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'contractor_profiles' ORDER BY ORDINAL_POSITION;",
+  "rows": [
+    {
+      "COLUMN_NAME": "id",
+      "COLUMN_TYPE": "int"
+    },
+    {
+      "COLUMN_NAME": "userId",
+      "COLUMN_TYPE": "int"
+    },
+    {
+      "COLUMN_NAME": "businessName",
+      "COLUMN_TYPE": "varchar(255)"
+    },
+    {
+      "COLUMN_NAME": "phone",
+      "COLUMN_TYPE": "varchar(32)"
+    },
+    {
+      "COLUMN_NAME": "trades",
+      "COLUMN_TYPE": "json"
+    },
+    {
+      "COLUMN_NAME": "serviceAreaZips",
+      "COLUMN_TYPE": "json"
+    },
+    {
+      "COLUMN_NAME": "serviceRadiusMiles",
+      "COLUMN_TYPE": "int"
+    },
+    {
+      "COLUMN_NAME": "latitude",
+      "COLUMN_TYPE": "decimal(10,7)"
+    },
+    {
+      "COLUMN_NAME": "longitude",
+      "COLUMN_TYPE": "decimal(10,7)"
+    },
+    {
+      "COLUMN_NAME": "licenseNumber",
+      "COLUMN_TYPE": "varchar(128)"
+    },
+    {
+      "COLUMN_NAME": "insuranceInfo",
+      "COLUMN_TYPE": "text"
+    },
+    {
+      "COLUMN_NAME": "stripeAccountId",
+      "COLUMN_TYPE": "varchar(128)"
+    },
+    {
+      "COLUMN_NAME": "isAvailable",
+      "COLUMN_TYPE": "tinyint(1)"
+    },
+    {
+      "COLUMN_NAME": "rating",
+      "COLUMN_TYPE": "decimal(3,2)"
+    },
+    {
+      "COLUMN_NAME": "completedJobs",
+      "COLUMN_TYPE": "int"
+    },
+    {
+      "COLUMN_NAME": "createdAt",
+      "COLUMN_TYPE": "timestamp"
+    },
+    {
+      "COLUMN_NAME": "updatedAt",
+      "COLUMN_TYPE": "timestamp"
+    },
+    {
+      "COLUMN_NAME": "stripeOnboardingComplete",
+      "COLUMN_TYPE": "tinyint(1)"
+    },
+    {
+      "COLUMN_NAME": "planId",
+      "COLUMN_TYPE": "int"
+    },
+    {
+      "COLUMN_NAME": "planPriceOverride",
+      "COLUMN_TYPE": "decimal(10,2)"
+    },
+    {
+      "COLUMN_NAME": "planNotes",
+      "COLUMN_TYPE": "text"
+    },
+    {
+      "COLUMN_NAME": "planStatus",
+      "COLUMN_TYPE": "enum('active','trialing','expired','canceled')"
+    },
+    {
+      "COLUMN_NAME": "planAssignedAt",
+      "COLUMN_TYPE": "bigint"
+    },
+    {
+      "COLUMN_NAME": "planExpiresAt",
+      "COLUMN_TYPE": "bigint"
+    },
+    {
+      "COLUMN_NAME": "stripeSubscriptionId",
+      "COLUMN_TYPE": "varchar(255)"
+    },
+    {
+      "COLUMN_NAME": "address",
+      "COLUMN_TYPE": "text"
+    }
+  ],
+  "messages": [],
+  "stdout": "COLUMN_NAME\tCOLUMN_TYPE\nid\tint\nuserId\tint\nbusinessName\tvarchar(255)\nphone\tvarchar(32)\ntrades\tjson\nserviceAreaZips\tjson\nserviceRadiusMiles\tint\nlatitude\tdecimal(10,7)\nlongitude\tdecimal(10,7)\nlicenseNumber\tvarchar(128)\ninsuranceInfo\ttext\nstripeAccountId\tvarchar(128)\nisAvailable\ttinyint(1)\nrating\tdecimal(3,2)\ncompletedJobs\tint\ncreatedAt\ttimestamp\nupdatedAt\ttimestamp\nstripeOnboardingComplete\ttinyint(1)\nplanId\tint\nplanPriceOverride\tdecimal(10,2)\nplanNotes\ttext\nplanStatus\tenum('active','trialing','expired','canceled')\nplanAssignedAt\tbigint\nplanExpiresAt\tbigint\nstripeSubscriptionId\tvarchar(255)\naddress\ttext\n",
+  "stderr": "",
+  "execution_time_ms": 123
+}

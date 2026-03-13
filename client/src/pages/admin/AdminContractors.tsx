@@ -7,10 +7,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { HardHat, Calendar, Plus, Star, MapPin } from "lucide-react";
+import { HardHat, Calendar, Plus, Star, MapPin, Clock, Gift } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import AddressAutocomplete, { type AddressResult } from "@/components/AddressAutocomplete";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 const TRADE_OPTIONS = [
   "General Handyman", "Plumbing", "Electrical", "HVAC",
@@ -155,6 +156,8 @@ function CreateContractorDialog({ open, onOpenChange, onCreated }: { open: boole
 export default function AdminContractors() {
   const { data: contractors, isLoading, refetch } = trpc.adminViewAs.allContractors.useQuery();
   const [createOpen, setCreateOpen] = useState(false);
+  const [extendingContractor, setExtendingContractor] = useState<any | null>(null);
+  const [grantingContractor, setGrantingContractor] = useState<any | null>(null);
 
   return (
     <div className="space-y-6">
@@ -243,6 +246,14 @@ export default function AdminContractors() {
                     {contractor.completedJobs != null && (
                       <span className="text-xs text-muted-foreground">{contractor.completedJobs} jobs</span>
                     )}
+                    <div className="flex items-center gap-1">
+                      <Button size="sm" variant="outline" className="text-xs gap-1 h-7" onClick={() => setExtendingContractor(contractor)} title="Extend trial">
+                        <Clock className="h-3 w-3" />
+                      </Button>
+                      <Button size="sm" variant="outline" className="text-xs gap-1 h-7" onClick={() => setGrantingContractor(contractor)} title="Grant free plan">
+                        <Gift className="h-3 w-3" />
+                      </Button>
+                    </div>
                   </div>
                 </div>
               </CardContent>
@@ -250,6 +261,69 @@ export default function AdminContractors() {
           ))}
         </div>
       )}
+      {extendingContractor && (
+        <Dialog open={!!extendingContractor} onOpenChange={(v) => { if (!v) setExtendingContractor(null); }}>
+          <DialogContent className="max-w-sm">
+            <DialogHeader><DialogTitle className="flex items-center gap-2"><Clock className="h-5 w-5 text-primary" /> Extend Trial</DialogTitle></DialogHeader>
+            <ExtendContractorTrialForm contractor={extendingContractor} onDone={() => { setExtendingContractor(null); refetch(); }} />
+          </DialogContent>
+        </Dialog>
+      )}
+      {grantingContractor && (
+        <Dialog open={!!grantingContractor} onOpenChange={(v) => { if (!v) setGrantingContractor(null); }}>
+          <DialogContent className="max-w-sm">
+            <DialogHeader><DialogTitle className="flex items-center gap-2"><Gift className="h-5 w-5 text-primary" /> Grant Free Plan</DialogTitle></DialogHeader>
+            <GrantContractorFreePlanForm contractor={grantingContractor} onDone={() => { setGrantingContractor(null); refetch(); }} />
+          </DialogContent>
+        </Dialog>
+      )}
+    </div>
+  );
+}
+
+function ExtendContractorTrialForm({ contractor, onDone }: { contractor: any; onDone: () => void }) {
+  const [days, setDays] = useState("14");
+  const extendTrial = trpc.adminViewAs.extendTrial.useMutation({
+    onSuccess: (data) => { toast.success(`Trial extended. New expiry: ${new Date(data.newExpiresAt).toLocaleDateString()}`); onDone(); },
+    onError: (e) => toast.error(e.message),
+  });
+  return (
+    <div className="space-y-4 py-2">
+      <p className="text-sm text-muted-foreground">Extend trial for <strong>{contractor.businessName || contractor.userName}</strong>.</p>
+      <div className="space-y-1"><Label>Days to add</Label><Input type="number" min="1" max="365" value={days} onChange={(e) => setDays(e.target.value)} /></div>
+      <DialogFooter>
+        <Button onClick={() => extendTrial.mutate({ entityType: "contractor", entityId: contractor.id, days: parseInt(days) || 14 })} disabled={extendTrial.isPending}>
+          {extendTrial.isPending ? "Extending..." : "Extend Trial"}
+        </Button>
+      </DialogFooter>
+    </div>
+  );
+}
+
+function GrantContractorFreePlanForm({ contractor, onDone }: { contractor: any; onDone: () => void }) {
+  const { data: plans } = trpc.adminViewAs.listContractorPlans.useQuery();
+  const [selectedPlanId, setSelectedPlanId] = useState<string>("");
+  const grantFree = trpc.adminViewAs.grantFreePlan.useMutation({
+    onSuccess: () => { toast.success(`Free plan granted`); onDone(); },
+    onError: (e) => toast.error(e.message),
+  });
+  return (
+    <div className="space-y-4 py-2">
+      <p className="text-sm text-muted-foreground">Grant <strong>{contractor.businessName || contractor.userName}</strong> a free (no-expiry) plan.</p>
+      <div className="space-y-1">
+        <Label>Plan (optional)</Label>
+        <Select value={selectedPlanId} onValueChange={setSelectedPlanId}>
+          <SelectTrigger><SelectValue placeholder="Keep current plan" /></SelectTrigger>
+          <SelectContent>
+            {(plans ?? []).map((p: any) => <SelectItem key={p.id} value={String(p.id)}>{p.name}</SelectItem>)}
+          </SelectContent>
+        </Select>
+      </div>
+      <DialogFooter>
+        <Button onClick={() => grantFree.mutate({ entityType: "contractor", entityId: contractor.id, planId: selectedPlanId ? parseInt(selectedPlanId) : undefined })} disabled={grantFree.isPending}>
+          {grantFree.isPending ? "Granting..." : "Grant Free Plan"}
+        </Button>
+      </DialogFooter>
     </div>
   );
 }

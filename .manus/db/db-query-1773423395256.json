@@ -1,0 +1,26 @@
+{
+  "query": "SELECT TABLE_NAME, GROUP_CONCAT(COLUMN_NAME ORDER BY ORDINAL_POSITION SEPARATOR ', ') as columns\nFROM information_schema.COLUMNS \nWHERE TABLE_SCHEMA = DATABASE() \nAND TABLE_NAME IN ('platform_settings', 'feature_flags', 'audit_log', 'integration_connectors')\nGROUP BY TABLE_NAME;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user sHLCts4RR6iL2PA.1ead08cf1a54 --database bBuQZrfKLoBs6LmtvQ4y6E --execute SELECT TABLE_NAME, GROUP_CONCAT(COLUMN_NAME ORDER BY ORDINAL_POSITION SEPARATOR ', ') as columns\nFROM information_schema.COLUMNS \nWHERE TABLE_SCHEMA = DATABASE() \nAND TABLE_NAME IN ('platform_settings', 'feature_flags', 'audit_log', 'integration_connectors')\nGROUP BY TABLE_NAME;",
+  "rows": [
+    {
+      "TABLE_NAME": "audit_log",
+      "columns": "id, actorId, actorName, action, targetType, targetId, targetName, details, createdAt"
+    },
+    {
+      "TABLE_NAME": "feature_flags",
+      "columns": "id, key, label, description, enabledForCompanies, enabledForContractors, updatedAt, updatedBy"
+    },
+    {
+      "TABLE_NAME": "integration_connectors",
+      "columns": "id, companyId, provider, apiKey, apiSecret, baseUrl, isActive, lastSyncAt, syncStatus, syncError, config, createdAt, updatedAt, webhookSecret"
+    },
+    {
+      "TABLE_NAME": "platform_settings",
+      "columns": "id, platformFeePercent, perListingFeeEnabled, perListingFeeAmount, autoClockOutMinutes, autoClockOutRadiusMeters, createdAt, updatedAt, pmsSyncIntervalHours"
+    }
+  ],
+  "messages": [],
+  "stdout": "TABLE_NAME\tcolumns\naudit_log\tid, actorId, actorName, action, targetType, targetId, targetName, details, createdAt\nfeature_flags\tid, key, label, description, enabledForCompanies, enabledForContractors, updatedAt, updatedBy\nintegration_connectors\tid, companyId, provider, apiKey, apiSecret, baseUrl, isActive, lastSyncAt, syncStatus, syncError, config, createdAt, updatedAt, webhookSecret\nplatform_settings\tid, platformFeePercent, perListingFeeEnabled, perListingFeeAmount, autoClockOutMinutes, autoClockOutRadiusMeters, createdAt, updatedAt, pmsSyncIntervalHours\n",
+  "stderr": "",
+  "execution_time_ms": 54
+}

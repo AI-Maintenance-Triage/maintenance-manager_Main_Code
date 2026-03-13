@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { TRPCError } from "@trpc/server";
 import { adminProcedure, router } from "../_core/trpc";
 import * as db from "../db";
 import * as email from "../email";
@@ -432,9 +433,28 @@ export const adminViewAsRouter = router({
       return { success: true };
     }),
 
+  // Reset onboarding checklist for a contractor (for testing / support)
+  resetContractorOnboarding: adminProcedure
+    .input(z.object({ contractorProfileId: z.number() }))
+    .mutation(async ({ input }) => {
+      await db.updateContractorProfile(input.contractorProfileId, {
+        onboardingDismissedSteps: [] as any,
+        onboardingCompletedAt: null as any,
+      } as any);
+      return { success: true };
+    }),
+
   // ─── Subscription Plans CRUD ──────────────────────────────────────────────
   listPlans: adminProcedure.query(async () => {
-    return db.listSubscriptionPlans();
+    const [plans, subscriberCounts] = await Promise.all([
+      db.listSubscriptionPlans(),
+      db.countSubscribersPerPlan(),
+    ]);
+    return plans.map(plan => ({
+      ...plan,
+      subscriberCount: subscriberCounts[plan.id]?.total ?? 0,
+      subscriberBreakdown: subscriberCounts[plan.id] ?? { companies: 0, contractors: 0, total: 0 },
+    }));
   }),
 
   createPlan: adminProcedure
@@ -621,6 +641,19 @@ export const adminViewAsRouter = router({
   deletePlan: adminProcedure
     .input(z.object({ id: z.number() }))
     .mutation(async ({ input }) => {
+      // Block deletion if plan has active subscribers
+      const subscriberCounts = await db.countSubscribersPerPlan();
+      const count = subscriberCounts[input.id]?.total ?? 0;
+      if (count > 0) {
+        const breakdown = subscriberCounts[input.id];
+        const parts: string[] = [];
+        if (breakdown.companies > 0) parts.push(`${breakdown.companies} company${breakdown.companies !== 1 ? " accounts" : " account"}`);
+        if (breakdown.contractors > 0) parts.push(`${breakdown.contractors} contractor${breakdown.contractors !== 1 ? "s" : ""}`);
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: `Cannot delete this plan — it has ${parts.join(" and ")} subscribed. Reassign them to another plan first.`,
+        });
+      }
       await db.deleteSubscriptionPlan(input.id);
       return { success: true };
     }),
@@ -674,10 +707,26 @@ export const adminViewAsRouter = router({
 
   // ─── Filtered plan lists by type ─────────────────────────────────────────
   listCompanyPlans: adminProcedure.query(async () => {
-    return db.listSubscriptionPlansByType("company");
+    const [plans, subscriberCounts] = await Promise.all([
+      db.listSubscriptionPlansByType("company"),
+      db.countSubscribersPerPlan(),
+    ]);
+    return plans.map(plan => ({
+      ...plan,
+      subscriberCount: subscriberCounts[plan.id]?.total ?? 0,
+      subscriberBreakdown: subscriberCounts[plan.id] ?? { companies: 0, contractors: 0, total: 0 },
+    }));
   }),
   listContractorPlans: adminProcedure.query(async () => {
-    return db.listSubscriptionPlansByType("contractor");
+    const [plans, subscriberCounts] = await Promise.all([
+      db.listSubscriptionPlansByType("contractor"),
+      db.countSubscribersPerPlan(),
+    ]);
+    return plans.map(plan => ({
+      ...plan,
+      subscriberCount: subscriberCounts[plan.id]?.total ?? 0,
+      subscriberBreakdown: subscriberCounts[plan.id] ?? { companies: 0, contractors: 0, total: 0 },
+    }));
   }),
 
   // ─── Assign Plan to Contractor ────────────────────────────────────────────
@@ -863,5 +912,84 @@ export const adminViewAsRouter = router({
       }
 
       return { movedCount, errors };
+    }),
+
+  /**
+   * Manually extend the trial for a specific company or contractor.
+   * Adds `days` days to the current planExpiresAt (or from now if already expired).
+   */
+  extendTrial: adminProcedure
+    .input(z.object({
+      entityType: z.enum(["company", "contractor"]),
+      entityId: z.number(),
+      days: z.number().min(1).max(365),
+    }))
+    .mutation(async ({ input }) => {
+      const { entityType, entityId, days } = input;
+      const extensionMs = days * 24 * 60 * 60 * 1000;
+
+      if (entityType === "company") {
+        const company = await db.getCompanyById(entityId);
+        if (!company) throw new TRPCError({ code: "NOT_FOUND", message: "Company not found" });
+        const baseMs = (company.planExpiresAt && company.planExpiresAt > Date.now())
+          ? company.planExpiresAt
+          : Date.now();
+        const newExpiresAt = baseMs + extensionMs;
+        await db.updateCompany(entityId, {
+          planExpiresAt: newExpiresAt,
+          planStatus: "trialing",
+          planGraceEndsAt: null,
+        } as any);
+        return { success: true, newExpiresAt };
+      } else {
+        const profile = await db.getContractorProfileById(entityId);
+        if (!profile) throw new TRPCError({ code: "NOT_FOUND", message: "Contractor not found" });
+        const baseMs = (profile.planExpiresAt && profile.planExpiresAt > Date.now())
+          ? profile.planExpiresAt
+          : Date.now();
+        const newExpiresAt = baseMs + extensionMs;
+        await db.updateContractorProfile(entityId, {
+          planExpiresAt: newExpiresAt,
+          planStatus: "trialing",
+          planGraceEndsAt: null,
+        } as any);
+        return { success: true, newExpiresAt };
+      }
+    }),
+
+  /**
+   * Grant a free plan (no expiry) to a specific company or contractor.
+   * Sets planStatus to "active" with no planExpiresAt.
+   */
+  grantFreePlan: adminProcedure
+    .input(z.object({
+      entityType: z.enum(["company", "contractor"]),
+      entityId: z.number(),
+      planId: z.number().optional(), // optional: assign a specific plan, else keep current
+    }))
+    .mutation(async ({ input }) => {
+      const { entityType, entityId, planId } = input;
+
+      if (entityType === "company") {
+        const company = await db.getCompanyById(entityId);
+        if (!company) throw new TRPCError({ code: "NOT_FOUND", message: "Company not found" });
+        await db.updateCompany(entityId, {
+          planStatus: "active",
+          planExpiresAt: null,
+          planGraceEndsAt: null,
+          ...(planId ? { planId } : {}),
+        } as any);
+        return { success: true };
+      } else {
+        const profile = await db.getContractorProfileById(entityId);
+        if (!profile) throw new TRPCError({ code: "NOT_FOUND", message: "Contractor not found" });
+        await db.updateContractorProfile(entityId, {
+          planStatus: "active",
+          planExpiresAt: null,
+          planGraceEndsAt: null,
+          ...(planId ? { planId } : {}),
+        } as any);
+        return { success: true };
+      }
     }),
 });

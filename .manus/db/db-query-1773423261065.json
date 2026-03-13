@@ -1,0 +1,64 @@
+{
+  "query": "SELECT COLUMN_NAME FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'users' ORDER BY ORDINAL_POSITION;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user sHLCts4RR6iL2PA.1ead08cf1a54 --database bBuQZrfKLoBs6LmtvQ4y6E --execute SELECT COLUMN_NAME FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'users' ORDER BY ORDINAL_POSITION;",
+  "rows": [
+    {
+      "COLUMN_NAME": "id"
+    },
+    {
+      "COLUMN_NAME": "openId"
+    },
+    {
+      "COLUMN_NAME": "name"
+    },
+    {
+      "COLUMN_NAME": "email"
+    },
+    {
+      "COLUMN_NAME": "loginMethod"
+    },
+    {
+      "COLUMN_NAME": "role"
+    },
+    {
+      "COLUMN_NAME": "companyId"
+    },
+    {
+      "COLUMN_NAME": "contractorProfileId"
+    },
+    {
+      "COLUMN_NAME": "createdAt"
+    },
+    {
+      "COLUMN_NAME": "updatedAt"
+    },
+    {
+      "COLUMN_NAME": "lastSignedIn"
+    },
+    {
+      "COLUMN_NAME": "passwordHash"
+    },
+    {
+      "COLUMN_NAME": "emailPreferences"
+    },
+    {
+      "COLUMN_NAME": "resetPasswordToken"
+    },
+    {
+      "COLUMN_NAME": "resetPasswordExpiry"
+    },
+    {
+      "COLUMN_NAME": "emailVerificationCode"
+    },
+    {
+      "COLUMN_NAME": "emailVerificationExpiry"
+    },
+    {
+      "COLUMN_NAME": "emailVerified"
+    }
+  ],
+  "messages": [],
+  "stdout": "COLUMN_NAME\nid\nopenId\nname\nemail\nloginMethod\nrole\ncompanyId\ncontractorProfileId\ncreatedAt\nupdatedAt\nlastSignedIn\npasswordHash\nemailPreferences\nresetPasswordToken\nresetPasswordExpiry\nemailVerificationCode\nemailVerificationExpiry\nemailVerified\n",
+  "stderr": "",
+  "execution_time_ms": 66
+}

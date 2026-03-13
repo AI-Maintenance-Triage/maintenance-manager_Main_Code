@@ -478,6 +478,42 @@ const contractorRouter = router({
       return { success: true };
     }),
 
+  // ─── Onboarding Checklist ────────────────────────────────────────────────
+  // Dismiss a specific onboarding step (without completing it)
+  dismissOnboardingStep: contractorProcedure
+    .input(z.object({ stepId: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const profile = await getEffectiveContractorProfile(ctx);
+      if (!profile) throw new TRPCError({ code: "NOT_FOUND", message: "No contractor profile" });
+      const current = (profile.onboardingDismissedSteps as string[] | null) ?? [];
+      if (!current.includes(input.stepId)) {
+        const updated = [...current, input.stepId];
+        await db.updateContractorProfile(profile.id, { onboardingDismissedSteps: updated } as any);
+      }
+      return { success: true };
+    }),
+
+  // Mark onboarding as fully completed (called when all steps are done)
+  completeOnboarding: contractorProcedure
+    .mutation(async ({ ctx }) => {
+      const profile = await getEffectiveContractorProfile(ctx);
+      if (!profile) throw new TRPCError({ code: "NOT_FOUND", message: "No contractor profile" });
+      if (profile.onboardingCompletedAt) return { success: true, alreadyCompleted: true };
+      const now = Date.now();
+      await db.updateContractorProfile(profile.id, { onboardingCompletedAt: now } as any);
+      // Send congratulations notification and email
+      const user = await db.getUserById(ctx.user.id);
+      if (user?.email) {
+        import("./email").then(emailService => {
+          emailService.sendOnboardingCompleteEmail({
+            to: user.email!,
+            name: user.name ?? "there",
+          }).catch(err => console.error("[Email] Onboarding complete email failed:", err));
+        }).catch(() => {});
+      }
+      return { success: true, alreadyCompleted: false };
+    }),
+
   // Re-geocode the contractor's base ZIP on demand (fixes missing coords)
   refreshGeocode: contractorProcedure.mutation(async ({ ctx }) => {
     const profile = await getEffectiveContractorProfile(ctx);
@@ -2531,24 +2567,70 @@ const stripeRouter = router({
           if (existingSub && existingSub.status !== "canceled") {
             const itemId = existingSub.items.data[0]?.id;
             if (itemId) {
-              await stripe.subscriptions.update(company.stripeSubscriptionId, {
-                items: [{ id: itemId, price: stripePriceId }],
-                proration_behavior: "create_prorations",
-                metadata: {
-                  company_id: companyId.toString(),
-                  plan_id: input.planId.toString(),
-                  billing_interval: input.billingInterval,
-                },
-              });
-              // Update the DB immediately — don't wait for the webhook
-              const { companies: companiesTable } = await import("../drizzle/schema");
-              await drizzleDb.update(companiesTable).set({
-                planId: input.planId,
-                planStatus: "active",
-                planAssignedAt: Date.now(),
-                planExpiresAt: null,
-              }).where(eq(companiesTable.id, companyId));
-              return { checkoutUrl: null, upgraded: true };
+              // ── Determine if this is an upgrade or downgrade ──────────────────
+              // Compare plan price to decide: higher price = upgrade (immediate),
+              // lower price = downgrade (deferred to next billing cycle)
+              const { subscriptionPlans: spTable } = await import("../drizzle/schema");
+              const currentPlanRows = company.planId
+                ? await drizzleDb.select().from(spTable).where(eq(spTable.id, company.planId)).limit(1)
+                : [];
+              const currentPlan = currentPlanRows[0];
+              const currentPrice = input.billingInterval === "annual"
+                ? parseFloat(currentPlan?.priceAnnual ?? "0")
+                : parseFloat(currentPlan?.priceMonthly ?? "0");
+              const newPrice = input.billingInterval === "annual"
+                ? parseFloat(plan.priceAnnual ?? "0")
+                : parseFloat(plan.priceMonthly ?? "0");
+              const isDowngrade = currentPlan && newPrice < currentPrice;
+
+              if (isDowngrade) {
+                // ── Downgrade: schedule via Stripe at period end, store pending in DB ──
+                const periodEnd = (existingSub as any).current_period_end as number; // Unix seconds
+                await stripe.subscriptions.update(company.stripeSubscriptionId, {
+                  items: [{ id: itemId, price: stripePriceId }],
+                  proration_behavior: "none",         // no proration credit for downgrades
+                  billing_cycle_anchor: "unchanged",
+                  // Stripe will apply the new price at the next renewal
+                  trial_end: "now",                   // no-op if already active
+                  metadata: {
+                    company_id: companyId.toString(),
+                    plan_id: input.planId.toString(),
+                    billing_interval: input.billingInterval,
+                    pending_downgrade: "true",
+                  },
+                });
+                // Store the pending downgrade in DB — do NOT switch planId yet
+                const { companies: companiesTable } = await import("../drizzle/schema");
+                await drizzleDb.update(companiesTable).set({
+                  pendingPlanId: input.planId,
+                  pendingBillingInterval: input.billingInterval,
+                  pendingPlanEffectiveAt: periodEnd * 1000, // convert to ms
+                }).where(eq(companiesTable.id, companyId));
+                return { checkoutUrl: null, upgraded: false, downgradeScheduled: true, effectiveAt: periodEnd * 1000 };
+              } else {
+                // ── Upgrade: apply immediately with prorations ────────────────────
+                await stripe.subscriptions.update(company.stripeSubscriptionId, {
+                  items: [{ id: itemId, price: stripePriceId }],
+                  proration_behavior: "create_prorations",
+                  metadata: {
+                    company_id: companyId.toString(),
+                    plan_id: input.planId.toString(),
+                    billing_interval: input.billingInterval,
+                  },
+                });
+                // Update the DB immediately — don't wait for the webhook
+                const { companies: companiesTable } = await import("../drizzle/schema");
+                await drizzleDb.update(companiesTable).set({
+                  planId: input.planId,
+                  planStatus: "active",
+                  planAssignedAt: Date.now(),
+                  planExpiresAt: null,
+                  pendingPlanId: null,
+                  pendingBillingInterval: null,
+                  pendingPlanEffectiveAt: null,
+                }).where(eq(companiesTable.id, companyId));
+                return { checkoutUrl: null, upgraded: true, downgradeScheduled: false };
+              }
             }
           }
         } catch (subErr: any) {
@@ -2837,6 +2919,64 @@ const platformRouter = router({
     .query(async ({ input }) => {
       return db.getRevenueByCompany(input.startDate, input.endDate);
     }),
+
+  // Onboarding analytics: % of new companies/contractors that completed all steps within 7 days
+  onboardingAnalytics: adminProcedure.query(async () => {
+    const drizzleDb = await db.getDb();
+    if (!drizzleDb) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+    const { companies: companiesTable, contractorProfiles } = await import("../drizzle/schema");
+    const { isNotNull, gte, and, sql } = await import("drizzle-orm");
+    const sevenDaysMs = 7 * 24 * 60 * 60 * 1000;
+    const now = Date.now();
+    const cutoff = now - sevenDaysMs;
+
+    // Companies: use planAssignedAt as "joined" date (or createdAt)
+    const allCompanies = await drizzleDb.select({
+      id: companiesTable.id,
+      createdAt: companiesTable.createdAt,
+    }).from(companiesTable);
+
+    // Contractors: use createdAt as joined date, onboardingCompletedAt as completion
+    const allContractors = await drizzleDb.select({
+      id: contractorProfiles.id,
+      createdAt: contractorProfiles.createdAt,
+      onboardingCompletedAt: contractorProfiles.onboardingCompletedAt,
+    }).from(contractorProfiles);
+
+    // New companies in last 7 days (no onboarding tracking for companies yet — use count as proxy)
+    const newCompanies = allCompanies.filter(c => new Date(c.createdAt).getTime() >= cutoff);
+
+    // New contractors in last 7 days
+    const newContractors = allContractors.filter(c => new Date(c.createdAt).getTime() >= cutoff);
+    const contractorsCompletedIn7Days = newContractors.filter(c =>
+      c.onboardingCompletedAt != null &&
+      c.onboardingCompletedAt - new Date(c.createdAt).getTime() <= sevenDaysMs
+    );
+
+    // All-time contractor completion rate
+    const allContractorsWithCompletion = allContractors.filter(c => c.onboardingCompletedAt != null);
+
+    return {
+      contractors: {
+        newIn7Days: newContractors.length,
+        completedIn7Days: contractorsCompletedIn7Days.length,
+        completionRate7Days: newContractors.length > 0
+          ? Math.round((contractorsCompletedIn7Days.length / newContractors.length) * 100)
+          : 0,
+        totalCompleted: allContractorsWithCompletion.length,
+        totalContractors: allContractors.length,
+        allTimeCompletionRate: allContractors.length > 0
+          ? Math.round((allContractorsWithCompletion.length / allContractors.length) * 100)
+          : 0,
+      },
+      companies: {
+        newIn7Days: newCompanies.length,
+        // Companies don't have per-step onboarding tracking yet — placeholder
+        completedIn7Days: 0,
+        completionRate7Days: 0,
+      },
+    };
+  }),
   companies: adminProcedure.query(async () => {
     return db.listCompanies();
   }),

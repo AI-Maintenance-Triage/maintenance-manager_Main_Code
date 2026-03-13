@@ -1,0 +1,3554 @@
+{
+  "query": "SELECT TABLE_NAME, COLUMN_NAME, COLUMN_TYPE, IS_NULLABLE, COLUMN_DEFAULT, EXTRA \nFROM information_schema.COLUMNS \nWHERE TABLE_SCHEMA = DATABASE() \nORDER BY TABLE_NAME, ORDINAL_POSITION;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user sHLCts4RR6iL2PA.1ead08cf1a54 --database bBuQZrfKLoBs6LmtvQ4y6E --execute SELECT TABLE_NAME, COLUMN_NAME, COLUMN_TYPE, IS_NULLABLE, COLUMN_DEFAULT, EXTRA \nFROM information_schema.COLUMNS \nWHERE TABLE_SCHEMA = DATABASE() \nORDER BY TABLE_NAME, ORDINAL_POSITION;",
+  "rows": [
+    {
+      "TABLE_NAME": "__drizzle_migrations",
+      "COLUMN_NAME": "id",
+      "COLUMN_TYPE": "bigint unsigned",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": "auto_increment"
+    },
+    {
+      "TABLE_NAME": "__drizzle_migrations",
+      "COLUMN_NAME": "hash",
+      "COLUMN_TYPE": "text",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "__drizzle_migrations",
+      "COLUMN_NAME": "created_at",
+      "COLUMN_TYPE": "bigint",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "account_credits",
+      "COLUMN_NAME": "id",
+      "COLUMN_TYPE": "int",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": "auto_increment"
+    },
+    {
+      "TABLE_NAME": "account_credits",
+      "COLUMN_NAME": "companyId",
+      "COLUMN_TYPE": "int",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "account_credits",
+      "COLUMN_NAME": "amountCents",
+      "COLUMN_TYPE": "int",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "account_credits",
+      "COLUMN_NAME": "reason",
+      "COLUMN_TYPE": "text",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "account_credits",
+      "COLUMN_NAME": "issuedBy",
+      "COLUMN_TYPE": "int",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "account_credits",
+      "COLUMN_NAME": "appliedToJobId",
+      "COLUMN_TYPE": "int",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "account_credits",
+      "COLUMN_NAME": "createdAt",
+      "COLUMN_TYPE": "timestamp",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "CURRENT_TIMESTAMP",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "account_suspensions",
+      "COLUMN_NAME": "id",
+      "COLUMN_TYPE": "int",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": "auto_increment"
+    },
+    {
+      "TABLE_NAME": "account_suspensions",
+      "COLUMN_NAME": "targetType",
+      "COLUMN_TYPE": "varchar(32)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "account_suspensions",
+      "COLUMN_NAME": "targetId",
+      "COLUMN_TYPE": "int",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "account_suspensions",
+      "COLUMN_NAME": "reason",
+      "COLUMN_TYPE": "text",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "account_suspensions",
+      "COLUMN_NAME": "suspendedBy",
+      "COLUMN_TYPE": "int",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "account_suspensions",
+      "COLUMN_NAME": "suspendedAt",
+      "COLUMN_TYPE": "timestamp",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "CURRENT_TIMESTAMP",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "account_suspensions",
+      "COLUMN_NAME": "reinstatedAt",
+      "COLUMN_TYPE": "timestamp",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "account_suspensions",
+      "COLUMN_NAME": "reinstatedBy",
+      "COLUMN_TYPE": "int",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "account_suspensions",
+      "COLUMN_NAME": "isActive",
+      "COLUMN_TYPE": "tinyint(1)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "1",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "activity_events",
+      "COLUMN_NAME": "id",
+      "COLUMN_TYPE": "int",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": "auto_increment"
+    },
+    {
+      "TABLE_NAME": "activity_events",
+      "COLUMN_NAME": "eventType",
+      "COLUMN_TYPE": "varchar(64)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "activity_events",
+      "COLUMN_NAME": "title",
+      "COLUMN_TYPE": "varchar(255)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "activity_events",
+      "COLUMN_NAME": "description",
+      "COLUMN_TYPE": "text",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "activity_events",
+      "COLUMN_NAME": "actorId",
+      "COLUMN_TYPE": "int",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "activity_events",
+      "COLUMN_NAME": "actorName",
+      "COLUMN_TYPE": "varchar(255)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "activity_events",
+      "COLUMN_NAME": "relatedId",
+      "COLUMN_TYPE": "int",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "activity_events",
+      "COLUMN_NAME": "relatedType",
+      "COLUMN_TYPE": "varchar(64)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "activity_events",
+      "COLUMN_NAME": "createdAt",
+      "COLUMN_TYPE": "timestamp",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "CURRENT_TIMESTAMP",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "audit_log",
+      "COLUMN_NAME": "id",
+      "COLUMN_TYPE": "int",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": "auto_increment"
+    },
+    {
+      "TABLE_NAME": "audit_log",
+      "COLUMN_NAME": "actorId",
+      "COLUMN_TYPE": "int",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "audit_log",
+      "COLUMN_NAME": "actorName",
+      "COLUMN_TYPE": "varchar(255)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "audit_log",
+      "COLUMN_NAME": "action",
+      "COLUMN_TYPE": "varchar(128)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "audit_log",
+      "COLUMN_NAME": "targetType",
+      "COLUMN_TYPE": "varchar(64)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "audit_log",
+      "COLUMN_NAME": "targetId",
+      "COLUMN_TYPE": "int",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "audit_log",
+      "COLUMN_NAME": "targetName",
+      "COLUMN_TYPE": "varchar(255)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "audit_log",
+      "COLUMN_NAME": "details",
+      "COLUMN_TYPE": "text",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "audit_log",
+      "COLUMN_NAME": "createdAt",
+      "COLUMN_TYPE": "timestamp",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "CURRENT_TIMESTAMP",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "companies",
+      "COLUMN_NAME": "id",
+      "COLUMN_TYPE": "int",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": "auto_increment"
+    },
+    {
+      "TABLE_NAME": "companies",
+      "COLUMN_NAME": "name",
+      "COLUMN_TYPE": "varchar(255)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "companies",
+      "COLUMN_NAME": "logoUrl",
+      "COLUMN_TYPE": "text",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "companies",
+      "COLUMN_NAME": "address",
+      "COLUMN_TYPE": "text",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "companies",
+      "COLUMN_NAME": "phone",
+      "COLUMN_TYPE": "varchar(32)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "companies",
+      "COLUMN_NAME": "email",
+      "COLUMN_TYPE": "varchar(320)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "companies",
+      "COLUMN_NAME": "stripeAccountId",
+      "COLUMN_TYPE": "varchar(128)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "companies",
+      "COLUMN_NAME": "subscriptionTier",
+      "COLUMN_TYPE": "enum('free','starter','professional','enterprise')",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "free",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "companies",
+      "COLUMN_NAME": "subscriptionStatus",
+      "COLUMN_TYPE": "enum('active','past_due','canceled','trialing')",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "trialing",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "companies",
+      "COLUMN_NAME": "createdAt",
+      "COLUMN_TYPE": "timestamp",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "CURRENT_TIMESTAMP",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "companies",
+      "COLUMN_NAME": "updatedAt",
+      "COLUMN_TYPE": "timestamp",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "CURRENT_TIMESTAMP",
+      "EXTRA": "DEFAULT_GENERATED on update CURRENT_TIMESTAMP"
+    },
+    {
+      "TABLE_NAME": "companies",
+      "COLUMN_NAME": "stripeCustomerId",
+      "COLUMN_TYPE": "varchar(128)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "companies",
+      "COLUMN_NAME": "planId",
+      "COLUMN_TYPE": "int",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "companies",
+      "COLUMN_NAME": "planPriceOverride",
+      "COLUMN_TYPE": "decimal(10,2)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "companies",
+      "COLUMN_NAME": "planNotes",
+      "COLUMN_TYPE": "text",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "companies",
+      "COLUMN_NAME": "planStatus",
+      "COLUMN_TYPE": "enum('active','trialing','expired','canceled')",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "trialing",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "companies",
+      "COLUMN_NAME": "planAssignedAt",
+      "COLUMN_TYPE": "bigint",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "companies",
+      "COLUMN_NAME": "planExpiresAt",
+      "COLUMN_TYPE": "bigint",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "companies",
+      "COLUMN_NAME": "stripeSubscriptionId",
+      "COLUMN_TYPE": "varchar(255)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "companies",
+      "COLUMN_NAME": "feeOverridePercent",
+      "COLUMN_TYPE": "decimal(5,2)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "companies",
+      "COLUMN_NAME": "feeOverridePerListingEnabled",
+      "COLUMN_TYPE": "tinyint(1)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "companies",
+      "COLUMN_NAME": "feeOverridePerListingAmount",
+      "COLUMN_TYPE": "decimal(8,2)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "company_payment_methods",
+      "COLUMN_NAME": "id",
+      "COLUMN_TYPE": "int",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": "auto_increment"
+    },
+    {
+      "TABLE_NAME": "company_payment_methods",
+      "COLUMN_NAME": "companyId",
+      "COLUMN_TYPE": "int",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "company_payment_methods",
+      "COLUMN_NAME": "stripePaymentMethodId",
+      "COLUMN_TYPE": "varchar(128)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "company_payment_methods",
+      "COLUMN_NAME": "type",
+      "COLUMN_TYPE": "varchar(32)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "card",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "company_payment_methods",
+      "COLUMN_NAME": "brand",
+      "COLUMN_TYPE": "varchar(32)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "company_payment_methods",
+      "COLUMN_NAME": "last4",
+      "COLUMN_TYPE": "varchar(4)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "company_payment_methods",
+      "COLUMN_NAME": "bankName",
+      "COLUMN_TYPE": "varchar(128)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "company_payment_methods",
+      "COLUMN_NAME": "label",
+      "COLUMN_TYPE": "varchar(128)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "company_payment_methods",
+      "COLUMN_NAME": "isDefault",
+      "COLUMN_TYPE": "tinyint(1)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "0",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "company_payment_methods",
+      "COLUMN_NAME": "createdAt",
+      "COLUMN_TYPE": "timestamp",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "CURRENT_TIMESTAMP",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "company_promo_redemptions",
+      "COLUMN_NAME": "id",
+      "COLUMN_TYPE": "int",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": "auto_increment"
+    },
+    {
+      "TABLE_NAME": "company_promo_redemptions",
+      "COLUMN_NAME": "companyId",
+      "COLUMN_TYPE": "int",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "company_promo_redemptions",
+      "COLUMN_NAME": "promoCodeId",
+      "COLUMN_TYPE": "int",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "company_promo_redemptions",
+      "COLUMN_NAME": "redeemedAt",
+      "COLUMN_TYPE": "timestamp",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "CURRENT_TIMESTAMP",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "company_promo_redemptions",
+      "COLUMN_NAME": "cyclesRemaining",
+      "COLUMN_TYPE": "int",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "company_promo_redemptions",
+      "COLUMN_NAME": "isActive",
+      "COLUMN_TYPE": "tinyint(1)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "1",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "company_settings",
+      "COLUMN_NAME": "id",
+      "COLUMN_TYPE": "int",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": "auto_increment"
+    },
+    {
+      "TABLE_NAME": "company_settings",
+      "COLUMN_NAME": "companyId",
+      "COLUMN_TYPE": "int",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "company_settings",
+      "COLUMN_NAME": "geofenceRadiusFeet",
+      "COLUMN_TYPE": "int",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "500",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "company_settings",
+      "COLUMN_NAME": "autoClockOutMinutes",
+      "COLUMN_TYPE": "int",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "5",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "company_settings",
+      "COLUMN_NAME": "maxSessionDurationHours",
+      "COLUMN_TYPE": "int",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "8",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "company_settings",
+      "COLUMN_NAME": "timesheetReviewEnabled",
+      "COLUMN_TYPE": "tinyint(1)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "1",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "company_settings",
+      "COLUMN_NAME": "billableTimePolicy",
+      "COLUMN_TYPE": "enum('on_site_only','full_trip','hybrid_with_cap')",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "on_site_only",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "company_settings",
+      "COLUMN_NAME": "hybridCapMinutes",
+      "COLUMN_TYPE": "int",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "30",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "company_settings",
+      "COLUMN_NAME": "partsMarkupPercent",
+      "COLUMN_TYPE": "decimal(5,2)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "0.00",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "company_settings",
+      "COLUMN_NAME": "autoApproveContractors",
+      "COLUMN_TYPE": "tinyint(1)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "0",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "company_settings",
+      "COLUMN_NAME": "escalationTimeoutMinutes",
+      "COLUMN_TYPE": "int",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "60",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "company_settings",
+      "COLUMN_NAME": "platformFeePercent",
+      "COLUMN_TYPE": "decimal(5,2)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "10.00",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "company_settings",
+      "COLUMN_NAME": "createdAt",
+      "COLUMN_TYPE": "timestamp",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "CURRENT_TIMESTAMP",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "company_settings",
+      "COLUMN_NAME": "updatedAt",
+      "COLUMN_TYPE": "timestamp",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "CURRENT_TIMESTAMP",
+      "EXTRA": "DEFAULT_GENERATED on update CURRENT_TIMESTAMP"
+    },
+    {
+      "TABLE_NAME": "company_settings",
+      "COLUMN_NAME": "notifyOnClockIn",
+      "COLUMN_TYPE": "tinyint(1)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "1",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "company_settings",
+      "COLUMN_NAME": "notifyOnClockOut",
+      "COLUMN_TYPE": "tinyint(1)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "1",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "company_settings",
+      "COLUMN_NAME": "notifyOnJobSubmitted",
+      "COLUMN_TYPE": "tinyint(1)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "1",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "company_settings",
+      "COLUMN_NAME": "notifyOnNewContractor",
+      "COLUMN_TYPE": "tinyint(1)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "1",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "company_settings",
+      "COLUMN_NAME": "defaultJobBoardVisibility",
+      "COLUMN_TYPE": "enum('public','private')",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "public",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "company_settings",
+      "COLUMN_NAME": "excludeOutOfGeofenceSessions",
+      "COLUMN_TYPE": "tinyint(1)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "0",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "contractor_companies",
+      "COLUMN_NAME": "id",
+      "COLUMN_TYPE": "int",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": "auto_increment"
+    },
+    {
+      "TABLE_NAME": "contractor_companies",
+      "COLUMN_NAME": "contractorProfileId",
+      "COLUMN_TYPE": "int",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "contractor_companies",
+      "COLUMN_NAME": "companyId",
+      "COLUMN_TYPE": "int",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "contractor_companies",
+      "COLUMN_NAME": "status",
+      "COLUMN_TYPE": "enum('pending','approved','rejected','suspended')",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "pending",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "contractor_companies",
+      "COLUMN_NAME": "isPreferred",
+      "COLUMN_TYPE": "tinyint(1)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "0",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "contractor_companies",
+      "COLUMN_NAME": "invitedBy",
+      "COLUMN_TYPE": "enum('company','contractor')",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "contractor_companies",
+      "COLUMN_NAME": "createdAt",
+      "COLUMN_TYPE": "timestamp",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "CURRENT_TIMESTAMP",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "contractor_companies",
+      "COLUMN_NAME": "updatedAt",
+      "COLUMN_TYPE": "timestamp",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "CURRENT_TIMESTAMP",
+      "EXTRA": "DEFAULT_GENERATED on update CURRENT_TIMESTAMP"
+    },
+    {
+      "TABLE_NAME": "contractor_companies",
+      "COLUMN_NAME": "isTrusted",
+      "COLUMN_TYPE": "tinyint(1)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "0",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "contractor_invites",
+      "COLUMN_NAME": "id",
+      "COLUMN_TYPE": "int",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": "auto_increment"
+    },
+    {
+      "TABLE_NAME": "contractor_invites",
+      "COLUMN_NAME": "companyId",
+      "COLUMN_TYPE": "int",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "contractor_invites",
+      "COLUMN_NAME": "email",
+      "COLUMN_TYPE": "varchar(320)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "contractor_invites",
+      "COLUMN_NAME": "name",
+      "COLUMN_TYPE": "varchar(255)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "contractor_invites",
+      "COLUMN_NAME": "token",
+      "COLUMN_TYPE": "varchar(128)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "contractor_invites",
+      "COLUMN_NAME": "status",
+      "COLUMN_TYPE": "enum('pending','accepted','revoked','expired')",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "pending",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "contractor_invites",
+      "COLUMN_NAME": "expiresAt",
+      "COLUMN_TYPE": "bigint",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "contractor_invites",
+      "COLUMN_NAME": "acceptedAt",
+      "COLUMN_TYPE": "bigint",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "contractor_invites",
+      "COLUMN_NAME": "createdAt",
+      "COLUMN_TYPE": "timestamp",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "CURRENT_TIMESTAMP",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "contractor_invites",
+      "COLUMN_NAME": "updatedAt",
+      "COLUMN_TYPE": "timestamp",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "CURRENT_TIMESTAMP",
+      "EXTRA": "DEFAULT_GENERATED on update CURRENT_TIMESTAMP"
+    },
+    {
+      "TABLE_NAME": "contractor_profiles",
+      "COLUMN_NAME": "id",
+      "COLUMN_TYPE": "int",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": "auto_increment"
+    },
+    {
+      "TABLE_NAME": "contractor_profiles",
+      "COLUMN_NAME": "userId",
+      "COLUMN_TYPE": "int",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "contractor_profiles",
+      "COLUMN_NAME": "businessName",
+      "COLUMN_TYPE": "varchar(255)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "contractor_profiles",
+      "COLUMN_NAME": "phone",
+      "COLUMN_TYPE": "varchar(32)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "contractor_profiles",
+      "COLUMN_NAME": "trades",
+      "COLUMN_TYPE": "json",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "contractor_profiles",
+      "COLUMN_NAME": "serviceAreaZips",
+      "COLUMN_TYPE": "json",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "contractor_profiles",
+      "COLUMN_NAME": "serviceRadiusMiles",
+      "COLUMN_TYPE": "int",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "25",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "contractor_profiles",
+      "COLUMN_NAME": "latitude",
+      "COLUMN_TYPE": "decimal(10,7)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "contractor_profiles",
+      "COLUMN_NAME": "longitude",
+      "COLUMN_TYPE": "decimal(10,7)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "contractor_profiles",
+      "COLUMN_NAME": "licenseNumber",
+      "COLUMN_TYPE": "varchar(128)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "contractor_profiles",
+      "COLUMN_NAME": "insuranceInfo",
+      "COLUMN_TYPE": "text",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "contractor_profiles",
+      "COLUMN_NAME": "stripeAccountId",
+      "COLUMN_TYPE": "varchar(128)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "contractor_profiles",
+      "COLUMN_NAME": "isAvailable",
+      "COLUMN_TYPE": "tinyint(1)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "1",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "contractor_profiles",
+      "COLUMN_NAME": "rating",
+      "COLUMN_TYPE": "decimal(3,2)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "0.00",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "contractor_profiles",
+      "COLUMN_NAME": "completedJobs",
+      "COLUMN_TYPE": "int",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "0",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "contractor_profiles",
+      "COLUMN_NAME": "createdAt",
+      "COLUMN_TYPE": "timestamp",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "CURRENT_TIMESTAMP",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "contractor_profiles",
+      "COLUMN_NAME": "updatedAt",
+      "COLUMN_TYPE": "timestamp",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "CURRENT_TIMESTAMP",
+      "EXTRA": "DEFAULT_GENERATED on update CURRENT_TIMESTAMP"
+    },
+    {
+      "TABLE_NAME": "contractor_profiles",
+      "COLUMN_NAME": "stripeOnboardingComplete",
+      "COLUMN_TYPE": "tinyint(1)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "0",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "contractor_profiles",
+      "COLUMN_NAME": "planId",
+      "COLUMN_TYPE": "int",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "contractor_profiles",
+      "COLUMN_NAME": "planPriceOverride",
+      "COLUMN_TYPE": "decimal(10,2)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "contractor_profiles",
+      "COLUMN_NAME": "planNotes",
+      "COLUMN_TYPE": "text",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "contractor_profiles",
+      "COLUMN_NAME": "planStatus",
+      "COLUMN_TYPE": "enum('active','trialing','expired','canceled')",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "trialing",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "contractor_profiles",
+      "COLUMN_NAME": "planAssignedAt",
+      "COLUMN_TYPE": "bigint",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "contractor_profiles",
+      "COLUMN_NAME": "planExpiresAt",
+      "COLUMN_TYPE": "bigint",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "contractor_profiles",
+      "COLUMN_NAME": "stripeSubscriptionId",
+      "COLUMN_TYPE": "varchar(255)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "contractor_profiles",
+      "COLUMN_NAME": "address",
+      "COLUMN_TYPE": "text",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "contractor_ratings",
+      "COLUMN_NAME": "id",
+      "COLUMN_TYPE": "int",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": "auto_increment"
+    },
+    {
+      "TABLE_NAME": "contractor_ratings",
+      "COLUMN_NAME": "maintenanceRequestId",
+      "COLUMN_TYPE": "int",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "contractor_ratings",
+      "COLUMN_NAME": "contractorProfileId",
+      "COLUMN_TYPE": "int",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "contractor_ratings",
+      "COLUMN_NAME": "companyId",
+      "COLUMN_TYPE": "int",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "contractor_ratings",
+      "COLUMN_NAME": "ratedByUserId",
+      "COLUMN_TYPE": "int",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "contractor_ratings",
+      "COLUMN_NAME": "stars",
+      "COLUMN_TYPE": "int",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "contractor_ratings",
+      "COLUMN_NAME": "review",
+      "COLUMN_TYPE": "text",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "contractor_ratings",
+      "COLUMN_NAME": "createdAt",
+      "COLUMN_TYPE": "timestamp",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "CURRENT_TIMESTAMP",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "dismissed_announcements",
+      "COLUMN_NAME": "id",
+      "COLUMN_TYPE": "int",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": "auto_increment"
+    },
+    {
+      "TABLE_NAME": "dismissed_announcements",
+      "COLUMN_NAME": "userId",
+      "COLUMN_TYPE": "int",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "dismissed_announcements",
+      "COLUMN_NAME": "announcementId",
+      "COLUMN_TYPE": "int",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "dismissed_announcements",
+      "COLUMN_NAME": "dismissedAt",
+      "COLUMN_TYPE": "timestamp",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "CURRENT_TIMESTAMP",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "feature_flags",
+      "COLUMN_NAME": "id",
+      "COLUMN_TYPE": "int",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": "auto_increment"
+    },
+    {
+      "TABLE_NAME": "feature_flags",
+      "COLUMN_NAME": "key",
+      "COLUMN_TYPE": "varchar(128)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "feature_flags",
+      "COLUMN_NAME": "label",
+      "COLUMN_TYPE": "varchar(255)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "feature_flags",
+      "COLUMN_NAME": "description",
+      "COLUMN_TYPE": "text",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "feature_flags",
+      "COLUMN_NAME": "enabledForCompanies",
+      "COLUMN_TYPE": "tinyint(1)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "1",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "feature_flags",
+      "COLUMN_NAME": "enabledForContractors",
+      "COLUMN_TYPE": "tinyint(1)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "1",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "feature_flags",
+      "COLUMN_NAME": "updatedAt",
+      "COLUMN_TYPE": "timestamp",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "CURRENT_TIMESTAMP",
+      "EXTRA": "DEFAULT_GENERATED on update CURRENT_TIMESTAMP"
+    },
+    {
+      "TABLE_NAME": "feature_flags",
+      "COLUMN_NAME": "updatedBy",
+      "COLUMN_TYPE": "int",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "integration_connectors",
+      "COLUMN_NAME": "id",
+      "COLUMN_TYPE": "int",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": "auto_increment"
+    },
+    {
+      "TABLE_NAME": "integration_connectors",
+      "COLUMN_NAME": "companyId",
+      "COLUMN_TYPE": "int",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "integration_connectors",
+      "COLUMN_NAME": "provider",
+      "COLUMN_TYPE": "enum('buildium','appfolio','rentmanager','yardi','doorloop','realpage','propertyware')",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "integration_connectors",
+      "COLUMN_NAME": "apiKey",
+      "COLUMN_TYPE": "text",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "integration_connectors",
+      "COLUMN_NAME": "apiSecret",
+      "COLUMN_TYPE": "text",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "integration_connectors",
+      "COLUMN_NAME": "baseUrl",
+      "COLUMN_TYPE": "text",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "integration_connectors",
+      "COLUMN_NAME": "isActive",
+      "COLUMN_TYPE": "tinyint(1)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "0",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "integration_connectors",
+      "COLUMN_NAME": "lastSyncAt",
+      "COLUMN_TYPE": "timestamp",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "integration_connectors",
+      "COLUMN_NAME": "syncStatus",
+      "COLUMN_TYPE": "enum('idle','syncing','success','error')",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "idle",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "integration_connectors",
+      "COLUMN_NAME": "syncError",
+      "COLUMN_TYPE": "text",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "integration_connectors",
+      "COLUMN_NAME": "config",
+      "COLUMN_TYPE": "json",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "integration_connectors",
+      "COLUMN_NAME": "createdAt",
+      "COLUMN_TYPE": "timestamp",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "CURRENT_TIMESTAMP",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "integration_connectors",
+      "COLUMN_NAME": "updatedAt",
+      "COLUMN_TYPE": "timestamp",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "CURRENT_TIMESTAMP",
+      "EXTRA": "DEFAULT_GENERATED on update CURRENT_TIMESTAMP"
+    },
+    {
+      "TABLE_NAME": "integration_connectors",
+      "COLUMN_NAME": "webhookSecret",
+      "COLUMN_TYPE": "text",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "job_change_history",
+      "COLUMN_NAME": "id",
+      "COLUMN_TYPE": "int",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": "auto_increment"
+    },
+    {
+      "TABLE_NAME": "job_change_history",
+      "COLUMN_NAME": "jobId",
+      "COLUMN_TYPE": "int",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "job_change_history",
+      "COLUMN_NAME": "companyId",
+      "COLUMN_TYPE": "int",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "job_change_history",
+      "COLUMN_NAME": "userId",
+      "COLUMN_TYPE": "int",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "job_change_history",
+      "COLUMN_NAME": "changeType",
+      "COLUMN_TYPE": "enum('priority_override','skill_tier_override','status_change','visibility_change')",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "job_change_history",
+      "COLUMN_NAME": "fromValue",
+      "COLUMN_TYPE": "varchar(255)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "job_change_history",
+      "COLUMN_NAME": "toValue",
+      "COLUMN_TYPE": "varchar(255)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "job_change_history",
+      "COLUMN_NAME": "note",
+      "COLUMN_TYPE": "text",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "job_change_history",
+      "COLUMN_NAME": "createdAt",
+      "COLUMN_TYPE": "timestamp",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "CURRENT_TIMESTAMP",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "job_comments",
+      "COLUMN_NAME": "id",
+      "COLUMN_TYPE": "int",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": "auto_increment"
+    },
+    {
+      "TABLE_NAME": "job_comments",
+      "COLUMN_NAME": "maintenanceRequestId",
+      "COLUMN_TYPE": "int",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "job_comments",
+      "COLUMN_NAME": "authorUserId",
+      "COLUMN_TYPE": "int",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "job_comments",
+      "COLUMN_NAME": "authorRole",
+      "COLUMN_TYPE": "enum('company_admin','contractor','admin')",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "job_comments",
+      "COLUMN_NAME": "authorName",
+      "COLUMN_TYPE": "varchar(255)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "job_comments",
+      "COLUMN_NAME": "message",
+      "COLUMN_TYPE": "text",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "job_comments",
+      "COLUMN_NAME": "createdAt",
+      "COLUMN_TYPE": "timestamp",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "CURRENT_TIMESTAMP",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "location_pings",
+      "COLUMN_NAME": "id",
+      "COLUMN_TYPE": "int",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": "auto_increment"
+    },
+    {
+      "TABLE_NAME": "location_pings",
+      "COLUMN_NAME": "timeSessionId",
+      "COLUMN_TYPE": "int",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "location_pings",
+      "COLUMN_NAME": "latitude",
+      "COLUMN_TYPE": "decimal(10,7)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "location_pings",
+      "COLUMN_NAME": "longitude",
+      "COLUMN_TYPE": "decimal(10,7)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "location_pings",
+      "COLUMN_NAME": "timestamp",
+      "COLUMN_TYPE": "bigint",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "location_pings",
+      "COLUMN_NAME": "locationType",
+      "COLUMN_TYPE": "enum('property','store','origin','transit','unknown')",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "unknown",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "maintenance_mode",
+      "COLUMN_NAME": "id",
+      "COLUMN_TYPE": "int",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": "auto_increment"
+    },
+    {
+      "TABLE_NAME": "maintenance_mode",
+      "COLUMN_NAME": "isEnabled",
+      "COLUMN_TYPE": "tinyint(1)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "0",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "maintenance_mode",
+      "COLUMN_NAME": "message",
+      "COLUMN_TYPE": "text",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "maintenance_mode",
+      "COLUMN_NAME": "enabledBy",
+      "COLUMN_TYPE": "int",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "maintenance_mode",
+      "COLUMN_NAME": "enabledAt",
+      "COLUMN_TYPE": "timestamp",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "maintenance_mode",
+      "COLUMN_NAME": "updatedAt",
+      "COLUMN_TYPE": "timestamp",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "CURRENT_TIMESTAMP",
+      "EXTRA": "DEFAULT_GENERATED on update CURRENT_TIMESTAMP"
+    },
+    {
+      "TABLE_NAME": "maintenance_requests",
+      "COLUMN_NAME": "id",
+      "COLUMN_TYPE": "int",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": "auto_increment"
+    },
+    {
+      "TABLE_NAME": "maintenance_requests",
+      "COLUMN_NAME": "companyId",
+      "COLUMN_TYPE": "int",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "maintenance_requests",
+      "COLUMN_NAME": "propertyId",
+      "COLUMN_TYPE": "int",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "maintenance_requests",
+      "COLUMN_NAME": "externalId",
+      "COLUMN_TYPE": "varchar(128)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "maintenance_requests",
+      "COLUMN_NAME": "source",
+      "COLUMN_TYPE": "enum('manual','buildium','appfolio','rentmanager','yardi','doorloop','realpage','propertyware')",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "manual",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "maintenance_requests",
+      "COLUMN_NAME": "tenantName",
+      "COLUMN_TYPE": "varchar(255)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "maintenance_requests",
+      "COLUMN_NAME": "tenantPhone",
+      "COLUMN_TYPE": "varchar(32)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "maintenance_requests",
+      "COLUMN_NAME": "tenantEmail",
+      "COLUMN_TYPE": "varchar(320)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "maintenance_requests",
+      "COLUMN_NAME": "unitNumber",
+      "COLUMN_TYPE": "varchar(32)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "maintenance_requests",
+      "COLUMN_NAME": "title",
+      "COLUMN_TYPE": "varchar(500)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "maintenance_requests",
+      "COLUMN_NAME": "description",
+      "COLUMN_TYPE": "text",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "maintenance_requests",
+      "COLUMN_NAME": "photoUrls",
+      "COLUMN_TYPE": "json",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "maintenance_requests",
+      "COLUMN_NAME": "aiPriority",
+      "COLUMN_TYPE": "enum('low','medium','high','emergency')",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "maintenance_requests",
+      "COLUMN_NAME": "aiSkillTier",
+      "COLUMN_TYPE": "varchar(100)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "maintenance_requests",
+      "COLUMN_NAME": "aiSkillTierId",
+      "COLUMN_TYPE": "int",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "maintenance_requests",
+      "COLUMN_NAME": "aiReasoning",
+      "COLUMN_TYPE": "text",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "maintenance_requests",
+      "COLUMN_NAME": "aiClassifiedAt",
+      "COLUMN_TYPE": "timestamp",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "maintenance_requests",
+      "COLUMN_NAME": "status",
+      "COLUMN_TYPE": "enum('open','assigned','in_progress','pending_verification','completed','verified','disputed','paid','payment_pending_ach','canceled')",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "open",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "maintenance_requests",
+      "COLUMN_NAME": "assignedContractorId",
+      "COLUMN_TYPE": "int",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "maintenance_requests",
+      "COLUMN_NAME": "assignedAt",
+      "COLUMN_TYPE": "timestamp",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "maintenance_requests",
+      "COLUMN_NAME": "completedAt",
+      "COLUMN_TYPE": "timestamp",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "maintenance_requests",
+      "COLUMN_NAME": "skillTierId",
+      "COLUMN_TYPE": "int",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "maintenance_requests",
+      "COLUMN_NAME": "hourlyRate",
+      "COLUMN_TYPE": "decimal(8,2)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "maintenance_requests",
+      "COLUMN_NAME": "isEmergency",
+      "COLUMN_TYPE": "tinyint(1)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "0",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "maintenance_requests",
+      "COLUMN_NAME": "totalLaborMinutes",
+      "COLUMN_TYPE": "int",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "maintenance_requests",
+      "COLUMN_NAME": "totalLaborCost",
+      "COLUMN_TYPE": "decimal(10,2)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "maintenance_requests",
+      "COLUMN_NAME": "totalPartsCost",
+      "COLUMN_TYPE": "decimal(10,2)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "maintenance_requests",
+      "COLUMN_NAME": "platformFee",
+      "COLUMN_TYPE": "decimal(10,2)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "maintenance_requests",
+      "COLUMN_NAME": "totalCost",
+      "COLUMN_TYPE": "decimal(10,2)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "maintenance_requests",
+      "COLUMN_NAME": "createdAt",
+      "COLUMN_TYPE": "timestamp",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "CURRENT_TIMESTAMP",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "maintenance_requests",
+      "COLUMN_NAME": "updatedAt",
+      "COLUMN_TYPE": "timestamp",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "CURRENT_TIMESTAMP",
+      "EXTRA": "DEFAULT_GENERATED on update CURRENT_TIMESTAMP"
+    },
+    {
+      "TABLE_NAME": "maintenance_requests",
+      "COLUMN_NAME": "postedToBoard",
+      "COLUMN_TYPE": "tinyint(1)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "0",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "maintenance_requests",
+      "COLUMN_NAME": "completionNotes",
+      "COLUMN_TYPE": "text",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "maintenance_requests",
+      "COLUMN_NAME": "completionPhotoUrls",
+      "COLUMN_TYPE": "json",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "maintenance_requests",
+      "COLUMN_NAME": "verifiedAt",
+      "COLUMN_TYPE": "timestamp",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "maintenance_requests",
+      "COLUMN_NAME": "verifiedByUserId",
+      "COLUMN_TYPE": "int",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "maintenance_requests",
+      "COLUMN_NAME": "verificationNotes",
+      "COLUMN_TYPE": "text",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "maintenance_requests",
+      "COLUMN_NAME": "disputeNotes",
+      "COLUMN_TYPE": "text",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "maintenance_requests",
+      "COLUMN_NAME": "stripePaymentIntentId",
+      "COLUMN_TYPE": "varchar(128)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "maintenance_requests",
+      "COLUMN_NAME": "paidAt",
+      "COLUMN_TYPE": "timestamp",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "maintenance_requests",
+      "COLUMN_NAME": "disputedAt",
+      "COLUMN_TYPE": "timestamp",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "maintenance_requests",
+      "COLUMN_NAME": "disputeResponseNote",
+      "COLUMN_TYPE": "text",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "maintenance_requests",
+      "COLUMN_NAME": "resubmittedAt",
+      "COLUMN_TYPE": "timestamp",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "maintenance_requests",
+      "COLUMN_NAME": "escalationNotifiedAt",
+      "COLUMN_TYPE": "bigint",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "maintenance_requests",
+      "COLUMN_NAME": "jobBoardVisibility",
+      "COLUMN_TYPE": "enum('public','private')",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "public",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "maintenance_requests",
+      "COLUMN_NAME": "overridePriority",
+      "COLUMN_TYPE": "enum('low','medium','high','emergency')",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "maintenance_requests",
+      "COLUMN_NAME": "overrideHourlyRate",
+      "COLUMN_TYPE": "decimal(8,2)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "maintenance_requests",
+      "COLUMN_NAME": "overrideReason",
+      "COLUMN_TYPE": "varchar(500)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "maintenance_requests",
+      "COLUMN_NAME": "overriddenAt",
+      "COLUMN_TYPE": "timestamp",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "maintenance_requests",
+      "COLUMN_NAME": "overriddenByUserId",
+      "COLUMN_TYPE": "int",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "maintenance_requests",
+      "COLUMN_NAME": "overrideSkillTierId",
+      "COLUMN_TYPE": "int",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "notifications",
+      "COLUMN_NAME": "id",
+      "COLUMN_TYPE": "int",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": "auto_increment"
+    },
+    {
+      "TABLE_NAME": "notifications",
+      "COLUMN_NAME": "userId",
+      "COLUMN_TYPE": "int",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "notifications",
+      "COLUMN_NAME": "type",
+      "COLUMN_TYPE": "varchar(64)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "notifications",
+      "COLUMN_NAME": "title",
+      "COLUMN_TYPE": "varchar(255)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "notifications",
+      "COLUMN_NAME": "body",
+      "COLUMN_TYPE": "text",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "notifications",
+      "COLUMN_NAME": "linkRoute",
+      "COLUMN_TYPE": "varchar(512)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "notifications",
+      "COLUMN_NAME": "metadata",
+      "COLUMN_TYPE": "json",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "notifications",
+      "COLUMN_NAME": "isRead",
+      "COLUMN_TYPE": "tinyint(1)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "0",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "notifications",
+      "COLUMN_NAME": "createdAt",
+      "COLUMN_TYPE": "timestamp",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "CURRENT_TIMESTAMP",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "parts_receipts",
+      "COLUMN_NAME": "id",
+      "COLUMN_TYPE": "int",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": "auto_increment"
+    },
+    {
+      "TABLE_NAME": "parts_receipts",
+      "COLUMN_NAME": "maintenanceRequestId",
+      "COLUMN_TYPE": "int",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "parts_receipts",
+      "COLUMN_NAME": "contractorProfileId",
+      "COLUMN_TYPE": "int",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "parts_receipts",
+      "COLUMN_NAME": "companyId",
+      "COLUMN_TYPE": "int",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "parts_receipts",
+      "COLUMN_NAME": "storeName",
+      "COLUMN_TYPE": "varchar(255)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "parts_receipts",
+      "COLUMN_NAME": "description",
+      "COLUMN_TYPE": "text",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "parts_receipts",
+      "COLUMN_NAME": "amount",
+      "COLUMN_TYPE": "decimal(10,2)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "parts_receipts",
+      "COLUMN_NAME": "receiptImageUrl",
+      "COLUMN_TYPE": "text",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "parts_receipts",
+      "COLUMN_NAME": "approved",
+      "COLUMN_TYPE": "tinyint(1)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "0",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "parts_receipts",
+      "COLUMN_NAME": "approvedBy",
+      "COLUMN_TYPE": "int",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "parts_receipts",
+      "COLUMN_NAME": "createdAt",
+      "COLUMN_TYPE": "timestamp",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "CURRENT_TIMESTAMP",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "password_reset_tokens",
+      "COLUMN_NAME": "id",
+      "COLUMN_TYPE": "int",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": "auto_increment"
+    },
+    {
+      "TABLE_NAME": "password_reset_tokens",
+      "COLUMN_NAME": "userId",
+      "COLUMN_TYPE": "int",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "password_reset_tokens",
+      "COLUMN_NAME": "token",
+      "COLUMN_TYPE": "varchar(255)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "password_reset_tokens",
+      "COLUMN_NAME": "expiresAt",
+      "COLUMN_TYPE": "timestamp",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "password_reset_tokens",
+      "COLUMN_NAME": "usedAt",
+      "COLUMN_TYPE": "timestamp",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "password_reset_tokens",
+      "COLUMN_NAME": "createdAt",
+      "COLUMN_TYPE": "timestamp",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "CURRENT_TIMESTAMP",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "payout_holds",
+      "COLUMN_NAME": "id",
+      "COLUMN_TYPE": "int",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": "auto_increment"
+    },
+    {
+      "TABLE_NAME": "payout_holds",
+      "COLUMN_NAME": "contractorId",
+      "COLUMN_TYPE": "int",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "payout_holds",
+      "COLUMN_NAME": "reason",
+      "COLUMN_TYPE": "text",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "payout_holds",
+      "COLUMN_NAME": "placedBy",
+      "COLUMN_TYPE": "int",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "payout_holds",
+      "COLUMN_NAME": "placedAt",
+      "COLUMN_TYPE": "timestamp",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "CURRENT_TIMESTAMP",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "payout_holds",
+      "COLUMN_NAME": "releasedAt",
+      "COLUMN_TYPE": "timestamp",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "payout_holds",
+      "COLUMN_NAME": "releasedBy",
+      "COLUMN_TYPE": "int",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "payout_holds",
+      "COLUMN_NAME": "isActive",
+      "COLUMN_TYPE": "tinyint(1)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "1",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "platform_announcements",
+      "COLUMN_NAME": "id",
+      "COLUMN_TYPE": "int",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": "auto_increment"
+    },
+    {
+      "TABLE_NAME": "platform_announcements",
+      "COLUMN_NAME": "title",
+      "COLUMN_TYPE": "varchar(255)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "platform_announcements",
+      "COLUMN_NAME": "message",
+      "COLUMN_TYPE": "text",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "platform_announcements",
+      "COLUMN_NAME": "type",
+      "COLUMN_TYPE": "varchar(32)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "info",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "platform_announcements",
+      "COLUMN_NAME": "targetAudience",
+      "COLUMN_TYPE": "varchar(32)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "all",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "platform_announcements",
+      "COLUMN_NAME": "isActive",
+      "COLUMN_TYPE": "tinyint(1)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "1",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "platform_announcements",
+      "COLUMN_NAME": "expiresAt",
+      "COLUMN_TYPE": "bigint",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "platform_announcements",
+      "COLUMN_NAME": "createdAt",
+      "COLUMN_TYPE": "timestamp",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "CURRENT_TIMESTAMP",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "platform_announcements",
+      "COLUMN_NAME": "updatedAt",
+      "COLUMN_TYPE": "timestamp",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "CURRENT_TIMESTAMP",
+      "EXTRA": "DEFAULT_GENERATED on update CURRENT_TIMESTAMP"
+    },
+    {
+      "TABLE_NAME": "platform_settings",
+      "COLUMN_NAME": "id",
+      "COLUMN_TYPE": "int",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": "auto_increment"
+    },
+    {
+      "TABLE_NAME": "platform_settings",
+      "COLUMN_NAME": "platformFeePercent",
+      "COLUMN_TYPE": "decimal(5,2)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "5.00",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "platform_settings",
+      "COLUMN_NAME": "perListingFeeEnabled",
+      "COLUMN_TYPE": "tinyint(1)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "0",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "platform_settings",
+      "COLUMN_NAME": "perListingFeeAmount",
+      "COLUMN_TYPE": "decimal(8,2)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "0.00",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "platform_settings",
+      "COLUMN_NAME": "autoClockOutMinutes",
+      "COLUMN_TYPE": "int",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "15",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "platform_settings",
+      "COLUMN_NAME": "autoClockOutRadiusMeters",
+      "COLUMN_TYPE": "int",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "200",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "platform_settings",
+      "COLUMN_NAME": "createdAt",
+      "COLUMN_TYPE": "timestamp",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "CURRENT_TIMESTAMP",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "platform_settings",
+      "COLUMN_NAME": "updatedAt",
+      "COLUMN_TYPE": "timestamp",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "CURRENT_TIMESTAMP",
+      "EXTRA": "DEFAULT_GENERATED on update CURRENT_TIMESTAMP"
+    },
+    {
+      "TABLE_NAME": "platform_settings",
+      "COLUMN_NAME": "pmsSyncIntervalHours",
+      "COLUMN_TYPE": "int",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "24",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "pms_integrations",
+      "COLUMN_NAME": "id",
+      "COLUMN_TYPE": "int",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": "auto_increment"
+    },
+    {
+      "TABLE_NAME": "pms_integrations",
+      "COLUMN_NAME": "companyId",
+      "COLUMN_TYPE": "int",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "pms_integrations",
+      "COLUMN_NAME": "provider",
+      "COLUMN_TYPE": "varchar(64)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "pms_integrations",
+      "COLUMN_NAME": "authType",
+      "COLUMN_TYPE": "varchar(32)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "pms_integrations",
+      "COLUMN_NAME": "credentialsJson",
+      "COLUMN_TYPE": "text",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "pms_integrations",
+      "COLUMN_NAME": "webhookSecret",
+      "COLUMN_TYPE": "varchar(255)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "pms_integrations",
+      "COLUMN_NAME": "status",
+      "COLUMN_TYPE": "varchar(32)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "connected",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "pms_integrations",
+      "COLUMN_NAME": "lastSyncAt",
+      "COLUMN_TYPE": "timestamp",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "pms_integrations",
+      "COLUMN_NAME": "lastErrorMessage",
+      "COLUMN_TYPE": "text",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "pms_integrations",
+      "COLUMN_NAME": "createdAt",
+      "COLUMN_TYPE": "timestamp",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "CURRENT_TIMESTAMP",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "pms_integrations",
+      "COLUMN_NAME": "updatedAt",
+      "COLUMN_TYPE": "timestamp",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "CURRENT_TIMESTAMP",
+      "EXTRA": "DEFAULT_GENERATED on update CURRENT_TIMESTAMP"
+    },
+    {
+      "TABLE_NAME": "pms_webhook_events",
+      "COLUMN_NAME": "id",
+      "COLUMN_TYPE": "int",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": "auto_increment"
+    },
+    {
+      "TABLE_NAME": "pms_webhook_events",
+      "COLUMN_NAME": "provider",
+      "COLUMN_TYPE": "varchar(64)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "pms_webhook_events",
+      "COLUMN_NAME": "companyId",
+      "COLUMN_TYPE": "int",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "pms_webhook_events",
+      "COLUMN_NAME": "rawPayload",
+      "COLUMN_TYPE": "json",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "pms_webhook_events",
+      "COLUMN_NAME": "status",
+      "COLUMN_TYPE": "enum('received','processed','failed','ignored')",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "received",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "pms_webhook_events",
+      "COLUMN_NAME": "errorMessage",
+      "COLUMN_TYPE": "text",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "pms_webhook_events",
+      "COLUMN_NAME": "createdJobId",
+      "COLUMN_TYPE": "int",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "pms_webhook_events",
+      "COLUMN_NAME": "createdAt",
+      "COLUMN_TYPE": "timestamp",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "CURRENT_TIMESTAMP",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "promo_codes",
+      "COLUMN_NAME": "id",
+      "COLUMN_TYPE": "int",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": "auto_increment"
+    },
+    {
+      "TABLE_NAME": "promo_codes",
+      "COLUMN_NAME": "code",
+      "COLUMN_TYPE": "varchar(64)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "promo_codes",
+      "COLUMN_NAME": "description",
+      "COLUMN_TYPE": "text",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "promo_codes",
+      "COLUMN_NAME": "affectsSubscription",
+      "COLUMN_TYPE": "tinyint(1)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "0",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "promo_codes",
+      "COLUMN_NAME": "affectsServiceCharge",
+      "COLUMN_TYPE": "tinyint(1)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "0",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "promo_codes",
+      "COLUMN_NAME": "affectsListingFee",
+      "COLUMN_TYPE": "tinyint(1)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "0",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "promo_codes",
+      "COLUMN_NAME": "discountPercent",
+      "COLUMN_TYPE": "decimal(5,2)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "0.00",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "promo_codes",
+      "COLUMN_NAME": "billingCycles",
+      "COLUMN_TYPE": "int",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "promo_codes",
+      "COLUMN_NAME": "isActive",
+      "COLUMN_TYPE": "tinyint(1)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "1",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "promo_codes",
+      "COLUMN_NAME": "maxRedemptions",
+      "COLUMN_TYPE": "int",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "promo_codes",
+      "COLUMN_NAME": "redemptionCount",
+      "COLUMN_TYPE": "int",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "0",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "promo_codes",
+      "COLUMN_NAME": "expiresAt",
+      "COLUMN_TYPE": "bigint",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "promo_codes",
+      "COLUMN_NAME": "createdAt",
+      "COLUMN_TYPE": "timestamp",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "CURRENT_TIMESTAMP",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "promo_codes",
+      "COLUMN_NAME": "updatedAt",
+      "COLUMN_TYPE": "timestamp",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "CURRENT_TIMESTAMP",
+      "EXTRA": "DEFAULT_GENERATED on update CURRENT_TIMESTAMP"
+    },
+    {
+      "TABLE_NAME": "properties",
+      "COLUMN_NAME": "id",
+      "COLUMN_TYPE": "int",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": "auto_increment"
+    },
+    {
+      "TABLE_NAME": "properties",
+      "COLUMN_NAME": "companyId",
+      "COLUMN_TYPE": "int",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "properties",
+      "COLUMN_NAME": "name",
+      "COLUMN_TYPE": "varchar(255)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "properties",
+      "COLUMN_NAME": "address",
+      "COLUMN_TYPE": "text",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "properties",
+      "COLUMN_NAME": "city",
+      "COLUMN_TYPE": "varchar(128)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "properties",
+      "COLUMN_NAME": "state",
+      "COLUMN_TYPE": "varchar(64)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "properties",
+      "COLUMN_NAME": "zipCode",
+      "COLUMN_TYPE": "varchar(16)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "properties",
+      "COLUMN_NAME": "latitude",
+      "COLUMN_TYPE": "decimal(10,7)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "properties",
+      "COLUMN_NAME": "longitude",
+      "COLUMN_TYPE": "decimal(10,7)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "properties",
+      "COLUMN_NAME": "units",
+      "COLUMN_TYPE": "int",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "1",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "properties",
+      "COLUMN_NAME": "externalId",
+      "COLUMN_TYPE": "varchar(128)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "properties",
+      "COLUMN_NAME": "createdAt",
+      "COLUMN_TYPE": "timestamp",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "CURRENT_TIMESTAMP",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "properties",
+      "COLUMN_NAME": "updatedAt",
+      "COLUMN_TYPE": "timestamp",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "CURRENT_TIMESTAMP",
+      "EXTRA": "DEFAULT_GENERATED on update CURRENT_TIMESTAMP"
+    },
+    {
+      "TABLE_NAME": "properties",
+      "COLUMN_NAME": "propertyType",
+      "COLUMN_TYPE": "enum('single_family','multi_family','commercial','other')",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "single_family",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "property_units",
+      "COLUMN_NAME": "id",
+      "COLUMN_TYPE": "int",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": "auto_increment"
+    },
+    {
+      "TABLE_NAME": "property_units",
+      "COLUMN_NAME": "propertyId",
+      "COLUMN_TYPE": "int",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "property_units",
+      "COLUMN_NAME": "companyId",
+      "COLUMN_TYPE": "int",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "property_units",
+      "COLUMN_NAME": "unitNumber",
+      "COLUMN_TYPE": "varchar(64)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "property_units",
+      "COLUMN_NAME": "bedrooms",
+      "COLUMN_TYPE": "int",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "property_units",
+      "COLUMN_NAME": "bathrooms",
+      "COLUMN_TYPE": "decimal(3,1)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "property_units",
+      "COLUMN_NAME": "sqft",
+      "COLUMN_TYPE": "int",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "property_units",
+      "COLUMN_NAME": "externalId",
+      "COLUMN_TYPE": "varchar(128)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "property_units",
+      "COLUMN_NAME": "createdAt",
+      "COLUMN_TYPE": "timestamp",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "CURRENT_TIMESTAMP",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "property_units",
+      "COLUMN_NAME": "updatedAt",
+      "COLUMN_TYPE": "timestamp",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "CURRENT_TIMESTAMP",
+      "EXTRA": "DEFAULT_GENERATED on update CURRENT_TIMESTAMP"
+    },
+    {
+      "TABLE_NAME": "skill_tiers",
+      "COLUMN_NAME": "id",
+      "COLUMN_TYPE": "int",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": "auto_increment"
+    },
+    {
+      "TABLE_NAME": "skill_tiers",
+      "COLUMN_NAME": "companyId",
+      "COLUMN_TYPE": "int",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "skill_tiers",
+      "COLUMN_NAME": "name",
+      "COLUMN_TYPE": "varchar(100)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "skill_tiers",
+      "COLUMN_NAME": "description",
+      "COLUMN_TYPE": "text",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "skill_tiers",
+      "COLUMN_NAME": "hourlyRate",
+      "COLUMN_TYPE": "decimal(8,2)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "skill_tiers",
+      "COLUMN_NAME": "emergencyMultiplier",
+      "COLUMN_TYPE": "decimal(4,2)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "1.50",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "skill_tiers",
+      "COLUMN_NAME": "sortOrder",
+      "COLUMN_TYPE": "int",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "0",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "skill_tiers",
+      "COLUMN_NAME": "createdAt",
+      "COLUMN_TYPE": "timestamp",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "CURRENT_TIMESTAMP",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "skill_tiers",
+      "COLUMN_NAME": "updatedAt",
+      "COLUMN_TYPE": "timestamp",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "CURRENT_TIMESTAMP",
+      "EXTRA": "DEFAULT_GENERATED on update CURRENT_TIMESTAMP"
+    },
+    {
+      "TABLE_NAME": "subscription_plans",
+      "COLUMN_NAME": "id",
+      "COLUMN_TYPE": "int",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": "auto_increment"
+    },
+    {
+      "TABLE_NAME": "subscription_plans",
+      "COLUMN_NAME": "name",
+      "COLUMN_TYPE": "varchar(128)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "subscription_plans",
+      "COLUMN_NAME": "description",
+      "COLUMN_TYPE": "text",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "subscription_plans",
+      "COLUMN_NAME": "priceMonthly",
+      "COLUMN_TYPE": "decimal(10,2)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "0.00",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "subscription_plans",
+      "COLUMN_NAME": "priceAnnual",
+      "COLUMN_TYPE": "decimal(10,2)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "0.00",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "subscription_plans",
+      "COLUMN_NAME": "features",
+      "COLUMN_TYPE": "json",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "subscription_plans",
+      "COLUMN_NAME": "isActive",
+      "COLUMN_TYPE": "tinyint(1)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "1",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "subscription_plans",
+      "COLUMN_NAME": "sortOrder",
+      "COLUMN_TYPE": "int",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "0",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "subscription_plans",
+      "COLUMN_NAME": "createdAt",
+      "COLUMN_TYPE": "timestamp",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "CURRENT_TIMESTAMP",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "subscription_plans",
+      "COLUMN_NAME": "updatedAt",
+      "COLUMN_TYPE": "timestamp",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "CURRENT_TIMESTAMP",
+      "EXTRA": "DEFAULT_GENERATED on update CURRENT_TIMESTAMP"
+    },
+    {
+      "TABLE_NAME": "subscription_plans",
+      "COLUMN_NAME": "platformFeePercent",
+      "COLUMN_TYPE": "decimal(5,2)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "subscription_plans",
+      "COLUMN_NAME": "perListingFeeEnabled",
+      "COLUMN_TYPE": "tinyint(1)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "0",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "subscription_plans",
+      "COLUMN_NAME": "perListingFeeAmount",
+      "COLUMN_TYPE": "decimal(8,2)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "0.00",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "subscription_plans",
+      "COLUMN_NAME": "stripePriceIdMonthly",
+      "COLUMN_TYPE": "varchar(255)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "subscription_plans",
+      "COLUMN_NAME": "stripePriceIdAnnual",
+      "COLUMN_TYPE": "varchar(255)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "subscription_plans",
+      "COLUMN_NAME": "planType",
+      "COLUMN_TYPE": "enum('company','contractor')",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "company",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "subscription_plans",
+      "COLUMN_NAME": "earlyNotificationMinutes",
+      "COLUMN_TYPE": "int",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "0",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "subscription_plans",
+      "COLUMN_NAME": "stripeProductId",
+      "COLUMN_TYPE": "varchar(255)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "time_sessions",
+      "COLUMN_NAME": "id",
+      "COLUMN_TYPE": "int",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": "auto_increment"
+    },
+    {
+      "TABLE_NAME": "time_sessions",
+      "COLUMN_NAME": "maintenanceRequestId",
+      "COLUMN_TYPE": "int",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "time_sessions",
+      "COLUMN_NAME": "contractorProfileId",
+      "COLUMN_TYPE": "int",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "time_sessions",
+      "COLUMN_NAME": "companyId",
+      "COLUMN_TYPE": "int",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "time_sessions",
+      "COLUMN_NAME": "clockInTime",
+      "COLUMN_TYPE": "bigint",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "time_sessions",
+      "COLUMN_NAME": "clockInLat",
+      "COLUMN_TYPE": "decimal(10,7)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "time_sessions",
+      "COLUMN_NAME": "clockInLng",
+      "COLUMN_TYPE": "decimal(10,7)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "time_sessions",
+      "COLUMN_NAME": "clockInVerified",
+      "COLUMN_TYPE": "tinyint(1)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "0",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "time_sessions",
+      "COLUMN_NAME": "clockOutTime",
+      "COLUMN_TYPE": "bigint",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "time_sessions",
+      "COLUMN_NAME": "clockOutLat",
+      "COLUMN_TYPE": "decimal(10,7)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "time_sessions",
+      "COLUMN_NAME": "clockOutLng",
+      "COLUMN_TYPE": "decimal(10,7)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "time_sessions",
+      "COLUMN_NAME": "clockOutVerified",
+      "COLUMN_TYPE": "tinyint(1)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "0",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "time_sessions",
+      "COLUMN_NAME": "clockOutMethod",
+      "COLUMN_TYPE": "enum('manual','auto_geofence','auto_timeout','admin')",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "time_sessions",
+      "COLUMN_NAME": "status",
+      "COLUMN_TYPE": "enum('active','paused','completed','flagged')",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "active",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "time_sessions",
+      "COLUMN_NAME": "totalMinutes",
+      "COLUMN_TYPE": "int",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "time_sessions",
+      "COLUMN_NAME": "billableMinutes",
+      "COLUMN_TYPE": "int",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "time_sessions",
+      "COLUMN_NAME": "contractorApproved",
+      "COLUMN_TYPE": "tinyint(1)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "time_sessions",
+      "COLUMN_NAME": "contractorNotes",
+      "COLUMN_TYPE": "text",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "time_sessions",
+      "COLUMN_NAME": "createdAt",
+      "COLUMN_TYPE": "timestamp",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "CURRENT_TIMESTAMP",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "time_sessions",
+      "COLUMN_NAME": "updatedAt",
+      "COLUMN_TYPE": "timestamp",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "CURRENT_TIMESTAMP",
+      "EXTRA": "DEFAULT_GENERATED on update CURRENT_TIMESTAMP"
+    },
+    {
+      "TABLE_NAME": "transactions",
+      "COLUMN_NAME": "id",
+      "COLUMN_TYPE": "int",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": "auto_increment"
+    },
+    {
+      "TABLE_NAME": "transactions",
+      "COLUMN_NAME": "maintenanceRequestId",
+      "COLUMN_TYPE": "int",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "transactions",
+      "COLUMN_NAME": "companyId",
+      "COLUMN_TYPE": "int",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "transactions",
+      "COLUMN_NAME": "contractorProfileId",
+      "COLUMN_TYPE": "int",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "transactions",
+      "COLUMN_NAME": "laborCost",
+      "COLUMN_TYPE": "decimal(10,2)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "transactions",
+      "COLUMN_NAME": "partsCost",
+      "COLUMN_TYPE": "decimal(10,2)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "0.00",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "transactions",
+      "COLUMN_NAME": "platformFee",
+      "COLUMN_TYPE": "decimal(10,2)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "transactions",
+      "COLUMN_NAME": "stripeFee",
+      "COLUMN_TYPE": "decimal(10,2)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "0.00",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "transactions",
+      "COLUMN_NAME": "totalCharged",
+      "COLUMN_TYPE": "decimal(10,2)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "transactions",
+      "COLUMN_NAME": "contractorPayout",
+      "COLUMN_TYPE": "decimal(10,2)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "transactions",
+      "COLUMN_NAME": "stripePaymentIntentId",
+      "COLUMN_TYPE": "varchar(128)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "transactions",
+      "COLUMN_NAME": "stripeTransferId",
+      "COLUMN_TYPE": "varchar(128)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "transactions",
+      "COLUMN_NAME": "status",
+      "COLUMN_TYPE": "enum('pending','escrow','captured','paid_out','refunded','failed')",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "pending",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "transactions",
+      "COLUMN_NAME": "paidAt",
+      "COLUMN_TYPE": "timestamp",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "transactions",
+      "COLUMN_NAME": "createdAt",
+      "COLUMN_TYPE": "timestamp",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "CURRENT_TIMESTAMP",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "transactions",
+      "COLUMN_NAME": "updatedAt",
+      "COLUMN_TYPE": "timestamp",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "CURRENT_TIMESTAMP",
+      "EXTRA": "DEFAULT_GENERATED on update CURRENT_TIMESTAMP"
+    },
+    {
+      "TABLE_NAME": "users",
+      "COLUMN_NAME": "id",
+      "COLUMN_TYPE": "int",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": "auto_increment"
+    },
+    {
+      "TABLE_NAME": "users",
+      "COLUMN_NAME": "openId",
+      "COLUMN_TYPE": "varchar(64)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "users",
+      "COLUMN_NAME": "name",
+      "COLUMN_TYPE": "text",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "users",
+      "COLUMN_NAME": "email",
+      "COLUMN_TYPE": "varchar(320)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "users",
+      "COLUMN_NAME": "loginMethod",
+      "COLUMN_TYPE": "varchar(64)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "users",
+      "COLUMN_NAME": "role",
+      "COLUMN_TYPE": "enum('user','admin','company_admin','contractor')",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "user",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "users",
+      "COLUMN_NAME": "companyId",
+      "COLUMN_TYPE": "int",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "users",
+      "COLUMN_NAME": "contractorProfileId",
+      "COLUMN_TYPE": "int",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "users",
+      "COLUMN_NAME": "createdAt",
+      "COLUMN_TYPE": "timestamp",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "CURRENT_TIMESTAMP",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "users",
+      "COLUMN_NAME": "updatedAt",
+      "COLUMN_TYPE": "timestamp",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "CURRENT_TIMESTAMP",
+      "EXTRA": "DEFAULT_GENERATED on update CURRENT_TIMESTAMP"
+    },
+    {
+      "TABLE_NAME": "users",
+      "COLUMN_NAME": "lastSignedIn",
+      "COLUMN_TYPE": "timestamp",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "CURRENT_TIMESTAMP",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "users",
+      "COLUMN_NAME": "passwordHash",
+      "COLUMN_TYPE": "varchar(255)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "users",
+      "COLUMN_NAME": "emailPreferences",
+      "COLUMN_TYPE": "json",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "users",
+      "COLUMN_NAME": "resetPasswordToken",
+      "COLUMN_TYPE": "varchar(128)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "users",
+      "COLUMN_NAME": "resetPasswordExpiry",
+      "COLUMN_TYPE": "timestamp",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "users",
+      "COLUMN_NAME": "emailVerificationCode",
+      "COLUMN_TYPE": "varchar(6)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "users",
+      "COLUMN_NAME": "emailVerificationExpiry",
+      "COLUMN_TYPE": "timestamp",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": "NULL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "users",
+      "COLUMN_NAME": "emailVerified",
+      "COLUMN_TYPE": "tinyint(1)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "0",
+      "EXTRA": ""
+    }
+  ],
+  "messages": [],
+  "stdout": "TABLE_NAME\tCOLUMN_NAME\tCOLUMN_TYPE\tIS_NULLABLE\tCOLUMN_DEFAULT\tEXTRA\n__drizzle_migrations\tid\tbigint unsigned\tNO\tNULL\tauto_increment\n__drizzle_migrations\thash\ttext\tNO\tNULL\t\n__drizzle_migrations\tcreated_at\tbigint\tYES\tNULL\t\naccount_credits\tid\tint\tNO\tNULL\tauto_increment\naccount_credits\tcompanyId\tint\tNO\tNULL\t\naccount_credits\tamountCents\tint\tNO\tNULL\t\naccount_credits\treason\ttext\tNO\tNULL\t\naccount_credits\tissuedBy\tint\tNO\tNULL\t\naccount_credits\tappliedToJobId\tint\tYES\tNULL\t\naccount_credits\tcreatedAt\ttimestamp\tNO\tCURRENT_TIMESTAMP\t\naccount_suspensions\tid\tint\tNO\tNULL\tauto_increment\naccount_suspensions\ttargetType\tvarchar(32)\tNO\tNULL\t\naccount_suspensions\ttargetId\tint\tNO\tNULL\t\naccount_suspensions\treason\ttext\tNO\tNULL\t\naccount_suspensions\tsuspendedBy\tint\tNO\tNULL\t\naccount_suspensions\tsuspendedAt\ttimestamp\tNO\tCURRENT_TIMESTAMP\t\naccount_suspensions\treinstatedAt\ttimestamp\tYES\tNULL\t\naccount_suspensions\treinstatedBy\tint\tYES\tNULL\t\naccount_suspensions\tisActive\ttinyint(1)\tNO\t1\t\nactivity_events\tid\tint\tNO\tNULL\tauto_increment\nactivity_events\teventType\tvarchar(64)\tNO\tNULL\t\nactivity_events\ttitle\tvarchar(255)\tNO\tNULL\t\nactivity_events\tdescription\ttext\tYES\tNULL\t\nactivity_events\tactorId\tint\tYES\tNULL\t\nactivity_events\tactorName\tvarchar(255)\tYES\tNULL\t\nactivity_events\trelatedId\tint\tYES\tNULL\t\nactivity_events\trelatedType\tvarchar(64)\tYES\tNULL\t\nactivity_events\tcreatedAt\ttimestamp\tNO\tCURRENT_TIMESTAMP\t\naudit_log\tid\tint\tNO\tNULL\tauto_increment\naudit_log\tactorId\tint\tNO\tNULL\t\naudit_log\tactorName\tvarchar(255)\tNO\tNULL\t\naudit_log\taction\tvarchar(128)\tNO\tNULL\t\naudit_log\ttargetType\tvarchar(64)\tYES\tNULL\t\naudit_log\ttargetId\tint\tYES\tNULL\t\naudit_log\ttargetName\tvarchar(255)\tYES\tNULL\t\naudit_log\tdetails\ttext\tYES\tNULL\t\naudit_log\tcreatedAt\ttimestamp\tNO\tCURRENT_TIMESTAMP\t\ncompanies\tid\tint\tNO\tNULL\tauto_increment\ncompanies\tname\tvarchar(255)\tNO\tNULL\t\ncompanies\tlogoUrl\ttext\tYES\tNULL\t\ncompanies\taddress\ttext\tYES\tNULL\t\ncompanies\tphone\tvarchar(32)\tYES\tNULL\t\ncompanies\temail\tvarchar(320)\tYES\tNULL\t\ncompanies\tstripeAccountId\tvarchar(128)\tYES\tNULL\t\ncompanies\tsubscriptionTier\tenum('free','starter','professional','enterprise')\tNO\tfree\t\ncompanies\tsubscriptionStatus\tenum('active','past_due','canceled','trialing')\tNO\ttrialing\t\ncompanies\tcreatedAt\ttimestamp\tNO\tCURRENT_TIMESTAMP\t\ncompanies\tupdatedAt\ttimestamp\tNO\tCURRENT_TIMESTAMP\tDEFAULT_GENERATED on update CURRENT_TIMESTAMP\ncompanies\tstripeCustomerId\tvarchar(128)\tYES\tNULL\t\ncompanies\tplanId\tint\tYES\tNULL\t\ncompanies\tplanPriceOverride\tdecimal(10,2)\tYES\tNULL\t\ncompanies\tplanNotes\ttext\tYES\tNULL\t\ncompanies\tplanStatus\tenum('active','trialing','expired','canceled')\tNO\ttrialing\t\ncompanies\tplanAssignedAt\tbigint\tYES\tNULL\t\ncompanies\tplanExpiresAt\tbigint\tYES\tNULL\t\ncompanies\tstripeSubscriptionId\tvarchar(255)\tYES\tNULL\t\ncompanies\tfeeOverridePercent\tdecimal(5,2)\tYES\tNULL\t\ncompanies\tfeeOverridePerListingEnabled\ttinyint(1)\tYES\tNULL\t\ncompanies\tfeeOverridePerListingAmount\tdecimal(8,2)\tYES\tNULL\t\ncompany_payment_methods\tid\tint\tNO\tNULL\tauto_increment\ncompany_payment_methods\tcompanyId\tint\tNO\tNULL\t\ncompany_payment_methods\tstripePaymentMethodId\tvarchar(128)\tNO\tNULL\t\ncompany_payment_methods\ttype\tvarchar(32)\tNO\tcard\t\ncompany_payment_methods\tbrand\tvarchar(32)\tYES\tNULL\t\ncompany_payment_methods\tlast4\tvarchar(4)\tYES\tNULL\t\ncompany_payment_methods\tbankName\tvarchar(128)\tYES\tNULL\t\ncompany_payment_methods\tlabel\tvarchar(128)\tYES\tNULL\t\ncompany_payment_methods\tisDefault\ttinyint(1)\tNO\t0\t\ncompany_payment_methods\tcreatedAt\ttimestamp\tNO\tCURRENT_TIMESTAMP\t\ncompany_promo_redemptions\tid\tint\tNO\tNULL\tauto_increment\ncompany_promo_redemptions\tcompanyId\tint\tNO\tNULL\t\ncompany_promo_redemptions\tpromoCodeId\tint\tNO\tNULL\t\ncompany_promo_redemptions\tredeemedAt\ttimestamp\tNO\tCURRENT_TIMESTAMP\t\ncompany_promo_redemptions\tcyclesRemaining\tint\tYES\tNULL\t\ncompany_promo_redemptions\tisActive\ttinyint(1)\tNO\t1\t\ncompany_settings\tid\tint\tNO\tNULL\tauto_increment\ncompany_settings\tcompanyId\tint\tNO\tNULL\t\ncompany_settings\tgeofenceRadiusFeet\tint\tNO\t500\t\ncompany_settings\tautoClockOutMinutes\tint\tNO\t5\t\ncompany_settings\tmaxSessionDurationHours\tint\tNO\t8\t\ncompany_settings\ttimesheetReviewEnabled\ttinyint(1)\tNO\t1\t\ncompany_settings\tbillableTimePolicy\tenum('on_site_only','full_trip','hybrid_with_cap')\tNO\ton_site_only\t\ncompany_settings\thybridCapMinutes\tint\tYES\t30\t\ncompany_settings\tpartsMarkupPercent\tdecimal(5,2)\tYES\t0.00\t\ncompany_settings\tautoApproveContractors\ttinyint(1)\tNO\t0\t\ncompany_settings\tescalationTimeoutMinutes\tint\tYES\t60\t\ncompany_settings\tplatformFeePercent\tdecimal(5,2)\tYES\t10.00\t\ncompany_settings\tcreatedAt\ttimestamp\tNO\tCURRENT_TIMESTAMP\t\ncompany_settings\tupdatedAt\ttimestamp\tNO\tCURRENT_TIMESTAMP\tDEFAULT_GENERATED on update CURRENT_TIMESTAMP\ncompany_settings\tnotifyOnClockIn\ttinyint(1)\tNO\t1\t\ncompany_settings\tnotifyOnClockOut\ttinyint(1)\tNO\t1\t\ncompany_settings\tnotifyOnJobSubmitted\ttinyint(1)\tNO\t1\t\ncompany_settings\tnotifyOnNewContractor\ttinyint(1)\tNO\t1\t\ncompany_settings\tdefaultJobBoardVisibility\tenum('public','private')\tNO\tpublic\t\ncompany_settings\texcludeOutOfGeofenceSessions\ttinyint(1)\tNO\t0\t\ncontractor_companies\tid\tint\tNO\tNULL\tauto_increment\ncontractor_companies\tcontractorProfileId\tint\tNO\tNULL\t\ncontractor_companies\tcompanyId\tint\tNO\tNULL\t\ncontractor_companies\tstatus\tenum('pending','approved','rejected','suspended')\tNO\tpending\t\ncontractor_companies\tisPreferred\ttinyint(1)\tNO\t0\t\ncontractor_companies\tinvitedBy\tenum('company','contractor')\tNO\tNULL\t\ncontractor_companies\tcreatedAt\ttimestamp\tNO\tCURRENT_TIMESTAMP\t\ncontractor_companies\tupdatedAt\ttimestamp\tNO\tCURRENT_TIMESTAMP\tDEFAULT_GENERATED on update CURRENT_TIMESTAMP\ncontractor_companies\tisTrusted\ttinyint(1)\tNO\t0\t\ncontractor_invites\tid\tint\tNO\tNULL\tauto_increment\ncontractor_invites\tcompanyId\tint\tNO\tNULL\t\ncontractor_invites\temail\tvarchar(320)\tNO\tNULL\t\ncontractor_invites\tname\tvarchar(255)\tYES\tNULL\t\ncontractor_invites\ttoken\tvarchar(128)\tNO\tNULL\t\ncontractor_invites\tstatus\tenum('pending','accepted','revoked','expired')\tNO\tpending\t\ncontractor_invites\texpiresAt\tbigint\tNO\tNULL\t\ncontractor_invites\tacceptedAt\tbigint\tYES\tNULL\t\ncontractor_invites\tcreatedAt\ttimestamp\tNO\tCURRENT_TIMESTAMP\t\ncontractor_invites\tupdatedAt\ttimestamp\tNO\tCURRENT_TIMESTAMP\tDEFAULT_GENERATED on update CURRENT_TIMESTAMP\ncontractor_profiles\tid\tint\tNO\tNULL\tauto_increment\ncontractor_profiles\tuserId\tint\tNO\tNULL\t\ncontractor_profiles\tbusinessName\tvarchar(255)\tYES\tNULL\t\ncontractor_profiles\tphone\tvarchar(32)\tYES\tNULL\t\ncontractor_profiles\ttrades\tjson\tYES\tNULL\t\ncontractor_profiles\tserviceAreaZips\tjson\tYES\tNULL\t\ncontractor_profiles\tserviceRadiusMiles\tint\tYES\t25\t\ncontractor_profiles\tlatitude\tdecimal(10,7)\tYES\tNULL\t\ncontractor_profiles\tlongitude\tdecimal(10,7)\tYES\tNULL\t\ncontractor_profiles\tlicenseNumber\tvarchar(128)\tYES\tNULL\t\ncontractor_profiles\tinsuranceInfo\ttext\tYES\tNULL\t\ncontractor_profiles\tstripeAccountId\tvarchar(128)\tYES\tNULL\t\ncontractor_profiles\tisAvailable\ttinyint(1)\tNO\t1\t\ncontractor_profiles\trating\tdecimal(3,2)\tYES\t0.00\t\ncontractor_profiles\tcompletedJobs\tint\tNO\t0\t\ncontractor_profiles\tcreatedAt\ttimestamp\tNO\tCURRENT_TIMESTAMP\t\ncontractor_profiles\tupdatedAt\ttimestamp\tNO\tCURRENT_TIMESTAMP\tDEFAULT_GENERATED on update CURRENT_TIMESTAMP\ncontractor_profiles\tstripeOnboardingComplete\ttinyint(1)\tNO\t0\t\ncontractor_profiles\tplanId\tint\tYES\tNULL\t\ncontractor_profiles\tplanPriceOverride\tdecimal(10,2)\tYES\tNULL\t\ncontractor_profiles\tplanNotes\ttext\tYES\tNULL\t\ncontractor_profiles\tplanStatus\tenum('active','trialing','expired','canceled')\tNO\ttrialing\t\ncontractor_profiles\tplanAssignedAt\tbigint\tYES\tNULL\t\ncontractor_profiles\tplanExpiresAt\tbigint\tYES\tNULL\t\ncontractor_profiles\tstripeSubscriptionId\tvarchar(255)\tYES\tNULL\t\ncontractor_profiles\taddress\ttext\tYES\tNULL\t\ncontractor_ratings\tid\tint\tNO\tNULL\tauto_increment\ncontractor_ratings\tmaintenanceRequestId\tint\tNO\tNULL\t\ncontractor_ratings\tcontractorProfileId\tint\tNO\tNULL\t\ncontractor_ratings\tcompanyId\tint\tNO\tNULL\t\ncontractor_ratings\tratedByUserId\tint\tNO\tNULL\t\ncontractor_ratings\tstars\tint\tNO\tNULL\t\ncontractor_ratings\treview\ttext\tYES\tNULL\t\ncontractor_ratings\tcreatedAt\ttimestamp\tNO\tCURRENT_TIMESTAMP\t\ndismissed_announcements\tid\tint\tNO\tNULL\tauto_increment\ndismissed_announcements\tuserId\tint\tNO\tNULL\t\ndismissed_announcements\tannouncementId\tint\tNO\tNULL\t\ndismissed_announcements\tdismissedAt\ttimestamp\tNO\tCURRENT_TIMESTAMP\t\nfeature_flags\tid\tint\tNO\tNULL\tauto_increment\nfeature_flags\tkey\tvarchar(128)\tNO\tNULL\t\nfeature_flags\tlabel\tvarchar(255)\tNO\tNULL\t\nfeature_flags\tdescription\ttext\tYES\tNULL\t\nfeature_flags\tenabledForCompanies\ttinyint(1)\tNO\t1\t\nfeature_flags\tenabledForContractors\ttinyint(1)\tNO\t1\t\nfeature_flags\tupdatedAt\ttimestamp\tNO\tCURRENT_TIMESTAMP\tDEFAULT_GENERATED on update CURRENT_TIMESTAMP\nfeature_flags\tupdatedBy\tint\tYES\tNULL\t\nintegration_connectors\tid\tint\tNO\tNULL\tauto_increment\nintegration_connectors\tcompanyId\tint\tNO\tNULL\t\nintegration_connectors\tprovider\tenum('buildium','appfolio','rentmanager','yardi','doorloop','realpage','propertyware')\tNO\tNULL\t\nintegration_connectors\tapiKey\ttext\tYES\tNULL\t\nintegration_connectors\tapiSecret\ttext\tYES\tNULL\t\nintegration_connectors\tbaseUrl\ttext\tYES\tNULL\t\nintegration_connectors\tisActive\ttinyint(1)\tNO\t0\t\nintegration_connectors\tlastSyncAt\ttimestamp\tYES\tNULL\t\nintegration_connectors\tsyncStatus\tenum('idle','syncing','success','error')\tYES\tidle\t\nintegration_connectors\tsyncError\ttext\tYES\tNULL\t\nintegration_connectors\tconfig\tjson\tYES\tNULL\t\nintegration_connectors\tcreatedAt\ttimestamp\tNO\tCURRENT_TIMESTAMP\t\nintegration_connectors\tupdatedAt\ttimestamp\tNO\tCURRENT_TIMESTAMP\tDEFAULT_GENERATED on update CURRENT_TIMESTAMP\nintegration_connectors\twebhookSecret\ttext\tYES\tNULL\t\njob_change_history\tid\tint\tNO\tNULL\tauto_increment\njob_change_history\tjobId\tint\tNO\tNULL\t\njob_change_history\tcompanyId\tint\tNO\tNULL\t\njob_change_history\tuserId\tint\tNO\tNULL\t\njob_change_history\tchangeType\tenum('priority_override','skill_tier_override','status_change','visibility_change')\tNO\tNULL\t\njob_change_history\tfromValue\tvarchar(255)\tYES\tNULL\t\njob_change_history\ttoValue\tvarchar(255)\tNO\tNULL\t\njob_change_history\tnote\ttext\tYES\tNULL\t\njob_change_history\tcreatedAt\ttimestamp\tNO\tCURRENT_TIMESTAMP\t\njob_comments\tid\tint\tNO\tNULL\tauto_increment\njob_comments\tmaintenanceRequestId\tint\tNO\tNULL\t\njob_comments\tauthorUserId\tint\tNO\tNULL\t\njob_comments\tauthorRole\tenum('company_admin','contractor','admin')\tNO\tNULL\t\njob_comments\tauthorName\tvarchar(255)\tYES\tNULL\t\njob_comments\tmessage\ttext\tNO\tNULL\t\njob_comments\tcreatedAt\ttimestamp\tNO\tCURRENT_TIMESTAMP\t\nlocation_pings\tid\tint\tNO\tNULL\tauto_increment\nlocation_pings\ttimeSessionId\tint\tNO\tNULL\t\nlocation_pings\tlatitude\tdecimal(10,7)\tNO\tNULL\t\nlocation_pings\tlongitude\tdecimal(10,7)\tNO\tNULL\t\nlocation_pings\ttimestamp\tbigint\tNO\tNULL\t\nlocation_pings\tlocationType\tenum('property','store','origin','transit','unknown')\tYES\tunknown\t\nmaintenance_mode\tid\tint\tNO\tNULL\tauto_increment\nmaintenance_mode\tisEnabled\ttinyint(1)\tNO\t0\t\nmaintenance_mode\tmessage\ttext\tYES\tNULL\t\nmaintenance_mode\tenabledBy\tint\tYES\tNULL\t\nmaintenance_mode\tenabledAt\ttimestamp\tYES\tNULL\t\nmaintenance_mode\tupdatedAt\ttimestamp\tNO\tCURRENT_TIMESTAMP\tDEFAULT_GENERATED on update CURRENT_TIMESTAMP\nmaintenance_requests\tid\tint\tNO\tNULL\tauto_increment\nmaintenance_requests\tcompanyId\tint\tNO\tNULL\t\nmaintenance_requests\tpropertyId\tint\tNO\tNULL\t\nmaintenance_requests\texternalId\tvarchar(128)\tYES\tNULL\t\nmaintenance_requests\tsource\tenum('manual','buildium','appfolio','rentmanager','yardi','doorloop','realpage','propertyware')\tNO\tmanual\t\nmaintenance_requests\ttenantName\tvarchar(255)\tYES\tNULL\t\nmaintenance_requests\ttenantPhone\tvarchar(32)\tYES\tNULL\t\nmaintenance_requests\ttenantEmail\tvarchar(320)\tYES\tNULL\t\nmaintenance_requests\tunitNumber\tvarchar(32)\tYES\tNULL\t\nmaintenance_requests\ttitle\tvarchar(500)\tNO\tNULL\t\nmaintenance_requests\tdescription\ttext\tNO\tNULL\t\nmaintenance_requests\tphotoUrls\tjson\tYES\tNULL\t\nmaintenance_requests\taiPriority\tenum('low','medium','high','emergency')\tYES\tNULL\t\nmaintenance_requests\taiSkillTier\tvarchar(100)\tYES\tNULL\t\nmaintenance_requests\taiSkillTierId\tint\tYES\tNULL\t\nmaintenance_requests\taiReasoning\ttext\tYES\tNULL\t\nmaintenance_requests\taiClassifiedAt\ttimestamp\tYES\tNULL\t\nmaintenance_requests\tstatus\tenum('open','assigned','in_progress','pending_verification','completed','verified','disputed','paid','payment_pending_ach','canceled')\tNO\topen\t\nmaintenance_requests\tassignedContractorId\tint\tYES\tNULL\t\nmaintenance_requests\tassignedAt\ttimestamp\tYES\tNULL\t\nmaintenance_requests\tcompletedAt\ttimestamp\tYES\tNULL\t\nmaintenance_requests\tskillTierId\tint\tYES\tNULL\t\nmaintenance_requests\thourlyRate\tdecimal(8,2)\tYES\tNULL\t\nmaintenance_requests\tisEmergency\ttinyint(1)\tNO\t0\t\nmaintenance_requests\ttotalLaborMinutes\tint\tYES\tNULL\t\nmaintenance_requests\ttotalLaborCost\tdecimal(10,2)\tYES\tNULL\t\nmaintenance_requests\ttotalPartsCost\tdecimal(10,2)\tYES\tNULL\t\nmaintenance_requests\tplatformFee\tdecimal(10,2)\tYES\tNULL\t\nmaintenance_requests\ttotalCost\tdecimal(10,2)\tYES\tNULL\t\nmaintenance_requests\tcreatedAt\ttimestamp\tNO\tCURRENT_TIMESTAMP\t\nmaintenance_requests\tupdatedAt\ttimestamp\tNO\tCURRENT_TIMESTAMP\tDEFAULT_GENERATED on update CURRENT_TIMESTAMP\nmaintenance_requests\tpostedToBoard\ttinyint(1)\tNO\t0\t\nmaintenance_requests\tcompletionNotes\ttext\tYES\tNULL\t\nmaintenance_requests\tcompletionPhotoUrls\tjson\tYES\tNULL\t\nmaintenance_requests\tverifiedAt\ttimestamp\tYES\tNULL\t\nmaintenance_requests\tverifiedByUserId\tint\tYES\tNULL\t\nmaintenance_requests\tverificationNotes\ttext\tYES\tNULL\t\nmaintenance_requests\tdisputeNotes\ttext\tYES\tNULL\t\nmaintenance_requests\tstripePaymentIntentId\tvarchar(128)\tYES\tNULL\t\nmaintenance_requests\tpaidAt\ttimestamp\tYES\tNULL\t\nmaintenance_requests\tdisputedAt\ttimestamp\tYES\tNULL\t\nmaintenance_requests\tdisputeResponseNote\ttext\tYES\tNULL\t\nmaintenance_requests\tresubmittedAt\ttimestamp\tYES\tNULL\t\nmaintenance_requests\tescalationNotifiedAt\tbigint\tYES\tNULL\t\nmaintenance_requests\tjobBoardVisibility\tenum('public','private')\tNO\tpublic\t\nmaintenance_requests\toverridePriority\tenum('low','medium','high','emergency')\tYES\tNULL\t\nmaintenance_requests\toverrideHourlyRate\tdecimal(8,2)\tYES\tNULL\t\nmaintenance_requests\toverrideReason\tvarchar(500)\tYES\tNULL\t\nmaintenance_requests\toverriddenAt\ttimestamp\tYES\tNULL\t\nmaintenance_requests\toverriddenByUserId\tint\tYES\tNULL\t\nmaintenance_requests\toverrideSkillTierId\tint\tYES\tNULL\t\nnotifications\tid\tint\tNO\tNULL\tauto_increment\nnotifications\tuserId\tint\tNO\tNULL\t\nnotifications\ttype\tvarchar(64)\tNO\tNULL\t\nnotifications\ttitle\tvarchar(255)\tNO\tNULL\t\nnotifications\tbody\ttext\tYES\tNULL\t\nnotifications\tlinkRoute\tvarchar(512)\tYES\tNULL\t\nnotifications\tmetadata\tjson\tYES\tNULL\t\nnotifications\tisRead\ttinyint(1)\tNO\t0\t\nnotifications\tcreatedAt\ttimestamp\tNO\tCURRENT_TIMESTAMP\t\nparts_receipts\tid\tint\tNO\tNULL\tauto_increment\nparts_receipts\tmaintenanceRequestId\tint\tNO\tNULL\t\nparts_receipts\tcontractorProfileId\tint\tNO\tNULL\t\nparts_receipts\tcompanyId\tint\tNO\tNULL\t\nparts_receipts\tstoreName\tvarchar(255)\tYES\tNULL\t\nparts_receipts\tdescription\ttext\tYES\tNULL\t\nparts_receipts\tamount\tdecimal(10,2)\tNO\tNULL\t\nparts_receipts\treceiptImageUrl\ttext\tYES\tNULL\t\nparts_receipts\tapproved\ttinyint(1)\tYES\t0\t\nparts_receipts\tapprovedBy\tint\tYES\tNULL\t\nparts_receipts\tcreatedAt\ttimestamp\tNO\tCURRENT_TIMESTAMP\t\npassword_reset_tokens\tid\tint\tNO\tNULL\tauto_increment\npassword_reset_tokens\tuserId\tint\tNO\tNULL\t\npassword_reset_tokens\ttoken\tvarchar(255)\tNO\tNULL\t\npassword_reset_tokens\texpiresAt\ttimestamp\tNO\tNULL\t\npassword_reset_tokens\tusedAt\ttimestamp\tYES\tNULL\t\npassword_reset_tokens\tcreatedAt\ttimestamp\tNO\tCURRENT_TIMESTAMP\t\npayout_holds\tid\tint\tNO\tNULL\tauto_increment\npayout_holds\tcontractorId\tint\tNO\tNULL\t\npayout_holds\treason\ttext\tNO\tNULL\t\npayout_holds\tplacedBy\tint\tNO\tNULL\t\npayout_holds\tplacedAt\ttimestamp\tNO\tCURRENT_TIMESTAMP\t\npayout_holds\treleasedAt\ttimestamp\tYES\tNULL\t\npayout_holds\treleasedBy\tint\tYES\tNULL\t\npayout_holds\tisActive\ttinyint(1)\tNO\t1\t\nplatform_announcements\tid\tint\tNO\tNULL\tauto_increment\nplatform_announcements\ttitle\tvarchar(255)\tNO\tNULL\t\nplatform_announcements\tmessage\ttext\tNO\tNULL\t\nplatform_announcements\ttype\tvarchar(32)\tNO\tinfo\t\nplatform_announcements\ttargetAudience\tvarchar(32)\tNO\tall\t\nplatform_announcements\tisActive\ttinyint(1)\tNO\t1\t\nplatform_announcements\texpiresAt\tbigint\tYES\tNULL\t\nplatform_announcements\tcreatedAt\ttimestamp\tNO\tCURRENT_TIMESTAMP\t\nplatform_announcements\tupdatedAt\ttimestamp\tNO\tCURRENT_TIMESTAMP\tDEFAULT_GENERATED on update CURRENT_TIMESTAMP\nplatform_settings\tid\tint\tNO\tNULL\tauto_increment\nplatform_settings\tplatformFeePercent\tdecimal(5,2)\tNO\t5.00\t\nplatform_settings\tperListingFeeEnabled\ttinyint(1)\tNO\t0\t\nplatform_settings\tperListingFeeAmount\tdecimal(8,2)\tNO\t0.00\t\nplatform_settings\tautoClockOutMinutes\tint\tNO\t15\t\nplatform_settings\tautoClockOutRadiusMeters\tint\tNO\t200\t\nplatform_settings\tcreatedAt\ttimestamp\tNO\tCURRENT_TIMESTAMP\t\nplatform_settings\tupdatedAt\ttimestamp\tNO\tCURRENT_TIMESTAMP\tDEFAULT_GENERATED on update CURRENT_TIMESTAMP\nplatform_settings\tpmsSyncIntervalHours\tint\tNO\t24\t\npms_integrations\tid\tint\tNO\tNULL\tauto_increment\npms_integrations\tcompanyId\tint\tNO\tNULL\t\npms_integrations\tprovider\tvarchar(64)\tNO\tNULL\t\npms_integrations\tauthType\tvarchar(32)\tNO\tNULL\t\npms_integrations\tcredentialsJson\ttext\tYES\tNULL\t\npms_integrations\twebhookSecret\tvarchar(255)\tYES\tNULL\t\npms_integrations\tstatus\tvarchar(32)\tNO\tconnected\t\npms_integrations\tlastSyncAt\ttimestamp\tYES\tNULL\t\npms_integrations\tlastErrorMessage\ttext\tYES\tNULL\t\npms_integrations\tcreatedAt\ttimestamp\tNO\tCURRENT_TIMESTAMP\t\npms_integrations\tupdatedAt\ttimestamp\tNO\tCURRENT_TIMESTAMP\tDEFAULT_GENERATED on update CURRENT_TIMESTAMP\npms_webhook_events\tid\tint\tNO\tNULL\tauto_increment\npms_webhook_events\tprovider\tvarchar(64)\tNO\tNULL\t\npms_webhook_events\tcompanyId\tint\tYES\tNULL\t\npms_webhook_events\trawPayload\tjson\tYES\tNULL\t\npms_webhook_events\tstatus\tenum('received','processed','failed','ignored')\tNO\treceived\t\npms_webhook_events\terrorMessage\ttext\tYES\tNULL\t\npms_webhook_events\tcreatedJobId\tint\tYES\tNULL\t\npms_webhook_events\tcreatedAt\ttimestamp\tNO\tCURRENT_TIMESTAMP\t\npromo_codes\tid\tint\tNO\tNULL\tauto_increment\npromo_codes\tcode\tvarchar(64)\tNO\tNULL\t\npromo_codes\tdescription\ttext\tYES\tNULL\t\npromo_codes\taffectsSubscription\ttinyint(1)\tNO\t0\t\npromo_codes\taffectsServiceCharge\ttinyint(1)\tNO\t0\t\npromo_codes\taffectsListingFee\ttinyint(1)\tNO\t0\t\npromo_codes\tdiscountPercent\tdecimal(5,2)\tNO\t0.00\t\npromo_codes\tbillingCycles\tint\tYES\tNULL\t\npromo_codes\tisActive\ttinyint(1)\tNO\t1\t\npromo_codes\tmaxRedemptions\tint\tYES\tNULL\t\npromo_codes\tredemptionCount\tint\tNO\t0\t\npromo_codes\texpiresAt\tbigint\tYES\tNULL\t\npromo_codes\tcreatedAt\ttimestamp\tNO\tCURRENT_TIMESTAMP\t\npromo_codes\tupdatedAt\ttimestamp\tNO\tCURRENT_TIMESTAMP\tDEFAULT_GENERATED on update CURRENT_TIMESTAMP\nproperties\tid\tint\tNO\tNULL\tauto_increment\nproperties\tcompanyId\tint\tNO\tNULL\t\nproperties\tname\tvarchar(255)\tNO\tNULL\t\nproperties\taddress\ttext\tNO\tNULL\t\nproperties\tcity\tvarchar(128)\tYES\tNULL\t\nproperties\tstate\tvarchar(64)\tYES\tNULL\t\nproperties\tzipCode\tvarchar(16)\tYES\tNULL\t\nproperties\tlatitude\tdecimal(10,7)\tYES\tNULL\t\nproperties\tlongitude\tdecimal(10,7)\tYES\tNULL\t\nproperties\tunits\tint\tYES\t1\t\nproperties\texternalId\tvarchar(128)\tYES\tNULL\t\nproperties\tcreatedAt\ttimestamp\tNO\tCURRENT_TIMESTAMP\t\nproperties\tupdatedAt\ttimestamp\tNO\tCURRENT_TIMESTAMP\tDEFAULT_GENERATED on update CURRENT_TIMESTAMP\nproperties\tpropertyType\tenum('single_family','multi_family','commercial','other')\tNO\tsingle_family\t\nproperty_units\tid\tint\tNO\tNULL\tauto_increment\nproperty_units\tpropertyId\tint\tNO\tNULL\t\nproperty_units\tcompanyId\tint\tNO\tNULL\t\nproperty_units\tunitNumber\tvarchar(64)\tNO\tNULL\t\nproperty_units\tbedrooms\tint\tYES\tNULL\t\nproperty_units\tbathrooms\tdecimal(3,1)\tYES\tNULL\t\nproperty_units\tsqft\tint\tYES\tNULL\t\nproperty_units\texternalId\tvarchar(128)\tYES\tNULL\t\nproperty_units\tcreatedAt\ttimestamp\tNO\tCURRENT_TIMESTAMP\t\nproperty_units\tupdatedAt\ttimestamp\tNO\tCURRENT_TIMESTAMP\tDEFAULT_GENERATED on update CURRENT_TIMESTAMP\nskill_tiers\tid\tint\tNO\tNULL\tauto_increment\nskill_tiers\tcompanyId\tint\tNO\tNULL\t\nskill_tiers\tname\tvarchar(100)\tNO\tNULL\t\nskill_tiers\tdescription\ttext\tYES\tNULL\t\nskill_tiers\thourlyRate\tdecimal(8,2)\tNO\tNULL\t\nskill_tiers\temergencyMultiplier\tdecimal(4,2)\tYES\t1.50\t\nskill_tiers\tsortOrder\tint\tNO\t0\t\nskill_tiers\tcreatedAt\ttimestamp\tNO\tCURRENT_TIMESTAMP\t\nskill_tiers\tupdatedAt\ttimestamp\tNO\tCURRENT_TIMESTAMP\tDEFAULT_GENERATED on update CURRENT_TIMESTAMP\nsubscription_plans\tid\tint\tNO\tNULL\tauto_increment\nsubscription_plans\tname\tvarchar(128)\tNO\tNULL\t\nsubscription_plans\tdescription\ttext\tYES\tNULL\t\nsubscription_plans\tpriceMonthly\tdecimal(10,2)\tNO\t0.00\t\nsubscription_plans\tpriceAnnual\tdecimal(10,2)\tNO\t0.00\t\nsubscription_plans\tfeatures\tjson\tYES\tNULL\t\nsubscription_plans\tisActive\ttinyint(1)\tNO\t1\t\nsubscription_plans\tsortOrder\tint\tNO\t0\t\nsubscription_plans\tcreatedAt\ttimestamp\tNO\tCURRENT_TIMESTAMP\t\nsubscription_plans\tupdatedAt\ttimestamp\tNO\tCURRENT_TIMESTAMP\tDEFAULT_GENERATED on update CURRENT_TIMESTAMP\nsubscription_plans\tplatformFeePercent\tdecimal(5,2)\tYES\tNULL\t\nsubscription_plans\tperListingFeeEnabled\ttinyint(1)\tNO\t0\t\nsubscription_plans\tperListingFeeAmount\tdecimal(8,2)\tNO\t0.00\t\nsubscription_plans\tstripePriceIdMonthly\tvarchar(255)\tYES\tNULL\t\nsubscription_plans\tstripePriceIdAnnual\tvarchar(255)\tYES\tNULL\t\nsubscription_plans\tplanType\tenum('company','contractor')\tNO\tcompany\t\nsubscription_plans\tearlyNotificationMinutes\tint\tNO\t0\t\nsubscription_plans\tstripeProductId\tvarchar(255)\tYES\tNULL\t\ntime_sessions\tid\tint\tNO\tNULL\tauto_increment\ntime_sessions\tmaintenanceRequestId\tint\tNO\tNULL\t\ntime_sessions\tcontractorProfileId\tint\tNO\tNULL\t\ntime_sessions\tcompanyId\tint\tNO\tNULL\t\ntime_sessions\tclockInTime\tbigint\tNO\tNULL\t\ntime_sessions\tclockInLat\tdecimal(10,7)\tYES\tNULL\t\ntime_sessions\tclockInLng\tdecimal(10,7)\tYES\tNULL\t\ntime_sessions\tclockInVerified\ttinyint(1)\tYES\t0\t\ntime_sessions\tclockOutTime\tbigint\tYES\tNULL\t\ntime_sessions\tclockOutLat\tdecimal(10,7)\tYES\tNULL\t\ntime_sessions\tclockOutLng\tdecimal(10,7)\tYES\tNULL\t\ntime_sessions\tclockOutVerified\ttinyint(1)\tYES\t0\t\ntime_sessions\tclockOutMethod\tenum('manual','auto_geofence','auto_timeout','admin')\tYES\tNULL\t\ntime_sessions\tstatus\tenum('active','paused','completed','flagged')\tNO\tactive\t\ntime_sessions\ttotalMinutes\tint\tYES\tNULL\t\ntime_sessions\tbillableMinutes\tint\tYES\tNULL\t\ntime_sessions\tcontractorApproved\ttinyint(1)\tYES\tNULL\t\ntime_sessions\tcontractorNotes\ttext\tYES\tNULL\t\ntime_sessions\tcreatedAt\ttimestamp\tNO\tCURRENT_TIMESTAMP\t\ntime_sessions\tupdatedAt\ttimestamp\tNO\tCURRENT_TIMESTAMP\tDEFAULT_GENERATED on update CURRENT_TIMESTAMP\ntransactions\tid\tint\tNO\tNULL\tauto_increment\ntransactions\tmaintenanceRequestId\tint\tNO\tNULL\t\ntransactions\tcompanyId\tint\tNO\tNULL\t\ntransactions\tcontractorProfileId\tint\tNO\tNULL\t\ntransactions\tlaborCost\tdecimal(10,2)\tNO\tNULL\t\ntransactions\tpartsCost\tdecimal(10,2)\tYES\t0.00\t\ntransactions\tplatformFee\tdecimal(10,2)\tNO\tNULL\t\ntransactions\tstripeFee\tdecimal(10,2)\tYES\t0.00\t\ntransactions\ttotalCharged\tdecimal(10,2)\tNO\tNULL\t\ntransactions\tcontractorPayout\tdecimal(10,2)\tNO\tNULL\t\ntransactions\tstripePaymentIntentId\tvarchar(128)\tYES\tNULL\t\ntransactions\tstripeTransferId\tvarchar(128)\tYES\tNULL\t\ntransactions\tstatus\tenum('pending','escrow','captured','paid_out','refunded','failed')\tNO\tpending\t\ntransactions\tpaidAt\ttimestamp\tYES\tNULL\t\ntransactions\tcreatedAt\ttimestamp\tNO\tCURRENT_TIMESTAMP\t\ntransactions\tupdatedAt\ttimestamp\tNO\tCURRENT_TIMESTAMP\tDEFAULT_GENERATED on update CURRENT_TIMESTAMP\nusers\tid\tint\tNO\tNULL\tauto_increment\nusers\topenId\tvarchar(64)\tNO\tNULL\t\nusers\tname\ttext\tYES\tNULL\t\nusers\temail\tvarchar(320)\tYES\tNULL\t\nusers\tloginMethod\tvarchar(64)\tYES\tNULL\t\nusers\trole\tenum('user','admin','company_admin','contractor')\tNO\tuser\t\nusers\tcompanyId\tint\tYES\tNULL\t\nusers\tcontractorProfileId\tint\tYES\tNULL\t\nusers\tcreatedAt\ttimestamp\tNO\tCURRENT_TIMESTAMP\t\nusers\tupdatedAt\ttimestamp\tNO\tCURRENT_TIMESTAMP\tDEFAULT_GENERATED on update CURRENT_TIMESTAMP\nusers\tlastSignedIn\ttimestamp\tNO\tCURRENT_TIMESTAMP\t\nusers\tpasswordHash\tvarchar(255)\tYES\tNULL\t\nusers\temailPreferences\tjson\tYES\tNULL\t\nusers\tresetPasswordToken\tvarchar(128)\tYES\tNULL\t\nusers\tresetPasswordExpiry\ttimestamp\tYES\tNULL\t\nusers\temailVerificationCode\tvarchar(6)\tYES\tNULL\t\nusers\temailVerificationExpiry\ttimestamp\tYES\tNULL\t\nusers\temailVerified\ttinyint(1)\tNO\t0\t\n",
+  "stderr": "",
+  "execution_time_ms": 75
+}

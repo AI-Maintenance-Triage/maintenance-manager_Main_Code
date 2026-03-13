@@ -14,9 +14,10 @@ import { runPmsSync } from "./pms/index";
 const PLATFORM_ORIGIN = process.env.PLATFORM_ORIGIN ?? "https://maintmanager-bbuqzrfk.manus.space";
 
 async function runTrialExpiryCheck(): Promise<void> {
-  const results = { warned: 0, expired: 0, errors: [] as string[] };
-  const now = new Date().toISOString();
-  console.log(`[cron] runTrialExpiryCheck started at ${now}`);
+  const results = { warned: 0, expired: 0, locked: 0, errors: [] as string[] };
+  const nowMs = Date.now();
+  const GRACE_PERIOD_MS = 3 * 24 * 60 * 60 * 1000; // 3 days
+  console.log(`[cron] runTrialExpiryCheck started at ${new Date(nowMs).toISOString()}`);
 
   // ── 3-day warnings for companies ──────────────────────────────────────────
   try {
@@ -26,7 +27,7 @@ async function runTrialExpiryCheck(): Promise<void> {
         const planRow = c.planId ? await db.getSubscriptionPlanById(c.planId) : null;
         const planName = planRow?.name ?? "your plan";
         const daysLeft = c.planExpiresAt
-          ? Math.max(1, Math.ceil((c.planExpiresAt - Date.now()) / (24 * 60 * 60 * 1000)))
+          ? Math.max(1, Math.ceil((c.planExpiresAt - nowMs) / (24 * 60 * 60 * 1000)))
           : 3;
         if (!c.userEmail) continue;
         await email.sendTrialExpiryWarningEmail({
@@ -53,7 +54,7 @@ async function runTrialExpiryCheck(): Promise<void> {
         const planRow = c.planId ? await db.getSubscriptionPlanById(c.planId) : null;
         const planName = planRow?.name ?? "your plan";
         const daysLeft = c.planExpiresAt
-          ? Math.max(1, Math.ceil((c.planExpiresAt - Date.now()) / (24 * 60 * 60 * 1000)))
+          ? Math.max(1, Math.ceil((c.planExpiresAt - nowMs) / (24 * 60 * 60 * 1000)))
           : 3;
         if (!c.userEmail) continue;
         await email.sendTrialExpiryWarningEmail({
@@ -72,15 +73,17 @@ async function runTrialExpiryCheck(): Promise<void> {
     results.errors.push(`getContractorsExpiringInDays: ${e.message}`);
   }
 
-  // ── Expire overdue company trials ─────────────────────────────────────────
+  // ── Day-of expiry: move companies to grace_period (3-day buffer before lock) ─
   try {
     const expiredCompanies = await db.getExpiredTrialCompanies();
     for (const c of expiredCompanies) {
       try {
         const planRow = c.planId ? await db.getSubscriptionPlanById(c.planId) : null;
         const planName = planRow?.name ?? "your plan";
-        await db.markCompanyPlanExpired(c.companyId);
+        // Set grace_period status with 3-day window
+        await db.markCompanyTrialGracePeriod(c.companyId, nowMs + GRACE_PERIOD_MS);
         if (!c.userEmail) continue;
+        // Day-of expiry email: trial has ended, 3-day grace period starts now
         await email.sendTrialExpiredEmail({
           to: c.userEmail,
           name: c.userName ?? c.companyName ?? "there",
@@ -89,21 +92,21 @@ async function runTrialExpiryCheck(): Promise<void> {
         });
         results.expired++;
       } catch (e: any) {
-        results.errors.push(`company expired ${c.companyId}: ${e.message}`);
+        results.errors.push(`company grace ${c.companyId}: ${e.message}`);
       }
     }
   } catch (e: any) {
     results.errors.push(`getExpiredTrialCompanies: ${e.message}`);
   }
 
-  // ── Expire overdue contractor trials ──────────────────────────────────────
+  // ── Day-of expiry: move contractors to grace_period ───────────────────────
   try {
     const expiredContractors = await db.getExpiredTrialContractors();
     for (const c of expiredContractors) {
       try {
         const planRow = c.planId ? await db.getSubscriptionPlanById(c.planId) : null;
         const planName = planRow?.name ?? "your plan";
-        await db.markContractorPlanExpired(c.contractorProfileId);
+        await db.markContractorTrialGracePeriod(c.contractorProfileId, nowMs + GRACE_PERIOD_MS);
         if (!c.userEmail) continue;
         await email.sendTrialExpiredEmail({
           to: c.userEmail,
@@ -113,15 +116,44 @@ async function runTrialExpiryCheck(): Promise<void> {
         });
         results.expired++;
       } catch (e: any) {
-        results.errors.push(`contractor expired ${c.contractorProfileId}: ${e.message}`);
+        results.errors.push(`contractor grace ${c.contractorProfileId}: ${e.message}`);
       }
     }
   } catch (e: any) {
     results.errors.push(`getExpiredTrialContractors: ${e.message}`);
   }
 
+  // ── Lock accounts whose grace period has ended ────────────────────────────
+  try {
+    const lockedCompanies = await db.getCompaniesGracePeriodExpired();
+    for (const c of lockedCompanies) {
+      try {
+        await db.markCompanyPlanLocked(c.companyId);
+        results.locked++;
+      } catch (e: any) {
+        results.errors.push(`company lock ${c.companyId}: ${e.message}`);
+      }
+    }
+  } catch (e: any) {
+    results.errors.push(`getCompaniesGracePeriodExpired: ${e.message}`);
+  }
+
+  try {
+    const lockedContractors = await db.getContractorsGracePeriodExpired();
+    for (const c of lockedContractors) {
+      try {
+        await db.markContractorPlanLocked(c.contractorProfileId);
+        results.locked++;
+      } catch (e: any) {
+        results.errors.push(`contractor lock ${c.contractorProfileId}: ${e.message}`);
+      }
+    }
+  } catch (e: any) {
+    results.errors.push(`getContractorsGracePeriodExpired: ${e.message}`);
+  }
+
   console.log(
-    `[cron] runTrialExpiryCheck complete — warned: ${results.warned}, expired: ${results.expired}, errors: ${results.errors.length}`
+    `[cron] runTrialExpiryCheck complete — warned: ${results.warned}, expired: ${results.expired}, locked: ${results.locked}, errors: ${results.errors.length}`
   );
   if (results.errors.length > 0) {
     console.error("[cron] Errors during trial expiry check:", results.errors);

@@ -1,0 +1,21 @@
+{
+  "query": "SELECT * FROM platform_settings LIMIT 10;\nSELECT * FROM feature_flags LIMIT 10;\nSELECT * FROM maintenance_mode LIMIT 5;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user sHLCts4RR6iL2PA.1ead08cf1a54 --database bBuQZrfKLoBs6LmtvQ4y6E --execute SELECT * FROM platform_settings LIMIT 10;\nSELECT * FROM feature_flags LIMIT 10;\nSELECT * FROM maintenance_mode LIMIT 5;",
+  "rows": [
+    {
+      "id": "1",
+      "platformFeePercent": "5.00",
+      "perListingFeeEnabled": "0",
+      "perListingFeeAmount": "0.00",
+      "autoClockOutMinutes": "15",
+      "autoClockOutRadiusMeters": "200",
+      "createdAt": "2026-03-01 03:27:29",
+      "updatedAt": "2026-03-01 03:27:29",
+      "pmsSyncIntervalHours": "24"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tplatformFeePercent\tperListingFeeEnabled\tperListingFeeAmount\tautoClockOutMinutes\tautoClockOutRadiusMeters\tcreatedAt\tupdatedAt\tpmsSyncIntervalHours\n1\t5.00\t0\t0.00\t15\t200\t2026-03-01 03:27:29\t2026-03-01 03:27:29\t24\n",
+  "stderr": "",
+  "execution_time_ms": 76
+}

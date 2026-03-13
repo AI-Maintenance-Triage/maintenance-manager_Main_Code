@@ -42,6 +42,7 @@ export default function PlatformDashboard() {
   const { data: contractors, isLoading: contractorsLoading } = trpc.adminViewAs.allContractors.useQuery();
   const { data: plans } = trpc.adminViewAs.listPlans.useQuery();
   const { data: planDistribution } = trpc.adminViewAs.getPlanDistribution.useQuery();
+  const { data: onboardingAnalytics } = trpc.platform.onboardingAnalytics.useQuery();
 
   // ─── Create Company Form ────────────────────────────────────────────
   const [companyOpen, setCompanyOpen] = useState(false);
@@ -522,6 +523,42 @@ export default function PlatformDashboard() {
             </CardContent>
           </Card>
         </div>
+
+        {/* Onboarding Analytics */}
+        {onboardingAnalytics && (
+          <Card className="bg-card border-border">
+            <CardHeader>
+              <CardTitle className="text-sm font-medium text-card-foreground">Onboarding Completion (Last 7 Days)</CardTitle>
+              <CardDescription className="text-xs text-muted-foreground">% of new users who completed all onboarding steps within 7 days of joining</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <p className="text-xs text-muted-foreground uppercase tracking-wide">Contractors</p>
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-2xl font-bold text-card-foreground">{onboardingAnalytics.contractors.completionRate7Days}%</span>
+                    <span className="text-xs text-muted-foreground">{onboardingAnalytics.contractors.completedIn7Days}/{onboardingAnalytics.contractors.newIn7Days} new</span>
+                  </div>
+                  <div className="w-full bg-muted rounded-full h-1.5">
+                    <div className="bg-green-500 h-1.5 rounded-full" style={{ width: `${onboardingAnalytics.contractors.completionRate7Days}%` }} />
+                  </div>
+                  <p className="text-xs text-muted-foreground">All-time: {onboardingAnalytics.contractors.allTimeCompletionRate}% ({onboardingAnalytics.contractors.totalCompleted}/{onboardingAnalytics.contractors.totalContractors})</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-xs text-muted-foreground uppercase tracking-wide">Companies</p>
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-2xl font-bold text-card-foreground">{onboardingAnalytics.companies.completionRate7Days}%</span>
+                    <span className="text-xs text-muted-foreground">{onboardingAnalytics.companies.newIn7Days} new this week</span>
+                  </div>
+                  <div className="w-full bg-muted rounded-full h-1.5">
+                    <div className="bg-blue-500 h-1.5 rounded-full" style={{ width: `${onboardingAnalytics.companies.completionRate7Days}%` }} />
+                  </div>
+                  <p className="text-xs text-muted-foreground">Company onboarding tracking coming soon</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Monthly Revenue Trend */}
         {stats?.monthlyRevenue && stats.monthlyRevenue.length > 0 && (

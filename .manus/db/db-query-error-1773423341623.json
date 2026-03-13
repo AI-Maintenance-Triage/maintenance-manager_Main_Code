@@ -1,0 +1,8 @@
+{
+  "query": "ALTER TABLE contractor_profiles ADD COLUMN address VARCHAR(500) NULL;\nSELECT COLUMN_NAME FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'contractor_profiles' ORDER BY ORDINAL_POSITION;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user sHLCts4RR6iL2PA.1ead08cf1a54 --database bBuQZrfKLoBs6LmtvQ4y6E --execute ALTER TABLE contractor_profiles ADD COLUMN address VARCHAR(500) NULL;\nSELECT COLUMN_NAME FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'contractor_profiles' ORDER BY ORDINAL_POSITION;",
+  "returncode": 1,
+  "logs": [
+    "ERROR 1060 (42S21) at line 1: Duplicate column name 'address'"
+  ]
+}

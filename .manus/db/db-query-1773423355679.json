@@ -1,0 +1,49 @@
+{
+  "query": "SELECT COUNT(*) as plan_count FROM subscription_plans;\nSELECT COUNT(*) as settings_count FROM platform_settings;\nSELECT COUNT(*) as flags_count FROM feature_flags;\nSELECT COUNT(*) as mode_count FROM maintenance_mode;\nSELECT COUNT(*) as users_count FROM users;\nSELECT COUNT(*) as companies_count FROM companies;\nSELECT COUNT(*) as contractors_count FROM contractor_profiles;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user sHLCts4RR6iL2PA.1ead08cf1a54 --database bBuQZrfKLoBs6LmtvQ4y6E --execute SELECT COUNT(*) as plan_count FROM subscription_plans;\nSELECT COUNT(*) as settings_count FROM platform_settings;\nSELECT COUNT(*) as flags_count FROM feature_flags;\nSELECT COUNT(*) as mode_count FROM maintenance_mode;\nSELECT COUNT(*) as users_count FROM users;\nSELECT COUNT(*) as companies_count FROM companies;\nSELECT COUNT(*) as contractors_count FROM contractor_profiles;",
+  "rows": [
+    {
+      "plan_count": "5"
+    },
+    {
+      "plan_count": "settings_count"
+    },
+    {
+      "plan_count": "1"
+    },
+    {
+      "plan_count": "flags_count"
+    },
+    {
+      "plan_count": "0"
+    },
+    {
+      "plan_count": "mode_count"
+    },
+    {
+      "plan_count": "0"
+    },
+    {
+      "plan_count": "users_count"
+    },
+    {
+      "plan_count": "6"
+    },
+    {
+      "plan_count": "companies_count"
+    },
+    {
+      "plan_count": "1"
+    },
+    {
+      "plan_count": "contractors_count"
+    },
+    {
+      "plan_count": "1"
+    }
+  ],
+  "messages": [],
+  "stdout": "plan_count\n5\nsettings_count\n1\nflags_count\n0\nmode_count\n0\nusers_count\n6\ncompanies_count\n1\ncontractors_count\n1\n",
+  "stderr": "",
+  "execution_time_ms": 148
+}

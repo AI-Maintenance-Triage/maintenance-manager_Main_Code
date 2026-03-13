@@ -1,0 +1,154 @@
+{
+  "query": "SELECT 'account_credits' as tbl, COUNT(*) as cnt FROM account_credits UNION ALL\nSELECT 'account_suspensions', COUNT(*) FROM account_suspensions UNION ALL\nSELECT 'activity_events', COUNT(*) FROM activity_events UNION ALL\nSELECT 'audit_log', COUNT(*) FROM audit_log UNION ALL\nSELECT 'companies', COUNT(*) FROM companies UNION ALL\nSELECT 'company_payment_methods', COUNT(*) FROM company_payment_methods UNION ALL\nSELECT 'company_promo_redemptions', COUNT(*) FROM company_promo_redemptions UNION ALL\nSELECT 'company_settings', COUNT(*) FROM company_settings UNION ALL\nSELECT 'contractor_companies', COUNT(*) FROM contractor_companies UNION ALL\nSELECT 'contractor_invites', COUNT(*) FROM contractor_invites UNION ALL\nSELECT 'contractor_profiles', COUNT(*) FROM contractor_profiles UNION ALL\nSELECT 'contractor_ratings', COUNT(*) FROM contractor_ratings UNION ALL\nSELECT 'dismissed_announcements', COUNT(*) FROM dismissed_announcements UNION ALL\nSELECT 'feature_flags', COUNT(*) FROM feature_flags UNION ALL\nSELECT 'integration_connectors', COUNT(*) FROM integration_connectors UNION ALL\nSELECT 'job_change_history', COUNT(*) FROM job_change_history UNION ALL\nSELECT 'job_comments', COUNT(*) FROM job_comments UNION ALL\nSELECT 'location_pings', COUNT(*) FROM location_pings UNION ALL\nSELECT 'maintenance_mode', COUNT(*) FROM maintenance_mode UNION ALL\nSELECT 'maintenance_requests', COUNT(*) FROM maintenance_requests UNION ALL\nSELECT 'notifications', COUNT(*) FROM notifications UNION ALL\nSELECT 'parts_receipts', COUNT(*) FROM parts_receipts UNION ALL\nSELECT 'password_reset_tokens', COUNT(*) FROM password_reset_tokens UNION ALL\nSELECT 'platform_announcements', COUNT(*) FROM platform_announcements UNION ALL\nSELECT 'platform_settings', COUNT(*) FROM platform_settings UNION ALL\nSELECT 'pms_integrations', COUNT(*) FROM pms_integrations UNION ALL\nSELECT 'pms_webhook_events', COUNT(*) FROM pms_webhook_events UNION ALL\nSELECT 'payout_holds', COUNT(*) FROM payout_holds UNION ALL\nSELECT 'promo_codes', COUNT(*) FROM promo_codes UNION ALL\nSELECT 'properties', COUNT(*) FROM properties UNION ALL\nSELECT 'property_units', COUNT(*) FROM property_units UNION ALL\nSELECT 'skill_tiers', COUNT(*) FROM skill_tiers UNION ALL\nSELECT 'subscription_plans', COUNT(*) FROM subscription_plans UNION ALL\nSELECT 'time_sessions', COUNT(*) FROM time_sessions UNION ALL\nSELECT 'transactions', COUNT(*) FROM transactions UNION ALL\nSELECT 'users', COUNT(*) FROM users\nORDER BY tbl;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user sHLCts4RR6iL2PA.1ead08cf1a54 --database bBuQZrfKLoBs6LmtvQ4y6E --execute SELECT 'account_credits' as tbl, COUNT(*) as cnt FROM account_credits UNION ALL\nSELECT 'account_suspensions', COUNT(*) FROM account_suspensions UNION ALL\nSELECT 'activity_events', COUNT(*) FROM activity_events UNION ALL\nSELECT 'audit_log', COUNT(*) FROM audit_log UNION ALL\nSELECT 'companies', COUNT(*) FROM companies UNION ALL\nSELECT 'company_payment_methods', COUNT(*) FROM company_payment_methods UNION ALL\nSELECT 'company_promo_redemptions', COUNT(*) FROM company_promo_redemptions UNION ALL\nSELECT 'company_settings', COUNT(*) FROM company_settings UNION ALL\nSELECT 'contractor_companies', COUNT(*) FROM contractor_companies UNION ALL\nSELECT 'contractor_invites', COUNT(*) FROM contractor_invites UNION ALL\nSELECT 'contractor_profiles', COUNT(*) FROM contractor_profiles UNION ALL\nSELECT 'contractor_ratings', COUNT(*) FROM contractor_ratings UNION ALL\nSELECT 'dismissed_announcements', COUNT(*) FROM dismissed_announcements UNION ALL\nSELECT 'feature_flags', COUNT(*) FROM feature_flags UNION ALL\nSELECT 'integration_connectors', COUNT(*) FROM integration_connectors UNION ALL\nSELECT 'job_change_history', COUNT(*) FROM job_change_history UNION ALL\nSELECT 'job_comments', COUNT(*) FROM job_comments UNION ALL\nSELECT 'location_pings', COUNT(*) FROM location_pings UNION ALL\nSELECT 'maintenance_mode', COUNT(*) FROM maintenance_mode UNION ALL\nSELECT 'maintenance_requests', COUNT(*) FROM maintenance_requests UNION ALL\nSELECT 'notifications', COUNT(*) FROM notifications UNION ALL\nSELECT 'parts_receipts', COUNT(*) FROM parts_receipts UNION ALL\nSELECT 'password_reset_tokens', COUNT(*) FROM password_reset_tokens UNION ALL\nSELECT 'platform_announcements', COUNT(*) FROM platform_announcements UNION ALL\nSELECT 'platform_settings', COUNT(*) FROM platform_settings UNION ALL\nSELECT 'pms_integrations', COUNT(*) FROM pms_integrations UNION ALL\nSELECT 'pms_webhook_events', COUNT(*) FROM pms_webhook_events UNION ALL\nSELECT 'payout_holds', COUNT(*) FROM payout_holds UNION ALL\nSELECT 'promo_codes', COUNT(*) FROM promo_codes UNION ALL\nSELECT 'properties', COUNT(*) FROM properties UNION ALL\nSELECT 'property_units', COUNT(*) FROM property_units UNION ALL\nSELECT 'skill_tiers', COUNT(*) FROM skill_tiers UNION ALL\nSELECT 'subscription_plans', COUNT(*) FROM subscription_plans UNION ALL\nSELECT 'time_sessions', COUNT(*) FROM time_sessions UNION ALL\nSELECT 'transactions', COUNT(*) FROM transactions UNION ALL\nSELECT 'users', COUNT(*) FROM users\nORDER BY tbl;",
+  "rows": [
+    {
+      "tbl": "account_credits",
+      "cnt": "0"
+    },
+    {
+      "tbl": "account_suspensions",
+      "cnt": "0"
+    },
+    {
+      "tbl": "activity_events",
+      "cnt": "0"
+    },
+    {
+      "tbl": "audit_log",
+      "cnt": "0"
+    },
+    {
+      "tbl": "companies",
+      "cnt": "1"
+    },
+    {
+      "tbl": "company_payment_methods",
+      "cnt": "0"
+    },
+    {
+      "tbl": "company_promo_redemptions",
+      "cnt": "0"
+    },
+    {
+      "tbl": "company_settings",
+      "cnt": "3"
+    },
+    {
+      "tbl": "contractor_companies",
+      "cnt": "1"
+    },
+    {
+      "tbl": "contractor_invites",
+      "cnt": "1"
+    },
+    {
+      "tbl": "contractor_profiles",
+      "cnt": "1"
+    },
+    {
+      "tbl": "contractor_ratings",
+      "cnt": "4"
+    },
+    {
+      "tbl": "dismissed_announcements",
+      "cnt": "0"
+    },
+    {
+      "tbl": "feature_flags",
+      "cnt": "0"
+    },
+    {
+      "tbl": "integration_connectors",
+      "cnt": "0"
+    },
+    {
+      "tbl": "job_change_history",
+      "cnt": "26"
+    },
+    {
+      "tbl": "job_comments",
+      "cnt": "2"
+    },
+    {
+      "tbl": "location_pings",
+      "cnt": "31"
+    },
+    {
+      "tbl": "maintenance_mode",
+      "cnt": "0"
+    },
+    {
+      "tbl": "maintenance_requests",
+      "cnt": "33"
+    },
+    {
+      "tbl": "notifications",
+      "cnt": "4"
+    },
+    {
+      "tbl": "parts_receipts",
+      "cnt": "3"
+    },
+    {
+      "tbl": "password_reset_tokens",
+      "cnt": "0"
+    },
+    {
+      "tbl": "payout_holds",
+      "cnt": "0"
+    },
+    {
+      "tbl": "platform_announcements",
+      "cnt": "0"
+    },
+    {
+      "tbl": "platform_settings",
+      "cnt": "1"
+    },
+    {
+      "tbl": "pms_integrations",
+      "cnt": "1"
+    },
+    {
+      "tbl": "pms_webhook_events",
+      "cnt": "0"
+    },
+    {
+      "tbl": "promo_codes",
+      "cnt": "0"
+    },
+    {
+      "tbl": "properties",
+      "cnt": "13"
+    },
+    {
+      "tbl": "property_units",
+      "cnt": "23"
+    },
+    {
+      "tbl": "skill_tiers",
+      "cnt": "12"
+    },
+    {
+      "tbl": "subscription_plans",
+      "cnt": "5"
+    },
+    {
+      "tbl": "time_sessions",
+      "cnt": "9"
+    },
+    {
+      "tbl": "transactions",
+      "cnt": "0"
+    },
+    {
+      "tbl": "users",
+      "cnt": "6"
+    }
+  ],
+  "messages": [],
+  "stdout": "tbl\tcnt\naccount_credits\t0\naccount_suspensions\t0\nactivity_events\t0\naudit_log\t0\ncompanies\t1\ncompany_payment_methods\t0\ncompany_promo_redemptions\t0\ncompany_settings\t3\ncontractor_companies\t1\ncontractor_invites\t1\ncontractor_profiles\t1\ncontractor_ratings\t4\ndismissed_announcements\t0\nfeature_flags\t0\nintegration_connectors\t0\njob_change_history\t26\njob_comments\t2\nlocation_pings\t31\nmaintenance_mode\t0\nmaintenance_requests\t33\nnotifications\t4\nparts_receipts\t3\npassword_reset_tokens\t0\npayout_holds\t0\nplatform_announcements\t0\nplatform_settings\t1\npms_integrations\t1\npms_webhook_events\t0\npromo_codes\t0\nproperties\t13\nproperty_units\t23\nskill_tiers\t12\nsubscription_plans\t5\ntime_sessions\t9\ntransactions\t0\nusers\t6\n",
+  "stderr": "",
+  "execution_time_ms": 134
+}

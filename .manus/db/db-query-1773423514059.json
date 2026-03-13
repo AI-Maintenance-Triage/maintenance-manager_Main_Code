@@ -1,0 +1,19 @@
+{
+  "query": "SELECT COUNT(*) as cnt, MAX(id) as max_id FROM platform_settings;\nSELECT COUNT(*) as cnt FROM maintenance_mode;\nSELECT COUNT(*) as cnt FROM subscription_plans WHERE isActive = 1;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user sHLCts4RR6iL2PA.1ead08cf1a54 --database bBuQZrfKLoBs6LmtvQ4y6E --execute SELECT COUNT(*) as cnt, MAX(id) as max_id FROM platform_settings;\nSELECT COUNT(*) as cnt FROM maintenance_mode;\nSELECT COUNT(*) as cnt FROM subscription_plans WHERE isActive = 1;",
+  "rows": [
+    {
+      "cnt": "1",
+      "max_id": "1"
+    }
+  ],
+  "messages": [
+    "cnt",
+    "0",
+    "cnt",
+    "5"
+  ],
+  "stdout": "cnt\tmax_id\n1\t1\ncnt\n0\ncnt\n5\n",
+  "stderr": "",
+  "execution_time_ms": 70
+}

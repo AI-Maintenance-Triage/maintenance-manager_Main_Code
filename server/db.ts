@@ -1920,7 +1920,42 @@ export async function deleteSubscriptionPlan(id: number) {
   if (!db) return;
   // Unassign from companies first
   await db.update(companies).set({ planId: null }).where(eq(companies.planId, id));
+  // Unassign from contractor profiles
+  await db.update(contractorProfiles).set({ planId: null }).where(eq(contractorProfiles.planId, id));
   await db.delete(subscriptionPlans).where(eq(subscriptionPlans.id, id));
+}
+
+/**
+ * Returns the number of active subscribers (companies + contractors) for each plan.
+ * Used to prevent deleting plans with active subscribers and to show subscriber counts.
+ */
+export async function countSubscribersPerPlan(): Promise<Record<number, { companies: number; contractors: number; total: number }>> {
+  const db = await getDb();
+  if (!db) return {};
+  const companyCounts = await db
+    .select({ planId: companies.planId, cnt: count() })
+    .from(companies)
+    .where(isNotNull(companies.planId))
+    .groupBy(companies.planId);
+  const contractorCounts = await db
+    .select({ planId: contractorProfiles.planId, cnt: count() })
+    .from(contractorProfiles)
+    .where(isNotNull(contractorProfiles.planId))
+    .groupBy(contractorProfiles.planId);
+  const result: Record<number, { companies: number; contractors: number; total: number }> = {};
+  for (const row of companyCounts) {
+    if (row.planId == null) continue;
+    if (!result[row.planId]) result[row.planId] = { companies: 0, contractors: 0, total: 0 };
+    result[row.planId].companies = Number(row.cnt);
+    result[row.planId].total += Number(row.cnt);
+  }
+  for (const row of contractorCounts) {
+    if (row.planId == null) continue;
+    if (!result[row.planId]) result[row.planId] = { companies: 0, contractors: 0, total: 0 };
+    result[row.planId].contractors = Number(row.cnt);
+    result[row.planId].total += Number(row.cnt);
+  }
+  return result;
 }
 
 export async function assignPlanToCompany(companyId: number, planId: number | null) {
@@ -2384,6 +2419,98 @@ export async function markContractorPlanExpired(contractorProfileId: number) {
     .update(contractorProfiles)
     .set({ planStatus: "expired" })
     .where(eq(contractorProfiles.id, contractorProfileId));
+}
+
+/**
+ * Move a company's trial to grace_period status (3-day buffer before lock).
+ */
+export async function markCompanyTrialGracePeriod(companyId: number, graceEndsAt: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db
+    .update(companies)
+    .set({ planStatus: "grace_period", planGraceEndsAt: graceEndsAt } as any)
+    .where(eq(companies.id, companyId));
+}
+
+/**
+ * Move a contractor's trial to grace_period status.
+ */
+export async function markContractorTrialGracePeriod(contractorProfileId: number, graceEndsAt: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db
+    .update(contractorProfiles)
+    .set({ planStatus: "grace_period", planGraceEndsAt: graceEndsAt } as any)
+    .where(eq(contractorProfiles.id, contractorProfileId));
+}
+
+/**
+ * Lock a company account after grace period expires.
+ */
+export async function markCompanyPlanLocked(companyId: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db
+    .update(companies)
+    .set({ planStatus: "locked" } as any)
+    .where(eq(companies.id, companyId));
+}
+
+/**
+ * Lock a contractor account after grace period expires.
+ */
+export async function markContractorPlanLocked(contractorProfileId: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db
+    .update(contractorProfiles)
+    .set({ planStatus: "locked" } as any)
+    .where(eq(contractorProfiles.id, contractorProfileId));
+}
+
+/**
+ * Get companies whose grace period has ended (planStatus = grace_period AND planGraceEndsAt < now).
+ */
+export async function getCompaniesGracePeriodExpired() {
+  const db = await getDb();
+  if (!db) return [];
+  const nowMs = Date.now();
+  const rows = await db
+    .select({
+      companyId: companies.id,
+      planGraceEndsAt: companies.planGraceEndsAt,
+    })
+    .from(companies)
+    .where(
+      and(
+        eq(companies.planStatus, "grace_period" as any),
+        sql`${companies.planGraceEndsAt} < ${nowMs}`
+      )
+    );
+  return rows;
+}
+
+/**
+ * Get contractors whose grace period has ended.
+ */
+export async function getContractorsGracePeriodExpired() {
+  const db = await getDb();
+  if (!db) return [];
+  const nowMs = Date.now();
+  const rows = await db
+    .select({
+      contractorProfileId: contractorProfiles.id,
+      planGraceEndsAt: contractorProfiles.planGraceEndsAt,
+    })
+    .from(contractorProfiles)
+    .where(
+      and(
+        eq(contractorProfiles.planStatus, "grace_period" as any),
+        sql`${contractorProfiles.planGraceEndsAt} < ${nowMs}`
+      )
+    );
+  return rows;
 }
 
 /**
