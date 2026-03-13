@@ -1881,6 +1881,27 @@ const timeTrackingRouter = router({
         ...(totalMinutes !== null && { totalMinutes, billableMinutes: totalMinutes }),
       });
 
+      // Recalculate and persist totalLaborCost on the job after clock-out
+      try {
+        if (existingSession?.maintenanceRequestId) {
+          const job = await db.getMaintenanceRequestById(existingSession.maintenanceRequestId);
+          if (job) {
+            const allSessions = await db.getTimeSessionsByJob(existingSession.maintenanceRequestId);
+            const completedSessions = allSessions.filter((s: any) => s.status === "completed" && s.totalMinutes != null);
+            const totalLaborMinutes = completedSessions.reduce((sum: number, s: any) => sum + (s.totalMinutes ?? 0), 0);
+            const hourlyRate = parseFloat((job as any).hourlyRate ?? "0");
+            const totalLaborCost = hourlyRate > 0 && totalLaborMinutes > 0
+              ? ((hourlyRate * totalLaborMinutes) / 60).toFixed(2)
+              : null;
+            if (totalLaborCost !== null) {
+              await db.updateMaintenanceRequest(existingSession.maintenanceRequestId, { totalLaborCost } as any);
+            }
+          }
+        }
+      } catch (err) {
+        console.error("[clockOut] Failed to recalculate totalLaborCost:", err);
+      }
+
       // Notify company owner that contractor clocked out (if preference enabled)
       try {
         const profile = await getEffectiveContractorProfile(ctx);
@@ -2037,9 +2058,16 @@ const receiptsRouter = router({
         amount: input.amount,
         receiptImageUrl: input.receiptImageUrl ?? null,
       });
+      // Recalculate and persist totalPartsCost on the job
+      try {
+        const allReceipts = await db.getPartsReceiptsByJob(input.jobId);
+        const newTotal = allReceipts.reduce((sum: number, r: any) => sum + parseFloat(r.amount ?? "0"), 0);
+        await db.updateMaintenanceRequest(input.jobId, { totalPartsCost: newTotal.toFixed(2) } as any);
+      } catch (err) {
+        console.error("[receipts.create] Failed to update totalPartsCost:", err);
+      }
       return { id };
     }),
-
   approve: companyAdminProcedure
     .input(z.object({ receiptId: z.number() }))
     .mutation(async ({ ctx, input }) => {

@@ -1,0 +1,50 @@
+{
+  "query": "SELECT id, name, planType, isActive, priceMonthly, sortOrder FROM subscription_plans ORDER BY planType, sortOrder;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user sHLCts4RR6iL2PA.1ead08cf1a54 --database bBuQZrfKLoBs6LmtvQ4y6E --execute SELECT id, name, planType, isActive, priceMonthly, sortOrder FROM subscription_plans ORDER BY planType, sortOrder;",
+  "rows": [
+    {
+      "id": "2",
+      "name": "Starter",
+      "planType": "company",
+      "isActive": "1",
+      "priceMonthly": "99.00",
+      "sortOrder": "1"
+    },
+    {
+      "id": "3",
+      "name": "Pro",
+      "planType": "company",
+      "isActive": "1",
+      "priceMonthly": "199.00",
+      "sortOrder": "2"
+    },
+    {
+      "id": "4",
+      "name": "Enterprise",
+      "planType": "company",
+      "isActive": "1",
+      "priceMonthly": "399.00",
+      "sortOrder": "3"
+    },
+    {
+      "id": "5",
+      "name": "Free",
+      "planType": "contractor",
+      "isActive": "1",
+      "priceMonthly": "0.00",
+      "sortOrder": "1"
+    },
+    {
+      "id": "6",
+      "name": "Pro",
+      "planType": "contractor",
+      "isActive": "1",
+      "priceMonthly": "29.00",
+      "sortOrder": "2"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tname\tplanType\tisActive\tpriceMonthly\tsortOrder\n2\tStarter\tcompany\t1\t99.00\t1\n3\tPro\tcompany\t1\t199.00\t2\n4\tEnterprise\tcompany\t1\t399.00\t3\n5\tFree\tcontractor\t1\t0.00\t1\n6\tPro\tcontractor\t1\t29.00\t2\n",
+  "stderr": "",
+  "execution_time_ms": 59
+}

@@ -1308,42 +1308,42 @@ _Note: Core items were completed in earlier sessions. These are the remaining ed
 ## Session 40: Critical Bug Fixes
 
 ### Clock-out & Time Sessions
-- [ ] Fix contractor clock-out button so it actually saves the time session to the database
-- [ ] Auto clock-out when contractor clicks "Complete Job" (if they are currently clocked in)
-- [ ] Clock-out without completing job just ends the current session (contractor stays on job, can clock back in)
+- [x] Fix contractor clock-out button so it actually saves the time session to the database
+- [x] Auto clock-out when contractor clicks "Complete Job" (if they are currently clocked in)
+- [x] Clock-out without completing job just ends the current session (contractor stays on job, can clock back in)
 
 ### Materials Entry on Job Completion
-- [ ] Contractor complete-job flow: add "+ Add Material" button that opens line items (description + price)
-- [ ] Multiple material lines supported (add/remove)
-- [ ] If any material line has content, receipt image upload becomes mandatory before submitting
-- [ ] Store materials as JSON on the job record (or separate table)
-- [ ] Show materials total in payment dialog Parts & Materials line
+- [x] Contractor complete-job flow: add "+ Add Material" button that opens line items (description + price)
+- [x] Multiple material lines supported (add/remove)
+- [x] If any material line has content, receipt image upload becomes mandatory before submitting
+- [x] Store materials as JSON on the job record (or separate table)
+- [x] Show materials total in payment dialog Parts & Materials line
 
 ### Payment Dialog Fixes
-- [ ] Fix labor calculation: sum all time sessions for the job × skill tier hourly rate
-- [ ] Fix platform service fee: calculate as (labor + materials) × plan's platformFeePct
-- [ ] Show "(no time sessions recorded)" only when there truly are none
+- [x] Fix labor calculation: sum all time sessions for the job × skill tier hourly rate
+- [x] Fix platform service fee: calculate as (labor + materials) × plan's platformFeePct
+- [x] Show "(no time sessions recorded)" only when there truly are none
 
 ### AI Auto-Classification
-- [ ] Fix job creation to always run AI classification before saving (priority + skill tier)
-- [ ] Show "AI Classifying..." loading state while classification runs
-- [ ] Remove the inline priority selector from the job card itself
-- [ ] Move priority override and skill tier override to the 3-dots dropdown menu only
+- [x] Fix job creation to always run AI classification before saving (priority + skill tier)
+- [x] Show "AI Classifying..." loading state while classification runs
+- [x] Remove the inline priority selector from the job card itself
+- [x] Move priority override and skill tier override to the 3-dots dropdown menu only
 
 ### Route Replay
 - [x] Fix route replay black screen (likely Google Maps API not initializing inside the modal)
 - [x] Ensure the map container has a non-zero height before initializing the map
 
 ### Contractor Tracking (Company Side)
-- [ ] Fix contractor tracking page to populate past completed jobs
-- [ ] Each past job row should show: job title, property, date, total labor time, total cost
-- [ ] "View Route Replay" button on each past job row
+- [x] Fix contractor tracking page to populate past completed jobs
+- [x] Each past job row should show: job title, property, date, total labor time, total cost
+- [x] "View Route Replay" button on each past job row
 
 ### Mandatory Rating After Payment
-- [ ] After "Approve & Pay" succeeds, immediately show a mandatory rating dialog
-- [ ] Dialog cannot be dismissed without submitting a rating (1–5 stars + optional comment)
-- [ ] Save rating to contractorRatings table linked to the transaction
-- [ ] Only skip if a rating already exists for this transaction
+- [x] After "Approve & Pay" succeeds, immediately show a mandatory rating dialog
+- [x] Dialog cannot be dismissed without submitting a rating (1–5 stars + optional comment)
+- [x] Save rating to contractorRatings table linked to the transaction
+- [x] Only skip if a rating already exists for this transaction
 
 ## Session 40: Buildium Webhook Secret Flow Fix + Integration Polish
 ### Buildium Webhook Secret Flow

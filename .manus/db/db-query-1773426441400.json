@@ -1,0 +1,40 @@
+{
+  "query": "SELECT id, name, planType, isActive FROM subscription_plans ORDER BY id;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user sHLCts4RR6iL2PA.1ead08cf1a54 --database bBuQZrfKLoBs6LmtvQ4y6E --execute SELECT id, name, planType, isActive FROM subscription_plans ORDER BY id;",
+  "rows": [
+    {
+      "id": "2",
+      "name": "Starter",
+      "planType": "company",
+      "isActive": "1"
+    },
+    {
+      "id": "3",
+      "name": "Pro",
+      "planType": "company",
+      "isActive": "1"
+    },
+    {
+      "id": "4",
+      "name": "Enterprise",
+      "planType": "company",
+      "isActive": "1"
+    },
+    {
+      "id": "5",
+      "name": "Free",
+      "planType": "contractor",
+      "isActive": "1"
+    },
+    {
+      "id": "6",
+      "name": "Pro",
+      "planType": "contractor",
+      "isActive": "1"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tname\tplanType\tisActive\n2\tStarter\tcompany\t1\n3\tPro\tcompany\t1\n4\tEnterprise\tcompany\t1\n5\tFree\tcontractor\t1\n6\tPro\tcontractor\t1\n",
+  "stderr": "",
+  "execution_time_ms": 64
+}
