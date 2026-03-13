@@ -1557,20 +1557,20 @@
 - [x] Build admin email/password login (replace Manus OAuth for admin)
 - [x] Add /admin/login route with email+password form
 - [x] Remove "Sign in with Manus" OAuth button from main SignIn page
-- [ ] Prepare app for external deployment (audit Manus-specific service calls)
-- [ ] Replace Manus LLM helper with configurable OpenAI/DO Gradient adapter
-- [ ] Replace Manus S3 storage helper with standard AWS S3 SDK (DO Spaces compatible)
-- [ ] Replace Manus notification helper with no-op or email fallback
-- [ ] Add DATABASE_URL, JWT_SECRET, and all API keys to .env.example for DO setup
-- [ ] Create DigitalOcean account and project
-- [ ] Create managed MySQL 8 database on DO
-- [ ] Create App Platform service connected to GitHub repo
-- [ ] Create DigitalOcean Spaces bucket for file storage
-- [ ] Configure all environment variables on DO App Platform
-- [ ] Run pnpm db:push against DO MySQL database
-- [ ] Seed admin account in new DO database
-- [ ] Test full app on DO staging URL
-- [ ] Point custom domain at DO App Platform
+- [x] Prepare app for external deployment (audit Manus-specific service calls)
+- [x] Replace Manus LLM helper with configurable OpenAI/DO Gradient adapter
+- [x] Replace Manus S3 storage helper with standard AWS S3 SDK (DO Spaces compatible)
+- [x] Replace Manus notification helper with no-op or email fallback
+- [x] Add DATABASE_URL, JWT_SECRET, and all API keys to .env.example for DO setup
+- [x] Create DigitalOcean account and project
+- [x] Create managed MySQL 8 database on DO
+- [x] Create App Platform service connected to GitHub repo
+- [x] Create DigitalOcean Spaces bucket for file storage
+- [x] Configure all environment variables on DO App Platform
+- [x] Run pnpm db:push against DO MySQL database
+- [x] Seed admin account in new DO database
+- [x] Test full app on DO staging URL
+- [x] Point custom domain at DO App Platform
 - [ ] Verify SSL certificate on DO
-- [ ] Swap to DigitalOcean Gradient AI for job classification
+- [x] Swap to OpenAI GPT-4o-mini for job classification (LLM_API_KEY + LLM_API_URL + LLM_MODEL configured)
 - [ ] Final smoke test and go live
