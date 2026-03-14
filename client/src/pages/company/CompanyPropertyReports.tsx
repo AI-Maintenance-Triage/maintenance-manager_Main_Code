@@ -60,7 +60,7 @@ export default function CompanyPropertyReports() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `property-report-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.download = `property-expense-report-${new Date().toISOString().slice(0, 10)}.csv`;
     a.click();
     URL.revokeObjectURL(url);
   };

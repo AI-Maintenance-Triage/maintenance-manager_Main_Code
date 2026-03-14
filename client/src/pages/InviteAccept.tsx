@@ -88,7 +88,7 @@ export default function InviteAccept() {
                 </div>
                 <h2 className="text-xl font-semibold text-foreground mb-2">Invite Unavailable</h2>
                 <p className="text-muted-foreground text-sm mb-6">
-                  {(error as any)?.message ?? "This invite link is no longer valid. It may have expired or been revoked."}
+                  {error instanceof Error ? error.message : "This invite link is no longer valid. It may have expired or been revoked."}
                 </p>
                 <div className="flex flex-col gap-3">
                   <Button onClick={() => setLocation("/get-started?role=contractor")} className="gap-2">

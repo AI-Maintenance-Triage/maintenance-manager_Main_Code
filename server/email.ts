@@ -56,6 +56,16 @@ function layout(title: string, body: string): string {
 </html>`;
 }
 
+// --- HTML escape helper (prevents XSS in email templates) ----------------
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
 // --- Core send helper -----------------------------------------------------
 export async function sendEmail(opts: {
   to: string;
@@ -75,7 +85,7 @@ export async function sendEmail(opts: {
     });
     if (error) {
       console.error("[Email] Send error:", JSON.stringify(error));
-      if ((error as any).statusCode === 403 || (error as any).name === 'validation_error') {
+      if ((error as { statusCode?: number; name?: string }).statusCode === 403 || (error as { name?: string }).name === 'validation_error') {
         console.error("[Email] DOMAIN NOT VERIFIED -- To send to external recipients, verify a domain at resend.com/domains and update EMAIL_FROM in Settings &rarr; Secrets.");
       }
       return false;
@@ -204,9 +214,9 @@ export async function sendNewCommentEmail(opts: {
   const jobPath = opts.role === "company" ? "/company/jobs" : "/contractor/my-jobs";
   const html = layout("New Comment on Your Job", `
     <h1>New message on a job</h1>
-    <p>Hi ${opts.recipientName}, <strong>${opts.authorName}</strong> left a comment on <strong>${opts.jobTitle}</strong>.</p>
+    <p>Hi ${escapeHtml(opts.recipientName)}, <strong>${escapeHtml(opts.authorName)}</strong> left a comment on <strong>${escapeHtml(opts.jobTitle)}</strong>.</p>
     <div style="background:#111;border:1px solid #2a2a2a;border-radius:8px;padding:16px;margin:16px 0;">
-      <p style="margin:0;font-style:italic;color:#d4d4d4;">"${opts.commentPreview}"</p>
+      <p style="margin:0;font-style:italic;color:#d4d4d4;">"${escapeHtml(opts.commentPreview)}"</p>
     </div>
     <a href="${opts.appUrl}${jobPath}?openComments=${opts.jobId}" class="btn">View &amp; Reply</a>
   `);
@@ -223,9 +233,9 @@ export async function sendJobDisputedEmail(opts: {
 }) {
   const html = layout("Job Disputed", `
     <h1>A job has been disputed</h1>
-    <p>Hi ${opts.contractorName}, the company has opened a dispute on <strong>${opts.jobTitle}</strong>.</p>
+    <p>Hi ${escapeHtml(opts.contractorName)}, the company has opened a dispute on <strong>${escapeHtml(opts.jobTitle)}</strong>.</p>
     <div style="background:#1c0606;border:1px solid #7f1d1d;border-radius:8px;padding:16px;margin:16px 0;">
-      <p style="margin:0;color:#f87171;font-size:14px;"><strong>Reason:</strong> ${opts.disputeReason}</p>
+      <p style="margin:0;color:#f87171;font-size:14px;"><strong>Reason:</strong> ${escapeHtml(opts.disputeReason)}</p>
     </div>
     <p>You can review the dispute and resubmit the job with a response note from your dashboard.</p>
     <a href="${opts.appUrl}/contractor/my-jobs" class="btn">View Disputed Job</a>
@@ -244,9 +254,9 @@ export async function sendDisputeResubmittedEmail(opts: {
 }) {
   const html = layout("Contractor Responded to Dispute", `
     <h1>Dispute response received</h1>
-    <p>Hi ${opts.companyAdminName}, <strong>${opts.contractorName}</strong> has responded to the dispute on <strong>${opts.jobTitle}</strong> and resubmitted the job for verification.</p>
+    <p>Hi ${escapeHtml(opts.companyAdminName)}, <strong>${escapeHtml(opts.contractorName)}</strong> has responded to the dispute on <strong>${escapeHtml(opts.jobTitle)}</strong> and resubmitted the job for verification.</p>
     <div style="background:#0c1a2e;border:1px solid #1e3a5f;border-radius:8px;padding:16px;margin:16px 0;">
-      <p style="margin:0;color:#93c5fd;font-size:14px;"><strong>Contractor's response:</strong><br/>${opts.responseNote}</p>
+      <p style="margin:0;color:#93c5fd;font-size:14px;"><strong>Contractor's response:</strong><br/>${escapeHtml(opts.responseNote)}</p>
     </div>
     <a href="${opts.appUrl}/company/verification" class="btn">Review Again</a>
   `);

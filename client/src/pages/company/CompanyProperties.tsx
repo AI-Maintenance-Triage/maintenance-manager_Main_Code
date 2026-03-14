@@ -27,7 +27,7 @@ const PROPERTY_TYPE_LABELS: Record<string, { label: string; variant: "default" |
 };
 
 // ─── Unit Manager (shown inside Edit dialog when multi_family) ───────────────
-function UnitManager({ propertyId, companyId: _companyId }: { propertyId: number; companyId?: number }) {
+function UnitManager({ propertyId }: { propertyId: number }) {
   const utils = trpc.useUtils();
   const { data: units, isLoading } = trpc.properties.getUnits.useQuery({ propertyId });
   const [newUnit, setNewUnit] = useState("");

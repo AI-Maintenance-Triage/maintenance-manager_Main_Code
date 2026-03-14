@@ -37,7 +37,15 @@ const PRESET_RANGES = [
   { label: "Last 12 months", days: 365 },
 ];
 
-const CHART_COLORS = ["#10b981", "#3b82f6", "#f59e0b", "#8b5cf6", "#ef4444", "#06b6d4", "#ec4899"];
+const CHART_COLORS = [
+  "hsl(var(--primary))",
+  "hsl(217 91% 60%)",
+  "hsl(38 92% 50%)",
+  "hsl(258 90% 66%)",
+  "hsl(var(--destructive))",
+  "hsl(189 94% 43%)",
+  "hsl(330 81% 60%)",
+];
 
 // ─── CSV export helper ────────────────────────────────────────────────────────
 
@@ -257,7 +265,7 @@ export default function CompanyAnalytics() {
                     contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12 }}
                     formatter={(value: number) => [`$${value.toFixed(2)}`, "Spend"]}
                   />
-                  <Line type="monotone" dataKey="spend" stroke="#10b981" strokeWidth={2} dot={{ r: 3, fill: "#10b981" }} />
+                  <Line type="monotone" dataKey="spend" stroke="hsl(var(--primary))" strokeWidth={2} dot={{ r: 3, fill: "hsl(var(--primary))" }} />
                 </LineChart>
               </ResponsiveContainer>
             )}
@@ -337,7 +345,7 @@ export default function CompanyAnalytics() {
                   contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12 }}
                   formatter={(value: number) => [`$${value.toFixed(2)}`, "Total Spend"]}
                 />
-                <Bar dataKey="spend" fill="#3b82f6" radius={[3, 3, 0, 0]} />
+                <Bar dataKey="spend" fill="hsl(var(--primary))" radius={[3, 3, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           )}

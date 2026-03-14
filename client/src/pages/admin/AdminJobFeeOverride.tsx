@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { trpc } from "@/lib/trpc";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
-import { DollarSign, Search, AlertTriangle, CheckCircle2, FileText, History } from "lucide-react";
+import { DollarSign, Search, AlertTriangle, CheckCircle2, FileText, History, Loader2 } from "lucide-react";
 
 interface TransactionLookup {
   jobId: number;
@@ -27,17 +27,39 @@ export default function AdminJobFeeOverride() {
   const [newFeeInput, setNewFeeInput] = useState("");
   const [lookupResult, setLookupResult] = useState<TransactionLookup | null>(null);
   const [overrideResult, setOverrideResult] = useState<{ jobId: number; oldFee: string; newFeeCents: number } | null>(null);
+  const [lookupJobId, setLookupJobId] = useState<number | null>(null);
 
   const utils = trpc.useUtils();
 
   // History of all past overrides from the audit log
   const { data: history, isLoading: historyLoading } = trpc.adminControl.listJobFeeOverrideHistory.useQuery({ limit: 50 });
 
+  // Lookup query — only fires when lookupJobId is set
+  const { data: lookupData, isFetching: lookupFetching, error: lookupError } = trpc.adminControl.lookupJobTransaction.useQuery(
+    { jobId: lookupJobId! },
+    { enabled: lookupJobId !== null, retry: false }
+  );
+
+  // Sync query result into local state
+  useEffect(() => {
+    if (lookupData) {
+      setLookupResult(lookupData);
+    }
+  }, [lookupData]);
+
+  useEffect(() => {
+    if (lookupError) {
+      toast.error(lookupError.message || "Job not found");
+      setLookupJobId(null);
+    }
+  }, [lookupError]);
+
   const overrideMutation = trpc.adminControl.overrideJobFee.useMutation({
     onSuccess: (data) => {
       toast.success(`Platform fee updated for Job #${data.jobId}`);
       setOverrideResult(data);
       setLookupResult(null);
+      setLookupJobId(null);
       setJobIdInput("");
       setNewFeeInput("");
       setReason("");
@@ -53,20 +75,14 @@ export default function AdminJobFeeOverride() {
   const isValidFee = !isNaN(newFeeDollars) && newFeeDollars >= 0;
   const isValidReason = reason.trim().length >= 5;
 
-  const handleLookup = async () => {
+  const handleLookup = () => {
     if (!isValidJobId) {
       toast.error("Enter a valid Job ID");
       return;
     }
-    setLookupResult({
-      jobId,
-      transactionId: 0,
-      currentPlatformFee: "—",
-      laborCost: "—",
-      partsCost: "—",
-      totalCharged: "—",
-      status: "—",
-    });
+    setLookupResult(null);
+    setOverrideResult(null);
+    setLookupJobId(jobId);
   };
 
   const handleOverride = () => {
@@ -118,17 +134,19 @@ export default function AdminJobFeeOverride() {
                   onChange={(e) => {
                     setJobIdInput(e.target.value);
                     setLookupResult(null);
+                    setLookupJobId(null);
                     setOverrideResult(null);
                   }}
+                  onKeyDown={(e) => e.key === "Enter" && handleLookup()}
                 />
                 <Button
                   variant="outline"
                   size="icon"
                   onClick={handleLookup}
-                  disabled={!isValidJobId}
+                  disabled={!isValidJobId || lookupFetching}
                   title="Look up job"
                 >
-                  <Search className="h-4 w-4" />
+                  {lookupFetching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
                 </Button>
               </div>
             </div>
@@ -151,19 +169,24 @@ export default function AdminJobFeeOverride() {
             <div className="rounded-lg border bg-muted/30 p-4 space-y-2 text-sm">
               <p className="font-semibold text-foreground flex items-center gap-2">
                 <FileText className="h-4 w-4 text-muted-foreground" />
-                Job #{lookupResult.jobId} — Transaction Preview
+                Job #{lookupResult.jobId} — Transaction #{lookupResult.transactionId}
               </p>
               <div className="grid grid-cols-2 gap-x-6 gap-y-1 text-muted-foreground">
+                <span>Status:</span>
+                <span className="font-mono text-foreground capitalize">{lookupResult.status}</span>
+                <span>Labor Cost:</span>
+                <span className="font-mono text-foreground">${parseFloat(lookupResult.laborCost).toFixed(2)}</span>
+                <span>Parts Cost:</span>
+                <span className="font-mono text-foreground">${parseFloat(lookupResult.partsCost || "0").toFixed(2)}</span>
+                <span>Total Charged:</span>
+                <span className="font-mono text-foreground">${parseFloat(lookupResult.totalCharged).toFixed(2)}</span>
                 <span>Current Platform Fee:</span>
-                <span className="font-mono text-foreground">{lookupResult.currentPlatformFee}</span>
+                <span className="font-mono text-foreground">${parseFloat(lookupResult.currentPlatformFee).toFixed(2)}</span>
                 <span>New Platform Fee:</span>
                 <span className={`font-mono font-semibold ${isValidFee ? "text-primary" : "text-muted-foreground"}`}>
                   {isValidFee ? `$${newFeeDollars.toFixed(2)}` : "—"}
                 </span>
               </div>
-              <p className="text-xs text-muted-foreground mt-1">
-                Actual current values will be shown in the history below after the override is applied.
-              </p>
             </div>
           )}
 

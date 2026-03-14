@@ -249,8 +249,9 @@ export default function CompanyIntegrations() {
   }
 
   function copyToClipboard(text: string) {
-    navigator.clipboard.writeText(text);
-    toast.success("Copied to clipboard");
+    navigator.clipboard.writeText(text)
+      .then(() => toast.success("Copied to clipboard"))
+      .catch(() => toast.error("Could not copy to clipboard. Please copy manually."));
   }
 
   function handleSaveBuildiumSecret(integrationId: number, secret: string) {

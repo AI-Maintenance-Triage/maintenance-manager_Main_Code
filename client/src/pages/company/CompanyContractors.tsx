@@ -121,7 +121,9 @@ export default function CompanyContractors() {
   };
 
   const handleCopyLink = (link: string) => {
-    navigator.clipboard.writeText(link).then(() => toast.success("Invite link copied to clipboard!"));
+    navigator.clipboard.writeText(link)
+      .then(() => toast.success("Invite link copied to clipboard!"))
+      .catch(() => toast.error("Could not copy to clipboard. Please copy the link manually."));
   };
 
   return (

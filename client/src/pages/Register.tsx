@@ -236,13 +236,22 @@ function CompanyForm({ userId, onBack, onDone }: { userId: number; onBack: () =>
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim()) {
-      toast.error("Company name is required");
+    if (!name.trim() || name.trim().length < 2) {
+      toast.error("Company name must be at least 2 characters");
+      return;
+    }
+    if (!email.trim()) {
+      toast.error("Business email is required");
+      return;
+    }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email.trim())) {
+      toast.error("Please enter a valid email address");
       return;
     }
     createCompany.mutate({
       name: name.trim(),
-      email: email.trim() || undefined,
+      email: email.trim(),
       phone: phone.trim() || undefined,
       address: address.trim() || undefined,
       city: city.trim() || undefined,
@@ -287,7 +296,7 @@ function CompanyForm({ userId, onBack, onDone }: { userId: number; onBack: () =>
             {/* Contact Info */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="email">Business Email</Label>
+                <Label htmlFor="email">Business Email <span className="text-destructive">*</span></Label>
                 <div className="relative">
                   <Input
                     id="email"
@@ -417,6 +426,13 @@ function ContractorForm({
     if (trades.length === 0) {
       toast.error("Please select at least one trade");
       return;
+    }
+    if (phone.trim()) {
+      const digits = phone.replace(/\D/g, '');
+      if (digits.length < 10) {
+        toast.error("Please enter a valid phone number (at least 10 digits)");
+        return;
+      }
     }
     setupProfile.mutate({
       firstName: firstName.trim() || undefined,

@@ -252,7 +252,7 @@ export default function CompanyExpenseReport() {
                 />
                 <Bar dataKey="total" name="Total Charged" radius={[4, 4, 0, 0]}>
                   {chartData.map((_, i) => (
-                    <Cell key={i} fill={`hsl(142, 70%, ${40 + (i % 3) * 5}%)`} />
+                    <Cell key={i} fill={`hsl(var(--primary) / ${0.7 + (i % 3) * 0.1})`} />
                   ))}
                 </Bar>
               </BarChart>

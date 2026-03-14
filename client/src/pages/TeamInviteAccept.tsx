@@ -56,6 +56,10 @@ export default function TeamInviteAccept() {
       toast.error("Password must be at least 8 characters.");
       return;
     }
+    if (name.trim().length < 2) {
+      toast.error("Name must be at least 2 characters.");
+      return;
+    }
     acceptMutation.mutate({ token, name: name.trim(), password });
   };
 
@@ -90,7 +94,7 @@ export default function TeamInviteAccept() {
                 </div>
                 <h2 className="text-xl font-semibold text-foreground mb-2">Invitation Unavailable</h2>
                 <p className="text-muted-foreground text-sm mb-6">
-                  {(error as any)?.message ?? "This invitation link is no longer valid. It may have expired or been revoked."}
+                  {error instanceof Error ? error.message : "This invitation link is no longer valid. It may have expired or been revoked."}
                 </p>
                 <Button variant="ghost" onClick={() => setLocation("/")} className="text-muted-foreground">
                   Go to Homepage

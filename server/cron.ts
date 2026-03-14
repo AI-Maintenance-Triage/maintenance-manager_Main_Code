@@ -38,12 +38,12 @@ async function runTrialExpiryCheck(): Promise<void> {
           billingUrl: `${PLATFORM_ORIGIN}/company/billing`,
         });
         results.warned++;
-      } catch (e: any) {
-        results.errors.push(`company warning ${c.companyId}: ${e.message}`);
+      } catch (e: unknown) {
+        results.errors.push(`company warning ${c.companyId}: ${e instanceof Error ? e.message : String(e)}`);
       }
     }
-  } catch (e: any) {
-    results.errors.push(`getCompaniesExpiringInDays: ${e.message}`);
+  } catch (e: unknown) {
+    results.errors.push(`getCompaniesExpiringInDays: ${e instanceof Error ? e.message : String(e)}`);
   }
 
   // ── 3-day warnings for contractors ────────────────────────────────────────
@@ -65,12 +65,12 @@ async function runTrialExpiryCheck(): Promise<void> {
           billingUrl: `${PLATFORM_ORIGIN}/contractor/billing`,
         });
         results.warned++;
-      } catch (e: any) {
-        results.errors.push(`contractor warning ${c.contractorProfileId}: ${e.message}`);
+      } catch (e: unknown) {
+        results.errors.push(`contractor warning ${c.contractorProfileId}: ${e instanceof Error ? e.message : String(e)}`);
       }
     }
-  } catch (e: any) {
-    results.errors.push(`getContractorsExpiringInDays: ${e.message}`);
+  } catch (e: unknown) {
+    results.errors.push(`getContractorsExpiringInDays: ${e instanceof Error ? e.message : String(e)}`);
   }
 
   // ── Day-of expiry: move companies to grace_period (3-day buffer before lock) ─
@@ -91,12 +91,12 @@ async function runTrialExpiryCheck(): Promise<void> {
           billingUrl: `${PLATFORM_ORIGIN}/company/billing`,
         });
         results.expired++;
-      } catch (e: any) {
-        results.errors.push(`company grace ${c.companyId}: ${e.message}`);
+      } catch (e: unknown) {
+        results.errors.push(`company grace ${c.companyId}: ${e instanceof Error ? e.message : String(e)}`);
       }
     }
-  } catch (e: any) {
-    results.errors.push(`getExpiredTrialCompanies: ${e.message}`);
+  } catch (e: unknown) {
+    results.errors.push(`getExpiredTrialCompanies: ${e instanceof Error ? e.message : String(e)}`);
   }
 
   // ── Day-of expiry: move contractors to grace_period ───────────────────────
@@ -115,12 +115,12 @@ async function runTrialExpiryCheck(): Promise<void> {
           billingUrl: `${PLATFORM_ORIGIN}/contractor/billing`,
         });
         results.expired++;
-      } catch (e: any) {
-        results.errors.push(`contractor grace ${c.contractorProfileId}: ${e.message}`);
+      } catch (e: unknown) {
+        results.errors.push(`contractor grace ${c.contractorProfileId}: ${e instanceof Error ? e.message : String(e)}`);
       }
     }
-  } catch (e: any) {
-    results.errors.push(`getExpiredTrialContractors: ${e.message}`);
+  } catch (e: unknown) {
+    results.errors.push(`getExpiredTrialContractors: ${e instanceof Error ? e.message : String(e)}`);
   }
 
   // ── Lock accounts whose grace period has ended ────────────────────────────
@@ -130,12 +130,12 @@ async function runTrialExpiryCheck(): Promise<void> {
       try {
         await db.markCompanyPlanLocked(c.companyId);
         results.locked++;
-      } catch (e: any) {
-        results.errors.push(`company lock ${c.companyId}: ${e.message}`);
+      } catch (e: unknown) {
+        results.errors.push(`company lock ${c.companyId}: ${e instanceof Error ? e.message : String(e)}`);
       }
     }
-  } catch (e: any) {
-    results.errors.push(`getCompaniesGracePeriodExpired: ${e.message}`);
+  } catch (e: unknown) {
+    results.errors.push(`getCompaniesGracePeriodExpired: ${e instanceof Error ? e.message : String(e)}`);
   }
 
   try {
@@ -144,12 +144,12 @@ async function runTrialExpiryCheck(): Promise<void> {
       try {
         await db.markContractorPlanLocked(c.contractorProfileId);
         results.locked++;
-      } catch (e: any) {
-        results.errors.push(`contractor lock ${c.contractorProfileId}: ${e.message}`);
+      } catch (e: unknown) {
+        results.errors.push(`contractor lock ${c.contractorProfileId}: ${e instanceof Error ? e.message : String(e)}`);
       }
     }
-  } catch (e: any) {
-    results.errors.push(`getContractorsGracePeriodExpired: ${e.message}`);
+  } catch (e: unknown) {
+    results.errors.push(`getContractorsGracePeriodExpired: ${e instanceof Error ? e.message : String(e)}`);
   }
 
   console.log(
@@ -195,12 +195,12 @@ async function runJobEscalationCheck(): Promise<void> {
         }
 
         notified++;
-      } catch (e: any) {
-        errors.push(`job ${job.id}: ${e.message}`);
+      } catch (e: unknown) {
+        errors.push(`job ${job.id}: ${e instanceof Error ? e.message : String(e)}`);
       }
     }
-  } catch (e: any) {
-    errors.push(`getOverdueUnacceptedJobs: ${e.message}`);
+  } catch (e: unknown) {
+    errors.push(`getOverdueUnacceptedJobs: ${e instanceof Error ? e.message : String(e)}`);
   }
 
   console.log(`[cron] runJobEscalationCheck complete — notified: ${notified}, errors: ${errors.length}`);
@@ -218,8 +218,8 @@ export function startCronJobs(): void {
     async () => {
       try {
         await runTrialExpiryCheck();
-      } catch (e: any) {
-        console.error("[cron] Unhandled error in runTrialExpiryCheck:", e.message);
+      } catch (e: unknown) {
+        console.error("[cron] Unhandled error in runTrialExpiryCheck:", e instanceof Error ? e.message : String(e));
       }
     },
     { timezone: "UTC" }
@@ -231,8 +231,8 @@ export function startCronJobs(): void {
     async () => {
       try {
         await runJobEscalationCheck();
-      } catch (e: any) {
-        console.error("[cron] Unhandled error in runJobEscalationCheck:", e.message);
+      } catch (e: unknown) {
+        console.error("[cron] Unhandled error in runJobEscalationCheck:", e instanceof Error ? e.message : String(e));
       }
     },
     { timezone: "UTC" }
@@ -244,8 +244,8 @@ export function startCronJobs(): void {
     async () => {
       try {
         await runPmsSyncAll();
-      } catch (e: any) {
-        console.error("[cron] Unhandled error in runPmsSyncAll:", e.message);
+      } catch (e: unknown) {
+        console.error("[cron] Unhandled error in runPmsSyncAll:", e instanceof Error ? e.message : String(e));
       }
     },
     { timezone: "UTC" }
@@ -257,8 +257,8 @@ export function startCronJobs(): void {
     async () => {
       try {
         await runChurnRiskCheck();
-      } catch (e: any) {
-        console.error("[cron] Unhandled error in runChurnRiskCheck:", e.message);
+      } catch (e: unknown) {
+        console.error("[cron] Unhandled error in runChurnRiskCheck:", e instanceof Error ? e.message : String(e));
       }
     },
     { timezone: "UTC" }
@@ -297,8 +297,8 @@ async function runChurnRiskCheck(): Promise<void> {
       content: `The following companies have been inactive for 60+ days and are at high churn risk:\n\n${companyList}${moreCount}\n\nVisit the Churn Risk dashboard to send re-engagement emails.`,
     });
     console.log(`[cron] runChurnRiskCheck complete — notified admin of ${highRisk.length} high-risk companies`);
-  } catch (e: any) {
-    console.error("[cron] runChurnRiskCheck error:", e.message);
+  } catch (e: unknown) {
+    console.error("[cron] runChurnRiskCheck error:", e instanceof Error ? e.message : String(e));
   }
 }
 
@@ -337,8 +337,8 @@ async function runPmsSyncAll(): Promise<void> {
         if (result.imported > 0 || result.jobs > 0) {
           console.log(`[cron] PMS sync company=${company.id} provider=${integration.provider}: imported=${result.imported} jobs=${result.jobs}`);
         }
-      } catch (e: any) {
-        console.error(`[cron] PMS sync error company=${company.id} provider=${integration.provider}:`, e.message);
+      } catch (e: unknown) {
+        console.error(`[cron] PMS sync error company=${company.id} provider=${integration.provider}:`, e instanceof Error ? e.message : String(e));
       }
     }
   }

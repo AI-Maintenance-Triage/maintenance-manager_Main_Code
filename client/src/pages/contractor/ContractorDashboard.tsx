@@ -152,11 +152,13 @@ export default function ContractorDashboard() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2">
-          {activeJobs.length > 0 && (
-            <Card className="bg-card border-border">
-              <CardHeader><CardTitle className="text-card-foreground">Active Jobs</CardTitle></CardHeader>
-              <CardContent className="space-y-3">
-                {activeJobs.map((job: any) => (
+          <Card className="bg-card border-border">
+            <CardHeader><CardTitle className="text-card-foreground">Active Jobs</CardTitle></CardHeader>
+            <CardContent className="space-y-3">
+              {activeJobs.length === 0 ? (
+                <p className="text-sm text-muted-foreground py-4 text-center">No active jobs. Check the job board for available work.</p>
+              ) : (
+                activeJobs.map((job: any) => (
                   <div key={job.id} className="flex items-center justify-between p-3 rounded-lg bg-secondary/50">
                     <div>
                       <p className="font-medium text-foreground">{job.title}</p>
@@ -164,10 +166,10 @@ export default function ContractorDashboard() {
                     </div>
                     {job.hourlyRate && <span className="text-sm text-primary font-semibold">${job.hourlyRate}/hr</span>}
                   </div>
-                ))}
-              </CardContent>
-            </Card>
-          )}
+                ))
+              )}
+            </CardContent>
+          </Card>
         </div>
         <div>
           {!isViewingAsContractor && <ContractorPlanWidget />}

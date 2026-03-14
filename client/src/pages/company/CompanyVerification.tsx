@@ -119,14 +119,14 @@ export default function CompanyVerification() {
   };
 
   const job = selected?.job;
-  const laborCost = parseFloat(job?.totalLaborCost ?? "0");
-  const partsCost = parseFloat(job?.totalPartsCost ?? "0");
+  const laborCost = parseFloat(job?.totalLaborCost ?? "0") || 0;
+  const partsCost = parseFloat(job?.totalPartsCost ?? "0") || 0;
   const subtotal = laborCost + partsCost;
   const platformFeeAmount = subtotal > 0 ? subtotal * (platformFeePercent / 100) : 0;
   const listingFeeAmount = perListingFeeEnabled ? perListingFeeAmount : 0;
   const totalCost = subtotal + platformFeeAmount + listingFeeAmount;
   const laborMinutes = job?.totalLaborMinutes ?? 0;
-  const hourlyRate = parseFloat(job?.hourlyRate ?? "0");
+  const hourlyRate = parseFloat(job?.hourlyRate ?? "0") || 0;
   const sessionCount = selected?.job?.sessionCount ?? 0;
 
   if (isLoading) {
@@ -483,8 +483,8 @@ function VerificationCard({ row, onApprove, onDispute, onViewPhotos, onViewRoute
   const { job, property } = row;
   const photoUrls: string[] = job.completionPhotoUrls ?? [];
   const isDisputed = job.status === "disputed";
-  const laborCost = parseFloat(job.totalLaborCost ?? "0");
-  const partsCost = parseFloat(job.totalPartsCost ?? "0");
+  const laborCost = parseFloat(job.totalLaborCost ?? "0") || 0;
+  const partsCost = parseFloat(job.totalPartsCost ?? "0") || 0;
   const totalCost = laborCost + partsCost;
   const [showSessions, setShowSessions] = useState(false);
   const [billableOnly, setBillableOnly] = useState(false);

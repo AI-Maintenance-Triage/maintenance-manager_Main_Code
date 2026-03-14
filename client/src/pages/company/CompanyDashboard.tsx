@@ -73,9 +73,9 @@ function CompanyDashboardViewAs({ companyId, companyName }: { companyId: number;
     { label: "Open Jobs", value: stats?.openJobs ?? 0, icon: ClipboardList, color: "text-blue-400" },
     { label: "In Progress", value: stats?.inProgressJobs ?? 0, icon: Clock, color: "text-yellow-400" },
     { label: "Active Contractors", value: stats?.activeContractors ?? 0, icon: HardHat, color: "text-green-400" },
-    { label: "Trusted Contractors", value: (stats as any)?.trustedContractors ?? 0, icon: Shield, color: "text-emerald-400", hint: "View trusted list" },
+    { label: "Trusted Contractors", value: (stats as { trustedContractors?: number } & typeof stats)?.trustedContractors ?? 0, icon: Shield, color: "text-emerald-400", hint: "View trusted list" },
     { label: "Properties", value: stats?.totalProperties ?? 0, icon: MapPin, color: "text-purple-400" },
-    { label: "Completed", value: stats?.completedJobs ?? 0, icon: AlertTriangle, color: "text-red-400" },
+    { label: "Completed", value: stats?.completedJobs ?? 0, icon: CheckCircle2, color: "text-green-400" },
     { label: "Total Spent", value: stats?.totalSpent ? `$${stats.totalSpent}` : "$0", icon: DollarSign, color: "text-primary" },
   ];
 
@@ -318,9 +318,9 @@ function CompanyDashboardContent() {
     { label: "Open Jobs", value: stats?.openJobs ?? 0, icon: ClipboardList, color: "text-blue-400" },
     { label: "In Progress", value: stats?.inProgressJobs ?? 0, icon: Clock, color: "text-yellow-400" },
     { label: "Active Contractors", value: stats?.activeContractors ?? 0, icon: HardHat, color: "text-green-400" },
-    { label: "Trusted Contractors", value: (stats as any)?.trustedContractors ?? 0, icon: Shield, color: "text-emerald-400", hint: "View trusted list" },
+    { label: "Trusted Contractors", value: (stats as { trustedContractors?: number } & typeof stats)?.trustedContractors ?? 0, icon: Shield, color: "text-emerald-400", hint: "View trusted list" },
     { label: "Properties", value: stats?.totalProperties ?? 0, icon: MapPin, color: "text-purple-400" },
-    { label: "Completed", value: stats?.completedJobs ?? 0, icon: AlertTriangle, color: "text-red-400" },
+    { label: "Completed", value: stats?.completedJobs ?? 0, icon: CheckCircle2, color: "text-green-400" },
     { label: "Total Spent", value: stats?.totalSpent ? `$${stats.totalSpent}` : "$0", icon: DollarSign, color: "text-primary" },
   ];
 

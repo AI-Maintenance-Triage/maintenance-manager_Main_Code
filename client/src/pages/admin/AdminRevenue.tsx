@@ -42,8 +42,16 @@ const DATE_RANGES = [
 ] as const;
 
 const COMPANY_COLORS = [
-  "#6366f1", "#22d3ee", "#f59e0b", "#10b981", "#f43f5e",
-  "#8b5cf6", "#3b82f6", "#ec4899", "#14b8a6", "#84cc16",
+  "hsl(var(--primary))",
+  "hsl(189 94% 43%)",
+  "hsl(38 92% 50%)",
+  "hsl(160 84% 39%)",
+  "hsl(var(--destructive))",
+  "hsl(258 90% 66%)",
+  "hsl(217 91% 60%)",
+  "hsl(330 81% 60%)",
+  "hsl(174 72% 40%)",
+  "hsl(84 81% 44%)",
 ];
 
 export default function AdminRevenue() {
@@ -326,9 +334,9 @@ export default function AdminRevenue() {
                   <Line
                     type="monotone"
                     dataKey="gross"
-                    stroke="#60a5fa"
+                    stroke="hsl(var(--primary))"
                     strokeWidth={2}
-                    dot={{ fill: "#60a5fa", r: 3 }}
+                    dot={{ fill: "hsl(var(--primary))", r: 3 }}
                     activeDot={{ r: 5 }}
                   />
                 </LineChart>

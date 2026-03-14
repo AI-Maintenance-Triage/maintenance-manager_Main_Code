@@ -1687,3 +1687,215 @@ _Note: Core items were completed in earlier sessions. These are the remaining ed
 - [x] Build single shared CreateContractorDialog used by both Overview + button and Contractors page + button
 - [x] Build single shared EditContractorDialog (pencil icon) used by both Overview list and Contractors page Manage button
 - [x] Replace all duplicate dialog usages across PlatformDashboard, AdminCompanies, AdminContractors pages
+
+## Full Platform Bug Audit — 320 Fixes
+
+### Critical (11)
+- [ ] C1: cancelInvite marks invitation as ACCEPTED instead of canceling it (team.ts)
+- [ ] C2: Company/Contractor deletion not wrapped in a transaction (db.ts)
+- [ ] C3: CompanyVerification document upload silently fails — wrong param name fileUrl vs documentUrl
+- [ ] C4: ContractorMyJobs clock-out submits without GPS coordinates when location denied
+- [ ] C5: AdminJobFeeOverride fee override applies blind — no backend lookup in handleLookup
+- [ ] C6: CompanyProperties address edits don't re-geocode — lat/lng stays wrong after edit
+- [ ] C7: auth-local.ts password reset unintentionally calls updateUserRole (copy-paste error)
+- [ ] C8: auth-local.ts forgot-password origin param not validated — phishing vulnerability
+- [ ] C9: email.ts XSS via unsanitized commentPreview injected into HTML email
+- [ ] C10: email.ts XSS via unsanitized disputeReason injected into HTML email
+- [ ] C11: stripe-webhook.ts missing handler for invoice.payment_failed event
+
+### High — Backend (20)
+- [ ] H1: team.ts no ownership check on cancelInvite — any user can cancel any company's invites
+- [ ] H2: routers.ts skillTiers.create/delete role check blocks company admins (should only block non-admins)
+- [ ] H3: routers.ts updateStatus crashes when assignedContractorId is null
+- [ ] H4: db.ts N+1 query in getContractorJobs and listJobBoardForContractor
+- [ ] H29: auth-local.ts password reset token not single-use after successful reset
+- [ ] H30: stripe-webhook.ts customer.subscription.deleted doesn't downgrade company access
+- [ ] H31: stripe-webhook.ts webhook processing not idempotent (no duplicate event check)
+- [ ] H32: invoice.ts non-null assertion on job.companyId without null check
+- [ ] H33: invoice-bulk.ts bulk invoice crashes if company not found
+- [ ] H34: cron.ts PMS sync errors silently swallowed without logging
+- [ ] H35: upload.ts file extension derived from client-provided filename (spoofable)
+- [ ] H36: pms-webhook.ts property sync errors fire-and-forget with no retry
+- [ ] H37: schema.ts missing foreign key constraints on critical relationships
+- [ ] H38: AdminSuspensions suspended users can still log in — auth middleware doesn't check
+- [ ] H39: CompanyIntegrations Buildium sync always shows success toast even on failure
+- [ ] H40: AdminEmailBlast sends with no preview, no recipient count, no confirmation
+- [ ] H45: AdminCredits credit adjustment has no audit trail
+- [ ] H46: AdminPayoutHolds payout hold release has no confirmation dialog
+- [ ] H52: AdminActivityFeed auto-refresh causes infinite re-renders (unstable refetchInterval)
+- [ ] H53: AdminWebhookEvents webhook retry doesn't invalidate/refresh event list
+
+### High — Frontend Company Pages (12)
+- [ ] H5: AdminCompanyDialogs ManageCompanyDialog crashes if company prop is null
+- [ ] H6: AdminContractorDialogs planId passed as NaN when select never changed
+- [ ] H7: CompanyJobs job creation doesn't invalidate the job list query
+- [ ] H8: CompanyContractors invite contractor uses wrong field name (contractorEmail vs email)
+- [ ] H10: LiveTracking map crashes when no active jobs exist
+- [ ] H11: CompanySettings billable time policy saves display label instead of enum key
+- [ ] H13: CompanyDashboard shows raw status enum values (in_progress instead of In Progress)
+- [ ] H14: AdminRevenue revenue chart crashes on empty data (divide-by-zero)
+- [ ] H15: CompanyExpenseReport date range filter doesn't pass to backend query
+- [ ] H16: AdminSubscriptionPlans plan deletion doesn't check for active subscribers
+- [ ] H18: CompanyAnalytics chart accesses totalCost but backend returns total_cost
+- [ ] H20: CompanyPropertyReports property selector shows all platform properties (no companyId filter)
+
+### High — Frontend Contractor/Admin Pages (10)
+- [ ] H9: ContractorProfile service area update doesn't re-geocode on ZIP change
+- [ ] H12: ContractorBilling Stripe checkout opens in same tab (should be _blank)
+- [ ] H17: ContractorEarnings earnings total includes unpaid completed jobs
+- [ ] H19: AdminPromoCodes promo code creation allows duplicates without error
+- [ ] H41: ContractorMyJobs active job timer not cleared on successful clock-out
+- [ ] H42: CompanyJobs job detail modal shows raw contractor ID instead of name
+- [ ] H43: ContractorDashboard stats don't update after job acceptance (no invalidation)
+- [ ] H50: ContractorPayouts payout history shows gross amount instead of net (missing fee subtraction)
+- [ ] H51: AdminLeaderboard time period filter doesn't pass to backend query
+- [ ] H54: AdminAnnouncements audience targeting sends display label instead of enum key
+
+### High — Auth/Registration/Layout (12)
+- [ ] H21: DashboardLayout impersonation banner missing for admin-as-company sessions
+- [ ] H22: DashboardLayout role-based nav renders before auth check completes (flash of wrong nav)
+- [ ] H23: Register.tsx company registration doesn't assign company_admin role
+- [ ] H24: Onboarding.tsx onboarding step completion not persisted (lost on refresh)
+- [ ] H25: InviteAccept.tsx invite token not invalidated after acceptance (reusable)
+- [ ] H26: TeamInviteAccept.tsx no check for already-accepted team invites (creates duplicates)
+- [ ] H27: ForgotPassword.tsx no rate limiting / debounce on password reset requests
+- [ ] H28: ResetPassword.tsx expired token shows generic error with no guidance
+- [ ] H44: AdminChurnRisk churn risk score uses hardcoded frontend thresholds
+- [ ] H47: CompanySettings unsaved changes silently discarded on navigation
+- [ ] H48: AdminAuditLog shows raw user IDs instead of names
+- [ ] H49: CompanyBilling plan upgrade has no confirmation step
+
+### Medium (130)
+- [ ] M1: ContractorJobBoard no empty state when no jobs match service area
+- [ ] M2: CompanyJobs no confirmation before deleting a job with active contractor
+- [ ] M3: ContractorProfile license expiry date not validated (past dates accepted)
+- [ ] M4: CompanySettings logo upload has no file size limit enforced on frontend
+- [ ] M5: AdminAuditLog no pagination (loads all records at once)
+- [ ] M6: ContractorBilling no loading state during Stripe redirect
+- [ ] M7: CompanyDashboard no data skeleton during initial load
+- [ ] M8: ContractorProfile profile photo upload doesn't show preview before saving
+- [ ] M9: CompanyJobs job search doesn't debounce (fires query on every keystroke)
+- [ ] M10: AdminSubscriptionPlans plan feature list is free-text with no validation
+- [ ] M11: ContractorEarnings export to CSV ignores date filter
+- [ ] M12: CompanyProperties property deletion doesn't warn about active jobs at that property
+- [ ] M13: AdminPromoCodes expired promo codes still appear in active list
+- [ ] M14: CompanyContractors contractor list doesn't show verification status
+- [ ] M15: ContractorMyJobs no offline handling (clock-in fails silently with no internet)
+- [ ] M16: AdminMaintenanceMode maintenance mode toggle has no confirmation step
+- [ ] M17: CompanyAnalytics date range defaults to all-time with no visual indicator
+- [ ] M18: ContractorDashboard upcoming jobs list shows no time zone for scheduled times
+- [ ] M19: CompanyPropertyReports report export includes properties from other companies
+- [ ] M20: AdminFeatureFlags feature flag changes take effect immediately with no preview
+- [ ] M21: CompanyJobs job priority badge uses wrong color mapping
+- [ ] M22: ContractorProfile trades list allows duplicate trade selections
+- [ ] M23: AdminWebhookEvents no pagination on webhook event list
+- [ ] M24: CompanySettings geofence radius slider has no unit label (feet vs meters unclear)
+- [ ] M25: ContractorMyJobs job notes field not shown in active job view
+- [ ] M26: AdminRevenue date filter doesn't reset chart on change
+- [ ] M27: CompanyDashboard property count shows 0 when properties exist
+- [ ] M28: ContractorEarnings no loading skeleton while data fetches
+- [ ] M29: AdminPromoCodes no expiry date shown in promo code list
+- [ ] M30: CompanyJobs bulk job actions (select all) not implemented but UI exists
+- [ ] M31: ContractorProfile insurance certificate upload has no file type validation
+- [ ] M32: AdminSuspensions suspension reason field is optional but should be required
+- [ ] M33: CompanyContractors contractor search doesn't search by trade
+- [ ] M34: AdminAnnouncements announcement preview not shown before publish
+- [ ] M35: CompanyProperties map doesn't re-center when property is selected from list
+- [ ] M36: ContractorDashboard earnings widget shows lifetime total not current month
+- [ ] M37: AdminCredits no search/filter on credit history list
+- [ ] M38: CompanySettings auto clock-out timer value not validated (0 or negative allowed)
+- [ ] M39: ContractorJobBoard job card doesn't show estimated duration
+- [ ] M40: AdminPayoutHolds no filter by hold reason
+- [ ] M41: CompanyJobs job status filter doesn't include all statuses
+- [ ] M42: ContractorProfile service area map doesn't show current radius on load
+- [ ] M43: AdminLeaderboard no tie-breaking logic for equal scores
+- [ ] M44: CompanyExpenseReport no total row at bottom of expense table
+- [ ] M45: ContractorBilling subscription status shows "active" even when in trial
+- [ ] M46: AdminChurnRisk no action button to reach out to at-risk companies
+- [ ] M47: CompanyJobs job creation form doesn't auto-select property when only one exists
+- [ ] M48: ContractorMyJobs no map shown for job location in active job view
+- [ ] M49: AdminEmailBlast no unsubscribe tracking shown
+- [ ] M50: CompanySettings notification preferences not saved per-user (global only)
+- [ ] M51: ContractorProfile background check status not shown on profile
+- [ ] M52: AdminRevenue export button exports all time not filtered range
+- [ ] M53: CompanyContractors preferred contractor toggle has no confirmation
+- [ ] M54: ContractorEarnings weekly/monthly toggle doesn't persist across page visits
+- [ ] M55: AdminAuditLog filter by action type not implemented
+- [ ] M56: CompanyProperties property list doesn't show job count per property
+- [ ] M57: ContractorDashboard no quick-action button to view job board
+- [ ] M58: AdminSubscriptionPlans plan sort order not editable
+- [ ] M59: CompanyJobs recurring job setup UI exists but backend not wired
+- [ ] M60: ContractorProfile no "save" confirmation toast after profile update
+- [ ] M61: AdminActivityFeed no filter by company or contractor
+- [ ] M62: CompanySettings skill tier emergency multiplier allows values > 10 (no max validation)
+- [ ] M63: ContractorMyJobs completed jobs list has no date filter
+- [ ] M64: AdminPromoCodes no bulk delete for expired codes
+- [ ] M65: CompanyDashboard recent activity feed shows system events not user-relevant ones
+- [ ] M66: ContractorEarnings 1099 download button shows but PDF is empty template
+- [ ] M67: AdminSuspensions no bulk suspend action
+- [ ] M68: CompanyJobs job detail doesn't show property address on map
+- [ ] M69: ContractorProfile license number field has no format validation
+- [ ] M70: AdminRevenue no breakdown by plan tier
+- [ ] M71: CompanyContractors no sort by rating or job count
+- [ ] M72: ContractorDashboard notification bell shows unread count but clicking doesn't mark as read
+- [ ] M73: AdminWebhookEvents retry button doesn't disable during retry (can double-click)
+- [ ] M74: CompanyProperties bulk property import UI exists but not wired
+- [ ] M75: ContractorMyJobs clock-in confirmation doesn't show property name
+- [ ] M76: AdminEmailBlast no scheduling option (sends immediately only)
+- [ ] M77: CompanySettings company logo not shown in header after upload
+- [ ] M78: ContractorProfile service area ZIP code input allows non-US ZIP formats
+- [ ] M79: AdminAuditLog export to CSV not implemented
+- [ ] M80: CompanyJobs job urgency label not shown in job list view
+- [ ] M81: ContractorEarnings payment method filter shows all methods even if contractor only has one
+- [ ] M82: AdminChurnRisk list not sortable by risk score
+- [ ] M83: CompanyExpenseReport chart tooltip shows raw numbers without currency formatting
+- [ ] M84: ContractorDashboard "View All Jobs" link goes to wrong route
+- [ ] M85: AdminCredits credit balance can go negative (no floor validation)
+- [ ] M86: CompanyJobs job notes not shown in job list preview
+- [ ] M87: ContractorProfile insurance expiry not checked against current date
+- [ ] M88: AdminPayoutHolds hold amount shows without currency symbol
+- [ ] M89: CompanySettings integration webhook URL not validated as valid URL
+- [ ] M90: ContractorJobBoard distance shown in miles but calculated in km
+- [ ] M91: AdminRevenue month labels on chart use numeric month (1, 2) not name (Jan, Feb)
+- [ ] M92: CompanyContractors invite email not validated as valid email format
+- [ ] M93: ContractorMyJobs job acceptance confirmation doesn't show pay rate
+- [ ] M94: AdminSubscriptionPlans trial period field allows 0 days
+- [ ] M95: CompanyProperties geocoding failure not shown to user (silent)
+- [ ] M96: ContractorDashboard next payout date shows UTC date not local date
+- [ ] M97: AdminAnnouncements no read receipt tracking
+- [ ] M98: CompanyJobs job filter resets when navigating back from job detail
+- [ ] M99: ContractorProfile no "unsaved changes" warning when navigating away
+- [ ] M100: AdminEmailBlast recipient list preview not paginated
+- [ ] M101: CompanySettings billable time hybrid cap field allows negative values
+- [ ] M102: ContractorEarnings chart Y-axis doesn't start at 0
+- [ ] M103: AdminPromoCodes discount percentage allows values > 100
+- [ ] M104: CompanyDashboard top contractors widget shows contractor IDs not names
+- [ ] M105: ContractorMyJobs dispute form has no character limit on reason field
+- [ ] M106: AdminSuspensions no email notification sent to suspended user
+- [ ] M107: CompanyJobs job creation doesn't validate that selected property belongs to company
+- [ ] M108: ContractorProfile trade certification upload has no virus scan
+- [ ] M109: AdminRevenue no comparison to previous period
+- [ ] M110: CompanyContractors contractor profile modal shows loading forever if profile not found
+- [ ] M111: ContractorDashboard active job card doesn't show time elapsed
+- [ ] M112: AdminActivityFeed timestamps shown in UTC not local time
+- [ ] M113: CompanyProperties property edit doesn't pre-fill current values in form
+- [ ] M114: ContractorEarnings filter by company shows all companies not just ones contractor worked with
+- [ ] M115: AdminWebhookEvents no filter by event type
+- [ ] M116: CompanyJobs job assignment doesn't check if contractor is still active/approved
+- [ ] M117: ContractorProfile no way to remove a trade once added
+- [ ] M118: AdminLeaderboard no export option
+- [ ] M119: CompanyExpenseReport property filter shows deleted properties
+- [ ] M120: ContractorMyJobs no push notification when new job is assigned
+- [ ] M121: AdminChurnRisk risk score not explained to admin (no tooltip or legend)
+- [ ] M122: CompanySettings max session duration field allows values below 1 hour
+- [ ] M123: ContractorDashboard earnings chart doesn't distinguish between pending and paid
+- [ ] M124: AdminCredits credit grant reason field is optional but should be required
+- [ ] M125: CompanyJobs job detail close button doesn't restore scroll position
+- [ ] M126: ContractorProfile service area shows "0 miles" when radius is not set
+- [ ] M127: AdminAuditLog no real-time updates (requires manual refresh)
+- [ ] M128: CompanyContractors contractor removal doesn't cancel active jobs
+- [ ] M129: ContractorEarnings no year-to-date summary
+- [ ] M130: AdminEmailBlast no A/B testing or variant support
+
+### Low (125)
+- [ ] L1-L125: All low severity bugs (minor UX polish, edge cases — see full_bug_report.md)

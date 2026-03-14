@@ -810,7 +810,7 @@ export const adminViewAsRouter = router({
             billingUrl: `${origin}/company/billing`,
           } as any);
           results.warned++;
-        } catch (e: any) { results.errors.push(`company ${c.companyId}: ${e.message}`); }
+        } catch (e: unknown) { results.errors.push(`company ${c.companyId}: ${e instanceof Error ? e.message : String(e)}`); }
       }
 
       // 3-day warning for contractors
@@ -828,7 +828,7 @@ export const adminViewAsRouter = router({
             billingUrl: `${origin}/contractor/billing`,
           } as any);
           results.warned++;
-        } catch (e: any) { results.errors.push(`contractor ${c.contractorProfileId}: ${e.message}`); }
+        } catch (e: unknown) { results.errors.push(`contractor ${c.contractorProfileId}: ${e instanceof Error ? e.message : String(e)}`); }
       }
 
       // Expire overdue company trials
@@ -845,7 +845,7 @@ export const adminViewAsRouter = router({
             billingUrl: `${origin}/company/billing`,
           } as any);
           results.expired++;
-        } catch (e: any) { results.errors.push(`company expired ${c.companyId}: ${e.message}`); }
+        } catch (e: unknown) { results.errors.push(`company expired ${c.companyId}: ${e instanceof Error ? e.message : String(e)}`); }
       }
 
       // Expire overdue contractor trials
@@ -862,7 +862,7 @@ export const adminViewAsRouter = router({
             billingUrl: `${origin}/contractor/billing`,
           } as any);
           results.expired++;
-        } catch (e: any) { results.errors.push(`contractor expired ${c.contractorProfileId}: ${e.message}`); }
+        } catch (e: unknown) { results.errors.push(`contractor expired ${c.contractorProfileId}: ${e instanceof Error ? e.message : String(e)}`); }
       }
 
       return results;
@@ -907,8 +907,8 @@ export const adminViewAsRouter = router({
             }
             await db.updateCompany(company.id, { planId: toPlanId });
             movedCount++;
-          } catch (e: any) {
-            errors.push(`company ${company.id}: ${e.message}`);
+          } catch (e: unknown) {
+            errors.push(`company ${company.id}: ${e instanceof Error ? e.message : String(e)}`);
           }
         }
       } else {
@@ -927,8 +927,8 @@ export const adminViewAsRouter = router({
             }
             await db.assignContractorPlan(contractor.id, toPlanId, null, null, contractor.planStatus ?? "active");
             movedCount++;
-          } catch (e: any) {
-            errors.push(`contractor ${contractor.id}: ${e.message}`);
+          } catch (e: unknown) {
+            errors.push(`contractor ${contractor.id}: ${e instanceof Error ? e.message : String(e)}`);
           }
         }
       }

@@ -25,7 +25,12 @@ export default function ResetPassword() {
       toast.success("Password reset successfully!");
     },
     onError: (err) => {
-      setError(err.message);
+      // Provide a specific message for expired/invalid tokens
+      if (err.message.toLowerCase().includes('invalid') || err.message.toLowerCase().includes('expired') || err.message.toLowerCase().includes('not found')) {
+        setError('This reset link has expired or is invalid. Please request a new one.');
+      } else {
+        setError(err.message);
+      }
     },
   });
 
@@ -133,9 +138,20 @@ export default function ResetPassword() {
             </div>
 
             {error && (
-              <div className="flex items-center gap-2 p-3 rounded-lg bg-destructive/10 border border-destructive/20">
-                <XCircle className="h-4 w-4 text-destructive shrink-0" />
-                <p className="text-sm text-destructive">{error}</p>
+              <div className="flex flex-col gap-2 p-3 rounded-lg bg-destructive/10 border border-destructive/20">
+                <div className="flex items-center gap-2">
+                  <XCircle className="h-4 w-4 text-destructive shrink-0" />
+                  <p className="text-sm text-destructive">{error}</p>
+                </div>
+                {(error.includes('expired') || error.includes('invalid')) && (
+                  <button
+                    type="button"
+                    onClick={() => navigate('/forgot-password')}
+                    className="text-xs text-primary underline text-left ml-6"
+                  >
+                    Request a new reset link →
+                  </button>
+                )}
               </div>
             )}
 

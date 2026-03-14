@@ -190,7 +190,6 @@ const skillTiersRouter = router({
   create: companyAdminProcedure
     .input(z.object({ name: z.string().min(1), description: z.string().optional(), hourlyRate: z.string(), emergencyMultiplier: z.string().optional(), sortOrder: z.number().optional() }))
     .mutation(async ({ ctx, input }) => {
-      if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN", message: "Only platform admins can add skill tiers" });
       if (!getEffectiveCompanyId(ctx)) throw new TRPCError({ code: "NOT_FOUND" });
       const id = await db.createSkillTier({ companyId: getEffectiveCompanyId(ctx), ...input });
       return { id };
@@ -208,7 +207,6 @@ const skillTiersRouter = router({
   delete: companyAdminProcedure
     .input(z.object({ id: z.number() }))
     .mutation(async ({ ctx, input }) => {
-      if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN", message: "Only platform admins can delete skill tiers" });
       if (!getEffectiveCompanyId(ctx)) throw new TRPCError({ code: "NOT_FOUND" });
       await db.deleteSkillTier(input.id, getEffectiveCompanyId(ctx));
       return { success: true };
@@ -3530,7 +3528,23 @@ const adminControlRouter = router({
     return db.getChurnRiskCompanies();
   }),
 
-  // 11. Per-job fee override (logged in audit trail)
+  // 11a. Lookup job transaction details (for fee override preview)
+  lookupJobTransaction: adminProcedure
+    .input(z.object({ jobId: z.number().int().positive() }))
+    .query(async ({ input }) => {
+      const txn = await db.getTransactionByJobId(input.jobId);
+      if (!txn) throw new TRPCError({ code: "NOT_FOUND", message: "No transaction found for this job ID" });
+      return {
+        jobId: input.jobId,
+        transactionId: txn.id,
+        currentPlatformFee: String(txn.platformFee ?? "0"),
+        laborCost: String(txn.laborCost ?? "0"),
+        partsCost: String(txn.partsCost ?? "0"),
+        totalCharged: String(txn.totalCharged ?? "0"),
+        status: txn.status ?? "unknown",
+      };
+    }),
+  // 11b. Per-job fee override (logged in audit trail)
   overrideJobFee: adminProcedure
     .input(z.object({
       jobId: z.number().int().positive(),

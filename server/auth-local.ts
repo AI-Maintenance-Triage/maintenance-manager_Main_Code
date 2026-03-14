@@ -64,8 +64,8 @@ export function registerLocalAuthRoutes(app: Express) {
         res.status(400).json({ error: "Name, email, and password are required" });
         return;
       }
-      if (typeof password !== "string" || password.length < 6) {
-        res.status(400).json({ error: "Password must be at least 6 characters" });
+      if (typeof password !== "string" || password.length < 8) {
+        res.status(400).json({ error: "Password must be at least 8 characters" });
         return;
       }
 
@@ -229,8 +229,14 @@ export function registerLocalAuthRoutes(app: Express) {
       const token = crypto.randomBytes(32).toString("hex");
       const expiresAt = new Date(Date.now() + 60 * 60 * 1000);
       await db.setPasswordResetToken(user.id, token, expiresAt);
-      const appOrigin = origin || req.headers.origin || "http://localhost:3000";
-      const resetUrl = `${appOrigin}/reset-password?token=${token}`;
+      // Validate origin to prevent phishing: only allow https:// or localhost URLs
+      let safeOrigin = req.headers.origin || "http://localhost:3000";
+      if (origin && typeof origin === "string") {
+        const isHttps = origin.startsWith("https://");
+        const isLocalhost = origin.startsWith("http://localhost") || origin.startsWith("http://127.0.0.1");
+        if (isHttps || isLocalhost) safeOrigin = origin;
+      }
+      const resetUrl = `${safeOrigin}/reset-password?token=${token}`;
       emailService.sendPasswordResetEmail({
         to: user.email!,
         name: user.name ?? "there",
@@ -251,8 +257,8 @@ export function registerLocalAuthRoutes(app: Express) {
         res.status(400).json({ error: "Token and new password are required" });
         return;
       }
-      if (typeof password !== "string" || password.length < 6) {
-        res.status(400).json({ error: "Password must be at least 6 characters" });
+      if (typeof password !== "string" || password.length < 8) {
+        res.status(400).json({ error: "Password must be at least 8 characters" });
         return;
       }
       const user = await db.getUserByResetToken(token);
@@ -266,13 +272,8 @@ export function registerLocalAuthRoutes(app: Express) {
         return;
       }
       const passwordHash = await bcrypt.hash(password, SALT_ROUNDS);
-      await db.updateUserRole(user.id, user.role as "user" | "admin" | "company_admin" | "contractor");
-      const dbConn = await db.getDb();
-      if (dbConn) {
-        const { eq } = await import("drizzle-orm");
-        const { users } = await import("../drizzle/schema");
-        await dbConn.update(users).set({ passwordHash }).where(eq(users.id, user.id));
-      }
+      // Only update the password hash — never touch the user's role during a password reset
+      await db.updateUserPassword(user.id, passwordHash);
       await db.clearPasswordResetToken(user.id);
       res.json({ success: true });
     } catch (error) {

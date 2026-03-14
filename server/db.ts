@@ -4021,7 +4021,11 @@ export async function acceptCompanyInvitation(token: string) {
   if (!db) throw new Error("DB not available");
   await db.update(companyInvitations).set({ acceptedAt: new Date() }).where(eq(companyInvitations.token, token));
 }
-
+export async function deleteCompanyInvitation(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  await db.delete(companyInvitations).where(eq(companyInvitations.id, id));
+}
 export async function addCompanyUser(data: InsertCompanyUser) {
   const db = await getDb();
   if (!db) throw new Error("DB not available");

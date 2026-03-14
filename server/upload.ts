@@ -37,9 +37,10 @@ export function registerUploadRoute(app: express.Application) {
       const { url } = await storagePut(fileKey, req.file.buffer, req.file.mimetype);
 
       return res.json({ url, key: fileKey });
-    } catch (err: any) {
-      console.error("[Upload] Error:", err.message);
-      return res.status(500).json({ error: err.message ?? "Upload failed" });
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Upload failed";
+      console.error("[Upload] Error:", message);
+      return res.status(500).json({ error: message });
     }
   });
 

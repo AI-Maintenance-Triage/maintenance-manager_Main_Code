@@ -186,7 +186,8 @@ export const teamRouter = router({
       const invite = allInvites.find((i) => i.id === input.inviteId);
       if (!invite) throw new TRPCError({ code: "NOT_FOUND" });
       if (invite.acceptedAt) throw new TRPCError({ code: "BAD_REQUEST", message: "Invitation already accepted." });
-      await db.acceptCompanyInvitation(invite.token);
+      // Delete the invitation record so it no longer appears in the pending list
+      await db.deleteCompanyInvitation(invite.id);
       return { success: true };
     }),
 });
