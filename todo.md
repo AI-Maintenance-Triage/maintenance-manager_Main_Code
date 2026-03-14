@@ -1899,3 +1899,8 @@ _Note: Core items were completed in earlier sessions. These are the remaining ed
 
 ### Low (125)
 - [ ] L1-L125: All low severity bugs (minor UX polish, edge cases — see full_bug_report.md)
+
+## Improvements (Session - Low Bug Fixes Follow-up)
+- [x] Add password strength indicator on Register and ResetPassword pages
+- [x] Add cursor-based pagination to AdminActivityFeed
+- [x] Add last-synced timestamp to PMS integrations in CompanyIntegrations

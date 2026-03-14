@@ -3195,10 +3195,16 @@ export async function logActivityEvent(data: InsertActivityEvent) {
   }
 }
 
-export async function listActivityEvents(limit = 50) {
+export async function listActivityEvents(limit = 50, cursor?: number) {
   const db = await getDb();
   if (!db) return [];
-  return db.select().from(activityEvents).orderBy(desc(activityEvents.createdAt)).limit(limit);
+  const query = db.select().from(activityEvents).orderBy(desc(activityEvents.createdAt)).limit(limit + 1);
+  if (cursor !== undefined) {
+    query.where(lt(activityEvents.id, cursor));
+  }
+  const rows = await query;
+  const hasMore = rows.length > limit;
+  return { events: rows.slice(0, limit), hasMore, nextCursor: hasMore ? rows[limit - 1]?.id : undefined };
 }
 
 // ─── Maintenance Mode ─────────────────────────────────────────────────────

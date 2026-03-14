@@ -3511,9 +3511,9 @@ const adminControlRouter = router({
 
   // 8. Activity Feed
   listActivityEvents: adminProcedure
-    .input(z.object({ limit: z.number().default(50) }))
+    .input(z.object({ limit: z.number().default(50), cursor: z.number().optional() }))
     .query(async ({ input }) => {
-      return db.listActivityEvents(input.limit);
+      return db.listActivityEvents(input.limit, input.cursor);
     }),
 
   // 9. Contractor Leaderboard

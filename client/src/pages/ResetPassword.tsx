@@ -72,6 +72,22 @@ export default function ResetPassword() {
     );
   }
 
+  // Password strength calculation
+  const getPasswordStrength = (pwd: string): { score: number; label: string; color: string } => {
+    if (!pwd) return { score: 0, label: "", color: "" };
+    let score = 0;
+    if (pwd.length >= 8) score++;
+    if (pwd.length >= 12) score++;
+    if (/[A-Z]/.test(pwd)) score++;
+    if (/[0-9]/.test(pwd)) score++;
+    if (/[^A-Za-z0-9]/.test(pwd)) score++;
+    if (score <= 1) return { score, label: "Weak", color: "bg-red-500" };
+    if (score <= 2) return { score, label: "Fair", color: "bg-yellow-500" };
+    if (score <= 3) return { score, label: "Good", color: "bg-blue-500" };
+    return { score, label: "Strong", color: "bg-green-500" };
+  };
+  const passwordStrength = getPasswordStrength(password);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
@@ -122,6 +138,25 @@ export default function ResetPassword() {
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
               </div>
+              {password.length > 0 && (
+                <div className="space-y-1 mt-1.5">
+                  <div className="flex gap-1">
+                    {[1, 2, 3, 4].map((i) => (
+                      <div
+                        key={i}
+                        className={`h-1 flex-1 rounded-full transition-all duration-300 ${
+                          passwordStrength.score >= i ? passwordStrength.color : "bg-muted"
+                        }`}
+                      />
+                    ))}
+                  </div>
+                  <p className={`text-xs font-medium ${
+                    passwordStrength.label === "Weak" ? "text-red-500" :
+                    passwordStrength.label === "Fair" ? "text-yellow-500" :
+                    passwordStrength.label === "Good" ? "text-blue-500" : "text-green-500"
+                  }`}>{passwordStrength.label}</p>
+                </div>
+              )}
             </div>
 
             <div className="space-y-2">

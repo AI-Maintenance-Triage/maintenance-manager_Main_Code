@@ -329,9 +329,18 @@ export default function CompanyIntegrations() {
                             </Badge>
                           )}
                         </div>
-                        <p className="text-xs text-muted-foreground">
+                        <p className="text-xs text-muted-foreground flex items-center gap-1">
+                          <Clock className="w-3 h-3 shrink-0" />
                           {integration.lastSyncAt
-                            ? `Last synced ${new Date(integration.lastSyncAt).toLocaleString()}`
+                            ? (() => {
+                                const d = new Date(integration.lastSyncAt);
+                                const diffMs = Date.now() - d.getTime();
+                                const diffMin = Math.floor(diffMs / 60000);
+                                const diffH = Math.floor(diffMs / 3600000);
+                                const diffD = Math.floor(diffMs / 86400000);
+                                const relative = diffMin < 1 ? "just now" : diffMin < 60 ? `${diffMin}m ago` : diffH < 24 ? `${diffH}h ago` : `${diffD}d ago`;
+                                return `Last synced ${relative} · ${d.toLocaleString()}`;
+                              })()
                             : "Never synced"}
                         </p>
                         {(() => {
