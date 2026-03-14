@@ -411,6 +411,9 @@ export const adminViewAsRouter = router({
   updateContractor: adminProcedure
     .input(z.object({
       id: z.number(),
+      name: z.string().optional(),
+      email: z.string().optional(),
+      address: z.string().optional(),
       businessName: z.string().optional(),
       phone: z.string().optional(),
       trades: z.array(z.string()).optional(),
@@ -421,8 +424,14 @@ export const adminViewAsRouter = router({
       isAvailable: z.boolean().optional(),
     }))
     .mutation(async ({ input }) => {
-      const { id, ...data } = input;
-      await db.adminUpdateContractorProfile(id, data);
+      const { id, name, email, ...profileData } = input;
+      await db.adminUpdateContractorProfile(id, profileData as any);
+      if (name !== undefined || email !== undefined) {
+        const userId = await db.getUserIdByContractorProfileId(id);
+        if (userId) {
+          await db.updateUserName(userId, name ?? "");
+        }
+      }
       return { success: true };
     }),
 
@@ -664,17 +673,22 @@ export const adminViewAsRouter = router({
       companyId: z.number(),
       planId: z.number().nullable(),
       planPriceOverride: z.number().nullable().optional(),
-      planNotes: z.string().optional(),
+      planNotes: z.string().nullable().optional(),
+      // aliases used by shared dialog components
+      priceOverride: z.number().nullable().optional(),
+      notes: z.string().nullable().optional(),
     }))
     .mutation(async ({ input }) => {
       const now = Date.now();
       const FOURTEEN_DAYS_MS = 14 * 24 * 60 * 60 * 1000;
+      const resolvedPrice = input.planPriceOverride ?? input.priceOverride ?? null;
+      const resolvedNotes = input.planNotes ?? input.notes ?? null;
       const updateData: Record<string, unknown> = {
         planId: input.planId,
-        planNotes: input.planNotes ?? null,
+        planNotes: resolvedNotes,
       };
-      if (input.planPriceOverride != null) {
-        updateData.planPriceOverride = String(input.planPriceOverride);
+      if (resolvedPrice != null) {
+        updateData.planPriceOverride = String(resolvedPrice);
       } else {
         updateData.planPriceOverride = null;
       }
@@ -732,23 +746,31 @@ export const adminViewAsRouter = router({
   // ─── Assign Plan to Contractor ────────────────────────────────────────────
   assignContractorPlan: adminProcedure
     .input(z.object({
-      contractorProfileId: z.number(),
+      contractorProfileId: z.number().optional(),
+      contractorId: z.number().optional(), // alias used by shared dialog
       planId: z.number().nullable(),
       planPriceOverride: z.number().nullable().optional(),
-      planNotes: z.string().optional(),
+      planNotes: z.string().nullable().optional(),
+      // aliases used by shared dialog components
+      priceOverride: z.number().nullable().optional(),
+      notes: z.string().nullable().optional(),
     }))
     .mutation(async ({ input }) => {
+      const resolvedContractorId = input.contractorProfileId ?? input.contractorId;
+      if (!resolvedContractorId) throw new TRPCError({ code: "BAD_REQUEST", message: "contractorProfileId or contractorId required" });
       const now = Date.now();
       const FOURTEEN_DAYS_MS = 14 * 24 * 60 * 60 * 1000;
-      const priceOverride = input.planPriceOverride != null ? String(input.planPriceOverride) : null;
+      const resolvedPrice2 = input.planPriceOverride ?? input.priceOverride ?? null;
+      const resolvedNotes2 = input.planNotes ?? input.notes ?? null;
+      const priceOverride = resolvedPrice2 != null ? String(resolvedPrice2) : null;
       const planStatus = input.planId != null ? "trialing" : "trialing";
       const planAssignedAt = input.planId != null ? now : null;
       const planExpiresAt = input.planId != null ? now + FOURTEEN_DAYS_MS : null;
       await db.assignContractorPlan(
-        input.contractorProfileId,
+        resolvedContractorId,
         input.planId,
         priceOverride,
-        input.planNotes ?? null,
+        resolvedNotes2,
         planStatus,
         planAssignedAt,
         planExpiresAt
@@ -991,5 +1013,43 @@ export const adminViewAsRouter = router({
         } as any);
         return { success: true };
       }
+    }),
+
+  // ─── Company Fee Override (used by shared ManageCompanyDialog) ────────────────────────
+  getCompanyFeeOverride: adminProcedure
+    .input(z.object({ companyId: z.number().optional() }))
+    .query(async ({ input }) => {
+      if (!input.companyId) return null;
+      const company = await db.getCompanyById(input.companyId);
+      if (!company) return null;
+      const plan = company.planId ? await db.getSubscriptionPlanById(company.planId) : null;
+      return {
+        company: {
+          feeOverridePercent: (company as any).feeOverridePercent ?? null,
+          feeOverridePerListingEnabled: (company as any).feeOverridePerListingEnabled ?? false,
+          feeOverridePerListingAmount: (company as any).feeOverridePerListingAmount ?? null,
+        },
+        plan: plan ? {
+          feePercent: plan.platformFeePercent ?? null,
+          perListingFeeEnabled: plan.perListingFeeEnabled ?? false,
+          perListingFeeAmount: plan.perListingFeeAmount ?? null,
+        } : null,
+      };
+    }),
+
+  setCompanyFeeOverride: adminProcedure
+    .input(z.object({
+      companyId: z.number(),
+      feePercent: z.number().nullable(),
+      perListingEnabled: z.boolean(),
+      perListingAmount: z.number().nullable(),
+    }))
+    .mutation(async ({ input }) => {
+      await db.updateCompany(input.companyId, {
+        feeOverridePercent: input.feePercent != null ? String(input.feePercent) : null,
+        feeOverridePerListingEnabled: input.perListingEnabled,
+        feeOverridePerListingAmount: input.perListingAmount != null ? String(input.perListingAmount) : "0.00",
+      } as any);
+      return { success: true };
     }),
 });

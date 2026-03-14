@@ -3,161 +3,39 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { HardHat, Calendar, Plus, Star, MapPin, Clock, Gift } from "lucide-react";
+import { HardHat, Calendar, Plus, Star, MapPin, Settings } from "lucide-react";
 import { useState } from "react";
-import { toast } from "sonner";
-import AddressAutocomplete, { type AddressResult } from "@/components/AddressAutocomplete";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-
-const TRADE_OPTIONS = [
-  "General Handyman", "Plumbing", "Electrical", "HVAC",
-  "Carpentry", "Painting", "Roofing", "Appliance Repair",
-  "Locksmith", "Landscaping", "Flooring", "Drywall",
-];
-
-// ─── Create Contractor Dialog ─────────────────────────────────────────────────
-function CreateContractorDialog({ open, onOpenChange, onCreated }: { open: boolean; onOpenChange: (v: boolean) => void; onCreated: () => void }) {
-  const [name, setName] = useState("");
-  const [emailVal, setEmailVal] = useState("");
-  const [password, setPassword] = useState("");
-  const [businessName, setBusinessName] = useState("");
-  const [phone, setPhone] = useState("");
-  const [licenseNumber, setLicenseNumber] = useState("");
-  const [selectedTrades, setSelectedTrades] = useState<string[]>([]);
-  const [serviceZips, setServiceZips] = useState("");
-  const [address, setAddress] = useState("");
-  const [sendWelcome, setSendWelcome] = useState(true);
-
-  const handleAddressSelect = (result: AddressResult) => {
-    setAddress(result.formattedAddress);
-  };
-
-  const toggleTrade = (trade: string) => {
-    setSelectedTrades(prev =>
-      prev.includes(trade) ? prev.filter(t => t !== trade) : [...prev, trade]
-    );
-  };
-
-  const create = trpc.adminViewAs.adminCreateContractor.useMutation({
-    onSuccess: () => {
-      toast.success("Contractor account created successfully!");
-      setName(""); setEmailVal(""); setPassword(""); setBusinessName(""); setPhone(""); setLicenseNumber(""); setSelectedTrades([]); setServiceZips(""); setAddress("");
-      onCreated();
-      onOpenChange(false);
-    },
-    onError: (err: any) => toast.error(err.message),
-  });
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    const zips = serviceZips.split(",").map(z => z.trim()).filter(Boolean);
-    create.mutate({
-      name,
-      email: emailVal,
-      password,
-      businessName: businessName || undefined,
-      phone: phone || undefined,
-      licenseNumber: licenseNumber || undefined,
-      address: address || undefined,
-      trades: selectedTrades.length > 0 ? selectedTrades : undefined,
-      serviceAreaZips: zips.length > 0 ? zips : undefined,
-      sendWelcomeEmail: sendWelcome,
-    });
-  };
-
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2"><HardHat className="h-5 w-5 text-primary" /> Create Contractor Account</DialogTitle>
-        </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4 py-2">
-          <div className="space-y-1.5">
-            <Label>Full Name *</Label>
-            <Input placeholder="John Doe" value={name} onChange={e => setName(e.target.value)} required />
-          </div>
-          <div className="space-y-1.5">
-            <Label>Business Name</Label>
-            <Input placeholder="Doe Repairs LLC" value={businessName} onChange={e => setBusinessName(e.target.value)} />
-          </div>
-          <div className="space-y-1.5">
-            <Label>Email Address *</Label>
-            <Input type="email" placeholder="john@doerepairs.com" value={emailVal} onChange={e => setEmailVal(e.target.value)} required />
-          </div>
-          <div className="space-y-1.5">
-            <Label>Password * (min 8 characters)</Label>
-            <Input type="password" placeholder="Temporary password" value={password} onChange={e => setPassword(e.target.value)} minLength={8} required />
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <Label>Phone</Label>
-              <Input placeholder="(555) 000-0000" value={phone} onChange={e => setPhone(e.target.value)} />
-            </div>
-            <div className="space-y-1.5">
-              <Label>License #</Label>
-              <Input placeholder="LIC-12345" value={licenseNumber} onChange={e => setLicenseNumber(e.target.value)} />
-            </div>
-          </div>
-          <div className="space-y-1.5">
-            <Label>Business Address</Label>
-            <AddressAutocomplete
-              value={address}
-              onChange={setAddress}
-              onSelect={handleAddressSelect}
-              placeholder="Start typing the contractor's address..."
-            />
-          </div>
-          <div className="space-y-2">
-            <Label>Trades / Skills</Label>
-            <div className="flex flex-wrap gap-2">
-              {TRADE_OPTIONS.map(trade => (
-                <button
-                  key={trade}
-                  type="button"
-                  onClick={() => toggleTrade(trade)}
-                  className={`px-2.5 py-1 rounded-full text-xs font-medium border transition-colors ${
-                    selectedTrades.includes(trade)
-                      ? "bg-primary text-primary-foreground border-primary"
-                      : "bg-muted/40 text-muted-foreground border-border hover:border-primary/50"
-                  }`}
-                >
-                  {trade}
-                </button>
-              ))}
-            </div>
-          </div>
-          <div className="space-y-1.5">
-            <Label>Service Area ZIP Codes</Label>
-            <Input placeholder="25301, 25302, 25303 (comma-separated)" value={serviceZips} onChange={e => setServiceZips(e.target.value)} />
-            <p className="text-xs text-muted-foreground">Separate multiple ZIP codes with commas</p>
-          </div>
-          <div className="flex items-center justify-between rounded-lg border border-border p-3">
-            <div>
-              <p className="text-sm font-medium">Send welcome email</p>
-              <p className="text-xs text-muted-foreground">Email credentials to the new contractor</p>
-            </div>
-            <Switch checked={sendWelcome} onCheckedChange={setSendWelcome} />
-          </div>
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-            <Button type="submit" disabled={create.isPending}>{create.isPending ? "Creating..." : "Create Contractor"}</Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
-  );
-}
+import { ManageContractorDialog, CreateContractorDialog } from "@/components/admin/AdminContractorDialogs";
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 export default function AdminContractors() {
-  const { data: contractors, isLoading, refetch } = trpc.adminViewAs.allContractors.useQuery();
+  const { data: rawContractors, isLoading, refetch } = trpc.adminViewAs.allContractors.useQuery();
   const [createOpen, setCreateOpen] = useState(false);
-  const [extendingContractor, setExtendingContractor] = useState<any | null>(null);
-  const [grantingContractor, setGrantingContractor] = useState<any | null>(null);
+  const [managingContractor, setManagingContractor] = useState<any | null>(null);
+
+  // Normalize nested {profile, user} shape to flat object for shared dialog
+  const contractors = (rawContractors ?? []).map((c: any) => ({
+    id: c.profile.id,
+    userId: c.user.id,
+    userName: c.user.name,
+    userEmail: c.user.email,
+    email: c.user.email,
+    businessName: c.profile.businessName,
+    phone: c.profile.phone,
+    licenseNumber: c.profile.licenseNumber,
+    trades: c.profile.trades,
+    serviceAreaZips: c.profile.serviceAreaZips,
+    averageRating: c.profile.averageRating,
+    isAvailable: c.profile.isAvailable,
+    completedJobs: c.profile.completedJobs,
+    planId: c.profile.planId,
+    planPriceOverride: c.profile.planPriceOverride,
+    planNotes: c.profile.planNotes,
+    planStatus: c.profile.planStatus,
+    planExpiresAt: c.profile.planExpiresAt,
+    createdAt: c.profile.createdAt,
+    address: c.profile.address,
+  }));
 
   return (
     <div className="space-y-6">
@@ -171,7 +49,11 @@ export default function AdminContractors() {
         </Button>
       </div>
 
-      <CreateContractorDialog open={createOpen} onOpenChange={setCreateOpen} onCreated={() => refetch()} />
+      <CreateContractorDialog
+        open={createOpen}
+        onOpenChange={setCreateOpen}
+        onCreated={() => { setCreateOpen(false); refetch(); }}
+      />
 
       {isLoading ? (
         <div className="space-y-3">
@@ -246,14 +128,14 @@ export default function AdminContractors() {
                     {contractor.completedJobs != null && (
                       <span className="text-xs text-muted-foreground">{contractor.completedJobs} jobs</span>
                     )}
-                    <div className="flex items-center gap-1">
-                      <Button size="sm" variant="outline" className="text-xs gap-1 h-7" onClick={() => setExtendingContractor(contractor)} title="Extend trial">
-                        <Clock className="h-3 w-3" />
-                      </Button>
-                      <Button size="sm" variant="outline" className="text-xs gap-1 h-7" onClick={() => setGrantingContractor(contractor)} title="Grant free plan">
-                        <Gift className="h-3 w-3" />
-                      </Button>
-                    </div>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="text-xs gap-1 h-7"
+                      onClick={() => setManagingContractor(contractor)}
+                    >
+                      <Settings className="h-3 w-3" /> Manage
+                    </Button>
                   </div>
                 </div>
               </CardContent>
@@ -261,69 +143,15 @@ export default function AdminContractors() {
           ))}
         </div>
       )}
-      {extendingContractor && (
-        <Dialog open={!!extendingContractor} onOpenChange={(v) => { if (!v) setExtendingContractor(null); }}>
-          <DialogContent className="max-w-sm">
-            <DialogHeader><DialogTitle className="flex items-center gap-2"><Clock className="h-5 w-5 text-primary" /> Extend Trial</DialogTitle></DialogHeader>
-            <ExtendContractorTrialForm contractor={extendingContractor} onDone={() => { setExtendingContractor(null); refetch(); }} />
-          </DialogContent>
-        </Dialog>
-      )}
-      {grantingContractor && (
-        <Dialog open={!!grantingContractor} onOpenChange={(v) => { if (!v) setGrantingContractor(null); }}>
-          <DialogContent className="max-w-sm">
-            <DialogHeader><DialogTitle className="flex items-center gap-2"><Gift className="h-5 w-5 text-primary" /> Grant Free Plan</DialogTitle></DialogHeader>
-            <GrantContractorFreePlanForm contractor={grantingContractor} onDone={() => { setGrantingContractor(null); refetch(); }} />
-          </DialogContent>
-        </Dialog>
-      )}
-    </div>
-  );
-}
 
-function ExtendContractorTrialForm({ contractor, onDone }: { contractor: any; onDone: () => void }) {
-  const [days, setDays] = useState("14");
-  const extendTrial = trpc.adminViewAs.extendTrial.useMutation({
-    onSuccess: (data) => { toast.success(`Trial extended. New expiry: ${new Date(data.newExpiresAt).toLocaleDateString()}`); onDone(); },
-    onError: (e) => toast.error(e.message),
-  });
-  return (
-    <div className="space-y-4 py-2">
-      <p className="text-sm text-muted-foreground">Extend trial for <strong>{contractor.businessName || contractor.userName}</strong>.</p>
-      <div className="space-y-1"><Label>Days to add</Label><Input type="number" min="1" max="365" value={days} onChange={(e) => setDays(e.target.value)} /></div>
-      <DialogFooter>
-        <Button onClick={() => extendTrial.mutate({ entityType: "contractor", entityId: contractor.id, days: parseInt(days) || 14 })} disabled={extendTrial.isPending}>
-          {extendTrial.isPending ? "Extending..." : "Extend Trial"}
-        </Button>
-      </DialogFooter>
-    </div>
-  );
-}
-
-function GrantContractorFreePlanForm({ contractor, onDone }: { contractor: any; onDone: () => void }) {
-  const { data: plans } = trpc.adminViewAs.listContractorPlans.useQuery();
-  const [selectedPlanId, setSelectedPlanId] = useState<string>("");
-  const grantFree = trpc.adminViewAs.grantFreePlan.useMutation({
-    onSuccess: () => { toast.success(`Free plan granted`); onDone(); },
-    onError: (e) => toast.error(e.message),
-  });
-  return (
-    <div className="space-y-4 py-2">
-      <p className="text-sm text-muted-foreground">Grant <strong>{contractor.businessName || contractor.userName}</strong> a free (no-expiry) plan.</p>
-      <div className="space-y-1">
-        <Label>Plan (optional)</Label>
-        <Select value={selectedPlanId} onValueChange={setSelectedPlanId}>
-          <SelectTrigger><SelectValue placeholder="Keep current plan" /></SelectTrigger>
-          <SelectContent>
-            {(plans ?? []).map((p: any) => <SelectItem key={p.id} value={String(p.id)}>{p.name}</SelectItem>)}
-          </SelectContent>
-        </Select>
-      </div>
-      <DialogFooter>
-        <Button onClick={() => grantFree.mutate({ entityType: "contractor", entityId: contractor.id, planId: selectedPlanId ? parseInt(selectedPlanId) : undefined })} disabled={grantFree.isPending}>
-          {grantFree.isPending ? "Granting..." : "Grant Free Plan"}
-        </Button>
-      </DialogFooter>
+      {managingContractor && (
+        <ManageContractorDialog
+          contractor={managingContractor}
+          open={!!managingContractor}
+          onOpenChange={(v) => { if (!v) setManagingContractor(null); }}
+          onSaved={() => { setManagingContractor(null); refetch(); }}
+        />
+      )}
     </div>
   );
 }

@@ -1,0 +1,28 @@
+{
+  "query": "SELECT id, name, email, createdAt FROM companies;\nSELECT id, userId, businessName, createdAt FROM contractor_profiles ORDER BY id LIMIT 10;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user sHLCts4RR6iL2PA.1ead08cf1a54 --database bBuQZrfKLoBs6LmtvQ4y6E --execute SELECT id, name, email, createdAt FROM companies;\nSELECT id, userId, businessName, createdAt FROM contractor_profiles ORDER BY id LIMIT 10;",
+  "rows": [
+    {
+      "id": "3",
+      "name": "Trevors PM Comaany",
+      "email": "company1@test.com",
+      "createdAt": "2026-03-01 01:11:59"
+    },
+    {
+      "id": "id",
+      "name": "userId",
+      "email": "businessName",
+      "createdAt": "createdAt"
+    },
+    {
+      "id": "3",
+      "name": "150169",
+      "email": "Trevor's Pluimbing",
+      "createdAt": "2026-03-01 01:16:01"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tname\temail\tcreatedAt\n3\tTrevors PM Comaany\tcompany1@test.com\t2026-03-01 01:11:59\nid\tuserId\tbusinessName\tcreatedAt\n3\t150169\tTrevor's Pluimbing\t2026-03-01 01:16:01\n",
+  "stderr": "",
+  "execution_time_ms": 63
+}

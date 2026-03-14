@@ -1676,3 +1676,14 @@ _Note: Core items were completed in earlier sessions. These are the remaining ed
 - [ ] Frontend: contractor profile licenses — each license card shows the states it is valid in (home state + all reciprocal states for that trade) as a compact tag list
 - [ ] Admin dashboard: add "Reciprocity Table" management page under platform settings — allows admin to view, search, and edit all (fromState, toState, tradeType) reciprocity records with last-verified dates
 - [ ] Ongoing enforcement: nightly cron re-validates all contractor service area ZIP codes against their current active licenses; flags any mismatches for admin review and notifies affected contractors
+
+## Active Bug Fixes
+- [ ] Admin dashboard: Registered Companies list shows empty and Login as Company dropdown shows "No companies registered yet" despite 1 company in DB — stats show 1 but list is blank
+
+## Admin UI Consistency Fixes
+- [x] Audit all admin create/edit dialog components (Overview vs Companies/Contractors pages)
+- [x] Build single shared CreateCompanyDialog used by both Overview + button and Companies page + button
+- [x] Build single shared EditCompanyDialog (pencil icon) used by both Overview list and Companies page Manage button
+- [x] Build single shared CreateContractorDialog used by both Overview + button and Contractors page + button
+- [x] Build single shared EditContractorDialog (pencil icon) used by both Overview list and Contractors page Manage button
+- [x] Replace all duplicate dialog usages across PlatformDashboard, AdminCompanies, AdminContractors pages
