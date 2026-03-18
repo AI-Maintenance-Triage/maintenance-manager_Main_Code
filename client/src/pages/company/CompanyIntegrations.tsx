@@ -397,6 +397,16 @@ export default function CompanyIntegrations() {
                     </Alert>
                   )}
 
+                  {/* Webhook-first notice — shown when webhook secret is not yet configured */}
+                  {!integration.webhookSecret && (
+                    <Alert className="border-blue-500/30 bg-blue-500/5">
+                      <Webhook className="h-4 w-4 text-blue-600" />
+                      <AlertDescription className="text-xs text-blue-700 dark:text-blue-400">
+                        <strong>Webhook setup required for real-time intake.</strong> Maintenance requests are pushed instantly when Buildium fires a webhook. Until the webhook is configured, <em>Sync Now</em> acts as a manual backup and will only pull requests created after the last sync — no duplicates.
+                      </AlertDescription>
+                    </Alert>
+                  )}
+
                   {/* Webhook configuration — always shown for all integrations */}
                   <div className="p-3 bg-muted/50 rounded-md space-y-3">
                     <div className="flex items-center justify-between">

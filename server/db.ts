@@ -432,6 +432,38 @@ export async function createMaintenanceRequest(data: InsertMaintenanceRequest) {
   return result[0].insertId;
 }
 
+/**
+ * Idempotent insert for PMS sync: inserts the row and returns the new id,
+ * or returns null if the (companyId, source, externalId) already exists.
+ * Uses onDuplicateKeyUpdate as a no-op to avoid throwing on the unique constraint.
+ */
+export async function upsertMaintenanceRequestFromPms(
+  data: InsertMaintenanceRequest
+): Promise<number | null> {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  // If no externalId, fall back to plain insert
+  if (!data.externalId) {
+    const result = await db.insert(maintenanceRequests).values(data);
+    return result[0].insertId;
+  }
+  // Check if already exists first — avoids incrementing auto_increment on every sync
+  const [existing] = await db
+    .select({ id: maintenanceRequests.id })
+    .from(maintenanceRequests)
+    .where(
+      and(
+        eq(maintenanceRequests.companyId, data.companyId),
+        eq(maintenanceRequests.source, data.source ?? "manual"),
+        eq(maintenanceRequests.externalId, data.externalId)
+      )
+    )
+    .limit(1);
+  if (existing) return null; // already imported — skip
+  const result = await db.insert(maintenanceRequests).values(data);
+  return result[0].insertId;
+}
+
 export async function updateMaintenanceRequest(id: number, data: Partial<InsertMaintenanceRequest>) {
   const db = await getDb();
   if (!db) return;

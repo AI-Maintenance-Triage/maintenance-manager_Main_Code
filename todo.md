@@ -1904,3 +1904,11 @@ _Note: Core items were completed in earlier sessions. These are the remaining ed
 - [x] Add password strength indicator on Register and ResetPassword pages
 - [x] Add cursor-based pagination to AdminActivityFeed
 - [x] Add last-synced timestamp to PMS integrations in CompanyIntegrations
+
+## Buildium Sync Duplicate Fix
+- [x] Add unique index on (companyId, source, externalId) to maintenanceRequests schema
+- [x] Migrate DB with new unique constraint (cleaned up existing duplicates first)
+- [x] Update polling sync to only fetch requests newer than lastSyncAt (incremental)
+- [x] Switch sync insert to upsertMaintenanceRequestFromPms (pre-flight dedup check + skip if exists)
+- [x] Update Buildium adapter fetchRequests to pass createddatefrom=sinceDate parameter
+- [x] Update CompanyIntegrations UI with webhook-first callout and setup instructions

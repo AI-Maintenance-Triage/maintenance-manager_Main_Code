@@ -302,6 +302,13 @@
       "when": 1773428936157,
       "tag": "0042_clear_argent",
       "breakpoints": true
+    },
+    {
+      "idx": 43,
+      "version": "5",
+      "when": 1773876370636,
+      "tag": "0043_useful_tattoo",
+      "breakpoints": true
     }
   ]
 }

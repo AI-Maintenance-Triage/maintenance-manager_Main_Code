@@ -133,7 +133,7 @@ import {
   createProperty,
   updateProperty,
   listProperties,
-  createMaintenanceRequest,
+  upsertMaintenanceRequestFromPms,
   createPmsWebhookEvent,
   geocodeAddress,
   updatePropertyCoords,
@@ -230,11 +230,13 @@ export async function runPmsSync(integrationId: number, companyId: number): Prom
       }
     }
 
-    // 2. Fetch new maintenance requests
-    const since = integration.lastSyncAt ?? undefined;
+    // 2. Fetch new maintenance requests — pass lastSyncAt so the adapter only returns
+    //    requests created AFTER the last successful sync (incremental / webhook-backup mode).
+    //    Webhooks are the primary intake path; this poll is a safety net for missed events.
+    const since = integration.lastSyncAt ? new Date(integration.lastSyncAt) : undefined;
     const requests = await adapter.fetchNewRequests(credentials, since);
 
-    // 3. Create jobs for each new request
+    // 3. Create jobs for each new request (idempotent — skips already-imported externalIds)
     let jobs = 0;
     const allProperties = await listProperties(companyId);
     const propByExternalId = new Map(allProperties.filter(p => p.externalId).map(p => [p.externalId!, p]));
@@ -243,10 +245,8 @@ export async function runPmsSync(integrationId: number, companyId: number): Prom
       const property = propByExternalId.get(req.propertyExternalId);
       if (!property) continue;
 
-      // Check for duplicate by externalId
-      // (createMaintenanceRequest handles the duplicate check via externalId unique constraint)
       try {
-        const newJobId = await createMaintenanceRequest({
+        const newJobId = await upsertMaintenanceRequestFromPms({
           companyId,
           propertyId: property.id,
           title: req.title,
@@ -260,6 +260,9 @@ export async function runPmsSync(integrationId: number, companyId: number): Prom
           externalId: req.externalId,
           source: integration.provider as "buildium" | "appfolio" | "rentmanager" | "yardi" | "doorloop",
         });
+
+        // null means already imported — skip AI classification and count
+        if (newJobId === null) continue;
         jobs++;
 
         // Run AI skill tier classification for the new job (same logic as jobs.create)
@@ -292,8 +295,8 @@ export async function runPmsSync(integrationId: number, companyId: number): Prom
           console.error('[PMS Sync] AI classification failed for job', newJobId, classifyErr);
           // Non-critical — job still created
         }
-      } catch {
-        // Likely a duplicate — skip silently
+      } catch (syncErr) {
+        console.error('[PMS Sync] Failed to import request', req.externalId, syncErr instanceof Error ? syncErr.message : String(syncErr));
       }
     }
 

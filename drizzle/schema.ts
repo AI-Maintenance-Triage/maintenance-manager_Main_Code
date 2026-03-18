@@ -9,6 +9,7 @@ import {
   decimal,
   json,
   bigint,
+  uniqueIndex,
 } from "drizzle-orm/mysql-core";
 
 // ─── Users (base auth table) ───────────────────────────────────────────────
@@ -297,7 +298,12 @@ export const maintenanceRequests = mysqlTable("maintenance_requests", {
   totalCost: decimal("totalCost", { precision: 10, scale: 2 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
+}, (table) => ({
+  // Prevent duplicate imports from PMS syncs: one externalId per (company, source) pair.
+  // NULL externalIds (manual jobs) are excluded from this constraint by MySQL's NULL semantics.
+  externalIdUniqueIdx: uniqueIndex("maintenance_requests_company_source_external_id_unique")
+    .on(table.companyId, table.source, table.externalId),
+}));
 
 export type MaintenanceRequest = typeof maintenanceRequests.$inferSelect;
 export type InsertMaintenanceRequest = typeof maintenanceRequests.$inferInsert;

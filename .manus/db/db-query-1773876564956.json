@@ -1,0 +1,70 @@
+{
+  "query": "SELECT companyId, source, externalId, COUNT(*) as cnt FROM maintenance_requests WHERE externalId IS NOT NULL AND externalId != '' GROUP BY companyId, source, externalId HAVING cnt > 1 ORDER BY cnt DESC LIMIT 20;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user sHLCts4RR6iL2PA.1ead08cf1a54 --database bBuQZrfKLoBs6LmtvQ4y6E --execute SELECT companyId, source, externalId, COUNT(*) as cnt FROM maintenance_requests WHERE externalId IS NOT NULL AND externalId != '' GROUP BY companyId, source, externalId HAVING cnt > 1 ORDER BY cnt DESC LIMIT 20;",
+  "rows": [
+    {
+      "companyId": "3",
+      "source": "buildium",
+      "externalId": "15361",
+      "cnt": "6"
+    },
+    {
+      "companyId": "3",
+      "source": "buildium",
+      "externalId": "15360",
+      "cnt": "6"
+    },
+    {
+      "companyId": "3",
+      "source": "buildium",
+      "externalId": "15153",
+      "cnt": "5"
+    },
+    {
+      "companyId": "3",
+      "source": "buildium",
+      "externalId": "15143",
+      "cnt": "5"
+    },
+    {
+      "companyId": "3",
+      "source": "buildium",
+      "externalId": "15148",
+      "cnt": "5"
+    },
+    {
+      "companyId": "3",
+      "source": "buildium",
+      "externalId": "15146",
+      "cnt": "5"
+    },
+    {
+      "companyId": "3",
+      "source": "buildium",
+      "externalId": "15150",
+      "cnt": "5"
+    },
+    {
+      "companyId": "3",
+      "source": "buildium",
+      "externalId": "15147",
+      "cnt": "5"
+    },
+    {
+      "companyId": "3",
+      "source": "buildium",
+      "externalId": "15145",
+      "cnt": "5"
+    },
+    {
+      "companyId": "3",
+      "source": "buildium",
+      "externalId": "15151",
+      "cnt": "5"
+    }
+  ],
+  "messages": [],
+  "stdout": "companyId\tsource\texternalId\tcnt\n3\tbuildium\t15361\t6\n3\tbuildium\t15360\t6\n3\tbuildium\t15153\t5\n3\tbuildium\t15143\t5\n3\tbuildium\t15148\t5\n3\tbuildium\t15146\t5\n3\tbuildium\t15150\t5\n3\tbuildium\t15147\t5\n3\tbuildium\t15145\t5\n3\tbuildium\t15151\t5\n",
+  "stderr": "",
+  "execution_time_ms": 140
+}

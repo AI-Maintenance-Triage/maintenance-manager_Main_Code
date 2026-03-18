@@ -1,0 +1,9 @@
+{
+  "query": "ALTER TABLE `maintenance_requests` ADD CONSTRAINT `maintenance_requests_company_source_external_id_unique` UNIQUE(`companyId`,`source`,`externalId`);",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user sHLCts4RR6iL2PA.1ead08cf1a54 --database bBuQZrfKLoBs6LmtvQ4y6E --execute ALTER TABLE `maintenance_requests` ADD CONSTRAINT `maintenance_requests_company_source_external_id_unique` UNIQUE(`companyId`,`source`,`externalId`);",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 621
+}

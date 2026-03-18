@@ -1,0 +1,1 @@
+ALTER TABLE `maintenance_requests` ADD CONSTRAINT `maintenance_requests_company_source_external_id_unique` UNIQUE(`companyId`,`source`,`externalId`);
