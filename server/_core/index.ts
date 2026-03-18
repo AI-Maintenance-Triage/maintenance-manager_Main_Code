@@ -40,6 +40,11 @@ async function startServer() {
   const server = createServer(app);
   // Stripe webhook MUST be registered before express.json() for raw body access
   registerStripeWebhookRoute(app);
+  // PMS webhook MUST also be registered before express.json() so the raw body
+  // stream is still available for HMAC-SHA256 signature verification.
+  // If registered after express.json(), the stream is already drained and
+  // rawBody will be empty, causing all signature checks to fail with 401.
+  registerPmsWebhookRoute(app);
   // Configure body parser with larger size limit for file uploads
   app.use(express.json({ limit: "50mb" }));
   app.use(express.urlencoded({ limit: "50mb", extended: true }));
@@ -55,8 +60,6 @@ async function startServer() {
   registerInvoiceBulkRoute(app);
   // Contractor payment receipt PDF endpoint
   registerReceiptRoute(app);
-  // PMS inbound webhook receiver (automated maintenance request ingestion)
-  registerPmsWebhookRoute(app);
   // tRPC API
   app.use(
     "/api/trpc",

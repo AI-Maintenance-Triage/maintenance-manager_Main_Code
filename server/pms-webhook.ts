@@ -37,7 +37,7 @@ import { invokeLLM } from "./_core/llm";
 import { notifyOwner } from "./_core/notification";
 import { buildiumAdapter } from "./pms/buildium";
 import type { PmsCredentials } from "./pms/types";
-import { runPmsSync } from "./pms/index";
+import { runPmsSync, decodeCredentials } from "./pms/index";
 
 // Supported providers — must match the schema enum
 const SUPPORTED_PROVIDERS = [
@@ -113,10 +113,11 @@ function normalise(provider: Provider, raw: Record<string, unknown>): PmsPayload
   switch (provider) {
     case "buildium": {
       // Buildium work order webhook shape
+      // raw.TaskId is present in notification envelopes; raw.Id or wo.Id is present in full task responses
       const wo = (raw.WorkOrder ?? raw) as Record<string, unknown>;
       return {
-        externalId: String(wo.Id ?? raw.id ?? ""),
-        title: String(wo.Title ?? wo.Subject ?? raw.title ?? "Maintenance Request"),
+        externalId: String(wo.Id ?? raw.Id ?? raw.id ?? raw.TaskId ?? raw.task_id ?? ""),
+        title: String(wo.Title ?? wo.Subject ?? raw.Title ?? raw.title ?? "Maintenance Request"),
         description: String(wo.Description ?? raw.description ?? ""),
         unitNumber: String(wo.UnitNumber ?? raw.unit ?? ""),
         tenantName: String(wo.TenantName ?? ""),
@@ -342,7 +343,86 @@ async function handlePmsWebhook(req: Request, res: Response) {
     }
     companyId = found.companyId;
   }
-  const rawPayload = req.body as Record<string, unknown>;
+  let rawPayload = req.body as Record<string, unknown>;
+
+  // ── Buildium enrichment ─────────────────────────────────────────────────────
+  // Buildium webhooks are notification envelopes — they contain TaskId and EventName
+  // but NOT the full task details (title, description, property, tenant, etc.).
+  // We must call GET /tasks/residentrequests/{TaskId} to get the full task data.
+  if (provider === "buildium") {
+    const eventName = String(rawPayload.EventName ?? rawPayload.event_name ?? "");
+    const taskId = rawPayload.TaskId ?? rawPayload.task_id;
+    const isTaskEvent = eventName.toLowerCase().startsWith("task.");
+
+    if (isTaskEvent && taskId) {
+      try {
+        // Look up this company's Buildium credentials
+        const [integration] = await database
+          .select({ credentialsJson: pmsIntegrations.credentialsJson, isSandbox: pmsIntegrations.credentialsJson })
+          .from(pmsIntegrations)
+          .where(and(
+            eq(pmsIntegrations.companyId, companyId!),
+            eq(pmsIntegrations.provider, "buildium"),
+            eq(pmsIntegrations.status, "connected")
+          ))
+          .limit(1);
+
+        if (integration?.credentialsJson) {
+          const credentials = decodeCredentials(integration.credentialsJson);
+          // Fetch the full task from Buildium API
+          const fullTask = await buildiumAdapter.fetchNewRequests(credentials, undefined)
+            .then(tasks => tasks.find(t => String(t.externalId) === String(taskId)))
+            .catch(() => null);
+
+          if (fullTask) {
+            // Replace the notification envelope with the full task data in a shape
+            // the normalise function can read (PascalCase Buildium API response shape)
+            rawPayload = {
+              ...rawPayload,
+              Id: taskId,
+              Title: fullTask.title,
+              Description: fullTask.description,
+              UnitNumber: fullTask.unitNumber ?? "",
+              TenantName: fullTask.tenantName ?? "",
+              TenantEmail: fullTask.tenantEmail ?? "",
+              TenantPhone: fullTask.tenantPhone ?? "",
+              Priority: fullTask.priority ?? "medium",
+              PropertyAddress: "",
+              _enriched: true,
+            };
+          } else {
+            // Fallback: fetch the single task directly by ID
+            try {
+              const BUILDIUM_BASE = credentials.isSandbox
+                ? "https://apisandbox.buildium.com/v1"
+                : "https://api.buildium.com/v1";
+              const res = await fetch(`${BUILDIUM_BASE}/tasks/residentrequests/${taskId}`, {
+                headers: {
+                  "x-buildium-client-id": credentials.clientId ?? "",
+                  "x-buildium-client-secret": credentials.clientSecret ?? "",
+                },
+              });
+              if (res.ok) {
+                const taskData = await res.json() as Record<string, unknown>;
+                rawPayload = { ...rawPayload, ...taskData, _enriched: true };
+              }
+            } catch (fetchErr) {
+              console.warn(`[PMS Webhook] Buildium task fetch failed for TaskId ${taskId}:`, fetchErr);
+            }
+          }
+        }
+      } catch (enrichErr) {
+        console.warn(`[PMS Webhook] Buildium enrichment failed for TaskId ${taskId}:`, enrichErr);
+        // Continue with the notification envelope — normalise will use TaskId as externalId
+      }
+    }
+
+    // If no EventName or not a task event, fall through to generic handling
+    // (could be a property event handled upstream, or an unknown event type)
+    if (!isTaskEvent) {
+      return res.status(200).json({ status: "ignored", reason: "non_task_event" });
+    }
+  }
 
   // Log the inbound event
   const [eventRow] = await database
