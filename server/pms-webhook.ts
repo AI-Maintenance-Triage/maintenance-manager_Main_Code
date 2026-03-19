@@ -55,7 +55,9 @@ type Provider = typeof SUPPORTED_PROVIDERS[number];
  */
 function getSignatureHeader(provider: Provider): string {
   switch (provider) {
-    case "buildium":    return "x-buildium-signature";
+    // Buildium uses "buildium-webhook-signature" (no x- prefix), base64-encoded HMAC-SHA256
+    // Docs: https://developer.buildium.com/api-docs#section/Webhooks/Signature-Verification
+    case "buildium":    return "buildium-webhook-signature";
     case "appfolio":    return "x-appfolio-signature";
     case "rentmanager": return "x-rentmanager-signature";
     case "yardi":       return "x-yardi-signature";
@@ -70,18 +72,34 @@ function getSignatureHeader(provider: Provider): string {
  * Verify HMAC-SHA256 signature.
  * Returns true if the signature matches, false otherwise.
  * Uses timing-safe comparison to prevent timing attacks.
+ *
+ * Provider-specific formats:
+ *   Buildium: base64-encoded HMAC-SHA256 of the raw body (no prefix)
+ *   Others:   hex-encoded HMAC-SHA256, optionally prefixed with "sha256="
  */
 export function verifyHmacSignature(
   secret: string,
   rawBody: Buffer,
-  signatureHeader: string
+  signatureHeader: string,
+  provider?: string
 ): boolean {
   try {
-    // Some providers prefix with "sha256=" — strip it
+    const hmac = createHmac("sha256", secret).update(rawBody);
+
+    if (provider === "buildium") {
+      // Buildium signs with HMAC-SHA256 and base64-encodes the result
+      const expected = hmac.digest("base64");
+      const expectedBuf = Buffer.from(expected);
+      const sigBuf = Buffer.from(signatureHeader);
+      if (expectedBuf.length !== sigBuf.length) return false;
+      return timingSafeEqual(expectedBuf, sigBuf);
+    }
+
+    // Default: hex-encoded, optionally prefixed with "sha256="
     const sig = signatureHeader.startsWith("sha256=")
       ? signatureHeader.slice(7)
       : signatureHeader;
-    const expected = createHmac("sha256", secret).update(rawBody).digest("hex");
+    const expected = hmac.digest("hex");
     const expectedBuf = Buffer.from(expected, "hex");
     const sigBuf = Buffer.from(sig, "hex");
     if (expectedBuf.length !== sigBuf.length) return false;
@@ -296,7 +314,7 @@ async function handlePmsWebhook(req: Request, res: Response) {
 
     const matchedPms = pmsRows.find((r) => {
       if (!r.webhookSecret) return false;
-      return verifyHmacSignature(r.webhookSecret, rawBody, incomingSignature);
+      return verifyHmacSignature(r.webhookSecret, rawBody, incomingSignature, provider);
     });
 
     if (matchedPms) {
@@ -311,7 +329,7 @@ async function handlePmsWebhook(req: Request, res: Response) {
 
       const matchedLegacy = legacyCandidates.find((c) => {
         if (!c.webhookSecret) return false;
-        return verifyHmacSignature(c.webhookSecret, rawBody, incomingSignature);
+        return verifyHmacSignature(c.webhookSecret, rawBody, incomingSignature, provider);
       });
 
       if (matchedLegacy) {
