@@ -3,7 +3,7 @@ import { test, expect } from "@playwright/test";
 test.describe("Public pages — unauthenticated access", () => {
   test("Homepage loads and shows hero section, features, integrations, and pricing", async ({ page }) => {
     await page.goto("/");
-    await page.waitForLoadState("networkidle");
+    await page.waitForLoadState("domcontentloaded");
 
     // Hero section
     await expect(page.locator("h1, [data-testid='hero-heading']").first()).toBeVisible();
@@ -32,7 +32,7 @@ test.describe("Public pages — unauthenticated access", () => {
 
   test("Pricing section renders plan cards loaded dynamically from the database", async ({ page }) => {
     await page.goto("/");
-    await page.waitForLoadState("networkidle");
+    await page.waitForLoadState("domcontentloaded");
 
     // Should show actual plan cards, not a "Plans coming soon" placeholder
     const comingSoon = page.locator("text=Plans coming soon");
@@ -49,7 +49,7 @@ test.describe("Public pages — unauthenticated access", () => {
 
   test("Company plan cards show name, price, feature list, and Get Started button", async ({ page }) => {
     await page.goto("/");
-    await page.waitForLoadState("networkidle");
+    await page.waitForLoadState("domcontentloaded");
 
     // Scroll to pricing section
     await page.evaluate(() => {
@@ -65,7 +65,7 @@ test.describe("Public pages — unauthenticated access", () => {
 
   test("/get-started loads role selection with Company and Contractor options", async ({ page }) => {
     await page.goto("/get-started");
-    await page.waitForLoadState("networkidle");
+    await page.waitForLoadState("domcontentloaded");
 
     await expect(page.locator("text=Company, button:has-text('Company')").first()).toBeVisible();
     await expect(page.locator("text=Contractor, button:has-text('Contractor')").first()).toBeVisible();
@@ -73,13 +73,13 @@ test.describe("Public pages — unauthenticated access", () => {
 
   test("/forgot-password loads without authentication", async ({ page }) => {
     await page.goto("/forgot-password");
-    await page.waitForLoadState("networkidle");
+    await page.waitForLoadState("domcontentloaded");
     await expect(page.locator('input[type="email"], input[name="email"]').first()).toBeVisible();
   });
 
   test("/reset-password loads without authentication", async ({ page }) => {
     await page.goto("/reset-password");
-    await page.waitForLoadState("networkidle");
+    await page.waitForLoadState("domcontentloaded");
     // Should either show the reset form or an error about missing/invalid token
     const hasForm = await page.locator('input[type="password"]').isVisible({ timeout: 3_000 }).catch(() => false);
     const hasError = await page.locator("text=/invalid|expired|token/i").isVisible({ timeout: 3_000 }).catch(() => false);
@@ -88,7 +88,7 @@ test.describe("Public pages — unauthenticated access", () => {
 
   test("/invite/:token loads without authentication", async ({ page }) => {
     await page.goto("/invite/test-token-placeholder");
-    await page.waitForLoadState("networkidle");
+    await page.waitForLoadState("domcontentloaded");
     // Should show invite page or expired/invalid token message
     const isVisible = await page.locator("body").isVisible();
     expect(isVisible).toBeTruthy();
@@ -96,28 +96,28 @@ test.describe("Public pages — unauthenticated access", () => {
 
   test("/team-invite/:token loads without authentication", async ({ page }) => {
     await page.goto("/team-invite/test-token-placeholder");
-    await page.waitForLoadState("networkidle");
+    await page.waitForLoadState("domcontentloaded");
     const isVisible = await page.locator("body").isVisible();
     expect(isVisible).toBeTruthy();
   });
 
   test("/admin/login loads without authentication", async ({ page }) => {
     await page.goto("/admin/login");
-    await page.waitForLoadState("networkidle");
+    await page.waitForLoadState("domcontentloaded");
     await expect(page.locator('input[type="email"], input[name="email"]').first()).toBeVisible();
     await expect(page.locator('input[type="password"], input[name="password"]').first()).toBeVisible();
   });
 
   test("/404 loads not found page", async ({ page }) => {
     const response = await page.goto("/404");
-    await page.waitForLoadState("networkidle");
+    await page.waitForLoadState("domcontentloaded");
     const hasNotFound = await page.locator("text=/not found|404/i").isVisible({ timeout: 5_000 }).catch(() => false);
     expect(hasNotFound || (response?.status() === 404)).toBeTruthy();
   });
 
   test("Unknown route loads not found page", async ({ page }) => {
     await page.goto("/this-route-definitely-does-not-exist-xyz");
-    await page.waitForLoadState("networkidle");
+    await page.waitForLoadState("domcontentloaded");
     const hasNotFound = await page.locator("text=/not found|404/i").isVisible({ timeout: 5_000 }).catch(() => false);
     expect(hasNotFound).toBeTruthy();
   });

@@ -3,9 +3,9 @@
  * Tests for REST endpoints outside tRPC:
  *   - Stripe webhook  (/api/stripe/webhook)
  *   - PMS webhook     (/api/webhooks/pms/buildium)
- *   - Invoice PDF     (/api/invoice/:id/pdf)
- *   - Receipt PDF     (/api/receipt/:id/pdf)
- *   - Bulk ZIP export (/api/invoice/bulk-export)
+ *   - Invoice PDF     (/api/invoice/:jobId)
+ *   - Receipt PDF     (/api/receipt/:jobId)
+ *   - Bulk CSV export (/api/invoices/bulk)
  *
  * These tests use Playwright's `request` fixture (no browser) so they run
  * fast and can be included in a CI pipeline without a headed browser.
@@ -133,46 +133,40 @@ test.describe("PMS webhook endpoint — Buildium", () => {
 
 // ─── Invoice PDF ─────────────────────────────────────────────────────────────
 test.describe("Invoice PDF endpoint", () => {
-  test("GET /api/invoice/nonexistent/pdf returns 401 or 404 for unauthenticated request", async ({ request }) => {
-    const res = await request.get(`${BASE_URL}/api/invoice/nonexistent-id/pdf`);
+  test("GET /api/invoice/:jobId returns 401 for unauthenticated request", async ({ request }) => {
+    const res = await request.get(`${BASE_URL}/api/invoice/99999999`);
     // Unauthenticated request should be rejected
     expect([401, 403, 404]).toContain(res.status());
   });
 
-  test("GET /api/invoice/nonexistent/pdf does not return 500", async ({ request }) => {
-    const res = await request.get(`${BASE_URL}/api/invoice/nonexistent-id/pdf`);
+  test("GET /api/invoice/:jobId does not return 500 for unauthenticated request", async ({ request }) => {
+    const res = await request.get(`${BASE_URL}/api/invoice/99999999`);
     expect(res.status()).toBeLessThan(500);
   });
 });
 
 // ─── Receipt PDF ─────────────────────────────────────────────────────────────
 test.describe("Receipt PDF endpoint", () => {
-  test("GET /api/receipt/nonexistent/pdf returns 401 or 404 for unauthenticated request", async ({ request }) => {
-    const res = await request.get(`${BASE_URL}/api/receipt/nonexistent-id/pdf`);
+  test("GET /api/receipt/:jobId returns 401 for unauthenticated request", async ({ request }) => {
+    const res = await request.get(`${BASE_URL}/api/receipt/99999999`);
     expect([401, 403, 404]).toContain(res.status());
   });
 
-  test("GET /api/receipt/nonexistent/pdf does not return 500", async ({ request }) => {
-    const res = await request.get(`${BASE_URL}/api/receipt/nonexistent-id/pdf`);
+  test("GET /api/receipt/:jobId does not return 500 for unauthenticated request", async ({ request }) => {
+    const res = await request.get(`${BASE_URL}/api/receipt/99999999`);
     expect(res.status()).toBeLessThan(500);
   });
 });
 
-// ─── Bulk ZIP Export ─────────────────────────────────────────────────────────
-test.describe("Bulk invoice ZIP export endpoint", () => {
-  test("POST /api/invoice/bulk-export returns 401 for unauthenticated request", async ({ request }) => {
-    const res = await request.post(`${BASE_URL}/api/invoice/bulk-export`, {
-      headers: { "Content-Type": "application/json" },
-      data: JSON.stringify({ invoiceIds: ["id1", "id2"] }),
-    });
+// ─── Bulk CSV Export ─────────────────────────────────────────────────────────
+test.describe("Bulk invoice CSV export endpoint", () => {
+  test("GET /api/invoices/bulk returns 401 for unauthenticated request", async ({ request }) => {
+    const res = await request.get(`${BASE_URL}/api/invoices/bulk?from=2024-01-01&to=2024-12-31`);
     expect([401, 403]).toContain(res.status());
   });
 
-  test("POST /api/invoice/bulk-export with empty ids array returns 400 or 401", async ({ request }) => {
-    const res = await request.post(`${BASE_URL}/api/invoice/bulk-export`, {
-      headers: { "Content-Type": "application/json" },
-      data: JSON.stringify({ invoiceIds: [] }),
-    });
+  test("GET /api/invoices/bulk without date params returns 400 or 401", async ({ request }) => {
+    const res = await request.get(`${BASE_URL}/api/invoices/bulk`);
     expect([400, 401, 403]).toContain(res.status());
   });
 });

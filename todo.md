@@ -1936,3 +1936,12 @@ _Note: Core items were completed in earlier sessions. These are the remaining ed
 - [x] Create tests/e2e/admin.spec.ts (40 tests: dashboard, companies, contractors, revenue, subscription plans, activity feed, audit log, leaderboard, churn risk, email blast, payout holds, credits, suspensions, feature flags, announcements, promo codes, maintenance mode, settings)
 - [x] Add test:e2e, test:e2e:ui, test:e2e:report scripts to package.json
 - Total: 140 E2E tests across 5 spec files
+
+---
+
+## Project Rules (Permanent)
+
+- Every new feature MUST include a Playwright E2E test in `tests/e2e/` before it is considered done.
+  - Add tests to the relevant spec file (company, contractor, admin, api, etc.) or create a new spec file if needed.
+  - Tests run automatically on every push to `main` via GitHub Actions CI against the live app at `firstgrabmaintenance.ai`.
+  - Do not mark a feature complete in todo.md until its Playwright test is written and committed.

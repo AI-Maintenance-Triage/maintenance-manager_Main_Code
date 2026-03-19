@@ -189,6 +189,7 @@ export default function PlatformDashboard() {
                       type="button"
                       onClick={() => setShowAdminPw(!showAdminPw)}
                       className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                      aria-label={showAdminPw ? "Hide password" : "Show password"}
                     >
                       {showAdminPw ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                     </button>

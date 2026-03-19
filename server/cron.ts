@@ -13,7 +13,7 @@ import { runPmsSync } from "./pms/index";
 
 const PLATFORM_ORIGIN = process.env.PLATFORM_ORIGIN ?? "https://maintmanager-bbuqzrfk.manus.space";
 
-async function runTrialExpiryCheck(): Promise<void> {
+export async function runTrialExpiryCheck(): Promise<void> {
   const results = { warned: 0, expired: 0, locked: 0, errors: [] as string[] };
   const nowMs = Date.now();
   const GRACE_PERIOD_MS = 3 * 24 * 60 * 60 * 1000; // 3 days
@@ -161,7 +161,7 @@ async function runTrialExpiryCheck(): Promise<void> {
 }
 
 // ─── Job Escalation Check ─────────────────────────────────────────────────────
-async function runJobEscalationCheck(): Promise<void> {
+export async function runJobEscalationCheck(): Promise<void> {
   const now = Date.now();
   console.log(`[cron] runJobEscalationCheck started at ${new Date(now).toISOString()}`);
   let notified = 0;
@@ -303,7 +303,7 @@ async function runChurnRiskCheck(): Promise<void> {
 }
 
 // ─── PMS Sync ─────────────────────────────────────────────────────────────────
-async function runPmsSyncAll(): Promise<void> {
+export async function runPmsSyncAll(): Promise<void> {
   // Read the admin-configured sync interval from platform settings
   let syncIntervalHours = 24; // default fallback
   try {

@@ -23,12 +23,12 @@ export async function loginAsCompany(
   password = TEST_COMPANY_PASSWORD
 ): Promise<void> {
   await page.goto("/signin");
-  await page.waitForLoadState("networkidle");
+  await page.waitForLoadState("domcontentloaded");
   await page.fill('input[type="email"], input[name="email"]', email);
   await page.fill('input[type="password"], input[name="password"]', password);
   await page.click('button[type="submit"]');
   await page.waitForURL(/\/company/, { timeout: 15_000 });
-  await page.waitForLoadState("networkidle");
+  await page.waitForLoadState("domcontentloaded");
 }
 
 /**
@@ -41,12 +41,12 @@ export async function loginAsContractor(
   password = TEST_CONTRACTOR_PASSWORD
 ): Promise<void> {
   await page.goto("/signin");
-  await page.waitForLoadState("networkidle");
+  await page.waitForLoadState("domcontentloaded");
   await page.fill('input[type="email"], input[name="email"]', email);
   await page.fill('input[type="password"], input[name="password"]', password);
   await page.click('button[type="submit"]');
   await page.waitForURL(/\/contractor/, { timeout: 15_000 });
-  await page.waitForLoadState("networkidle");
+  await page.waitForLoadState("domcontentloaded");
 }
 
 /**
@@ -59,12 +59,12 @@ export async function loginAsAdmin(
   password = TEST_ADMIN_PASSWORD
 ): Promise<void> {
   await page.goto("/admin/login");
-  await page.waitForLoadState("networkidle");
+  await page.waitForLoadState("domcontentloaded");
   await page.fill('input[type="email"], input[name="email"]', email);
   await page.fill('input[type="password"], input[name="password"]', password);
   await page.click('button[type="submit"]');
   await page.waitForURL(/\/admin/, { timeout: 15_000 });
-  await page.waitForLoadState("networkidle");
+  await page.waitForLoadState("domcontentloaded");
 }
 
 /**

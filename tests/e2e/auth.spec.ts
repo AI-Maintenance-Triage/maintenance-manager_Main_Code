@@ -16,7 +16,7 @@ test.describe("Authentication flows", () => {
   test.describe("Homepage navigation", () => {
     test("Homepage at / loads and shows navigation with Sign In and Get Started buttons", async ({ page }) => {
       await page.goto("/");
-      await page.waitForLoadState("networkidle");
+      await page.waitForLoadState("domcontentloaded");
 
       await expect(
         page.locator('a:has-text("Sign In"), button:has-text("Sign In"), a:has-text("Login")').first()
@@ -28,7 +28,7 @@ test.describe("Authentication flows", () => {
 
     test("Homepage pricing section loads plan cards dynamically from the database", async ({ page }) => {
       await page.goto("/");
-      await page.waitForLoadState("networkidle");
+      await page.waitForLoadState("domcontentloaded");
 
       // Should NOT show the placeholder text
       await expect(page.locator("text=Plans coming soon")).not.toBeVisible();
@@ -38,7 +38,7 @@ test.describe("Authentication flows", () => {
   test.describe("Role selection and registration", () => {
     test("/get-started shows role selection with Company and Contractor options", async ({ page }) => {
       await page.goto("/get-started");
-      await page.waitForLoadState("networkidle");
+      await page.waitForLoadState("domcontentloaded");
 
       await expect(page.locator("text=Company").first()).toBeVisible();
       await expect(page.locator("text=Contractor").first()).toBeVisible();
@@ -46,11 +46,11 @@ test.describe("Authentication flows", () => {
 
     test("Clicking Company on /get-started routes to /signup with company registration fields", async ({ page }) => {
       await page.goto("/get-started");
-      await page.waitForLoadState("networkidle");
+      await page.waitForLoadState("domcontentloaded");
 
       await page.locator('button:has-text("Company"), a:has-text("Company"), [data-role="company"]').first().click();
       await page.waitForURL(/\/signup/, { timeout: 10_000 });
-      await page.waitForLoadState("networkidle");
+      await page.waitForLoadState("domcontentloaded");
 
       // Company-specific fields should be visible
       await expect(
@@ -60,11 +60,11 @@ test.describe("Authentication flows", () => {
 
     test("Clicking Contractor on /get-started routes to /signup with contractor registration fields", async ({ page }) => {
       await page.goto("/get-started");
-      await page.waitForLoadState("networkidle");
+      await page.waitForLoadState("domcontentloaded");
 
       await page.locator('button:has-text("Contractor"), a:has-text("Contractor"), [data-role="contractor"]').first().click();
       await page.waitForURL(/\/signup/, { timeout: 10_000 });
-      await page.waitForLoadState("networkidle");
+      await page.waitForLoadState("domcontentloaded");
 
       // Contractor-specific fields should be visible
       await expect(
@@ -74,7 +74,7 @@ test.describe("Authentication flows", () => {
 
     test("/signup?role=company registration with valid data submits and shows email verification screen", async ({ page }) => {
       await page.goto("/signup?role=company");
-      await page.waitForLoadState("networkidle");
+      await page.waitForLoadState("domcontentloaded");
 
       const timestamp = Date.now();
       const testEmail = `e2e-company-${timestamp}@test.example.com`;
@@ -97,7 +97,7 @@ test.describe("Authentication flows", () => {
 
     test("/signup?role=contractor registration with valid data submits and shows email verification screen", async ({ page }) => {
       await page.goto("/signup?role=contractor");
-      await page.waitForLoadState("networkidle");
+      await page.waitForLoadState("domcontentloaded");
 
       const timestamp = Date.now();
       const testEmail = `e2e-contractor-${timestamp}@test.example.com`;
@@ -117,7 +117,7 @@ test.describe("Authentication flows", () => {
 
     test("Entering wrong verification code shows error message", async ({ page }) => {
       await page.goto("/signup?role=company");
-      await page.waitForLoadState("networkidle");
+      await page.waitForLoadState("domcontentloaded");
 
       const timestamp = Date.now();
       await page.locator('input[name="name"], input[name="companyName"], input[placeholder*="name" i]').first().fill(`E2E Verify Test ${timestamp}`);
@@ -141,7 +141,7 @@ test.describe("Authentication flows", () => {
 
     test("Resend verification code button is present on verification screen", async ({ page }) => {
       await page.goto("/signup?role=company");
-      await page.waitForLoadState("networkidle");
+      await page.waitForLoadState("domcontentloaded");
 
       const timestamp = Date.now();
       await page.locator('input[name="name"], input[name="companyName"], input[placeholder*="name" i]').first().fill(`E2E Resend Test ${timestamp}`);
@@ -170,7 +170,7 @@ test.describe("Authentication flows", () => {
 
     test("/signin with wrong password shows invalid credentials error", async ({ page }) => {
       await page.goto("/signin");
-      await page.waitForLoadState("networkidle");
+      await page.waitForLoadState("domcontentloaded");
 
       await page.fill('input[type="email"], input[name="email"]', TEST_COMPANY_EMAIL);
       await page.fill('input[type="password"], input[name="password"]', "WrongPassword999!");
@@ -190,7 +190,7 @@ test.describe("Authentication flows", () => {
   test.describe("Password recovery", () => {
     test("/forgot-password page accepts email input and shows confirmation on submit", async ({ page }) => {
       await page.goto("/forgot-password");
-      await page.waitForLoadState("networkidle");
+      await page.waitForLoadState("domcontentloaded");
 
       await page.fill('input[type="email"], input[name="email"]', "test@example.com");
       await page.locator('button[type="submit"]').first().click();
@@ -202,7 +202,7 @@ test.describe("Authentication flows", () => {
 
     test("/reset-password with no token shows error message", async ({ page }) => {
       await page.goto("/reset-password");
-      await page.waitForLoadState("networkidle");
+      await page.waitForLoadState("domcontentloaded");
 
       const hasError = await page.locator("text=/invalid|expired|token|missing/i").isVisible({ timeout: 5_000 }).catch(() => false);
       const hasForm = await page.locator('input[type="password"]').isVisible({ timeout: 3_000 }).catch(() => false);
@@ -212,7 +212,7 @@ test.describe("Authentication flows", () => {
 
     test("/reset-password with invalid token shows error message", async ({ page }) => {
       await page.goto("/reset-password?token=invalid-token-xyz");
-      await page.waitForLoadState("networkidle");
+      await page.waitForLoadState("domcontentloaded");
 
       // If form is shown, try submitting to trigger error
       const passwordInput = page.locator('input[type="password"]').first();
@@ -236,7 +236,7 @@ test.describe("Authentication flows", () => {
       // This test requires a seeded invite token in the database
       // Using a placeholder — in CI this should be seeded
       await page.goto("/invite/valid-test-invite-token");
-      await page.waitForLoadState("networkidle");
+      await page.waitForLoadState("domcontentloaded");
 
       // Should show either the invite page or expired/invalid message
       const isVisible = await page.locator("body").isVisible();
@@ -245,7 +245,7 @@ test.describe("Authentication flows", () => {
 
     test("/invite/:token with an expired token shows expired error message", async ({ page }) => {
       await page.goto("/invite/expired-token-xyz");
-      await page.waitForLoadState("networkidle");
+      await page.waitForLoadState("domcontentloaded");
 
       // Should show some kind of error/invalid state
       const hasError = await page.locator("text=/expired|invalid|not found/i").isVisible({ timeout: 5_000 }).catch(() => false);
@@ -254,7 +254,7 @@ test.describe("Authentication flows", () => {
 
     test("/team-invite/:token with a valid token shows team invitation acceptance page", async ({ page }) => {
       await page.goto("/team-invite/valid-test-team-token");
-      await page.waitForLoadState("networkidle");
+      await page.waitForLoadState("domcontentloaded");
 
       const isVisible = await page.locator("body").isVisible();
       expect(isVisible).toBeTruthy();
@@ -286,7 +286,7 @@ test.describe("Authentication flows", () => {
   test.describe("Protected route guards", () => {
     test("Visiting /company while unauthenticated redirects to signin or shows auth prompt", async ({ page }) => {
       await page.goto("/company");
-      await page.waitForLoadState("networkidle");
+      await page.waitForLoadState("domcontentloaded");
 
       const redirectedToSignin = page.url().includes("/signin") || page.url().includes("/login");
       const showsAuthPrompt = await page.locator("text=/sign in|log in|login/i").isVisible({ timeout: 3_000 }).catch(() => false);
@@ -295,7 +295,7 @@ test.describe("Authentication flows", () => {
 
     test("Visiting /admin while unauthenticated redirects to /admin/login or shows auth prompt", async ({ page }) => {
       await page.goto("/admin");
-      await page.waitForLoadState("networkidle");
+      await page.waitForLoadState("domcontentloaded");
 
       const redirectedToLogin = page.url().includes("/admin/login");
       const showsAuthPrompt = await page.locator("text=/sign in|log in|login/i").isVisible({ timeout: 3_000 }).catch(() => false);
@@ -309,7 +309,7 @@ test.describe("Authentication flows", () => {
 test.describe("Form validation edge cases", () => {
   test("Sign-up rejects email without @ symbol and shows inline error", async ({ page }) => {
     await page.goto("/signup?role=company");
-    await page.waitForLoadState("networkidle");
+    await page.waitForLoadState("domcontentloaded");
     await page.locator('input[type="email"], input[name="email"]').first().fill("notanemail");
     await page.locator('button[type="submit"]').first().click();
     // Browser native validation or custom error
@@ -320,7 +320,7 @@ test.describe("Form validation edge cases", () => {
 
   test("Sign-up rejects password shorter than 8 characters and shows error", async ({ page }) => {
     await page.goto("/signup?role=company");
-    await page.waitForLoadState("networkidle");
+    await page.waitForLoadState("domcontentloaded");
     const ts = Date.now();
     await page.locator('input[name="name"], input[name="companyName"], input[placeholder*="name" i]').first().fill(`Test ${ts}`);
     await page.locator('input[type="email"], input[name="email"]').first().fill(`short-pw-${ts}@test.example.com`);
@@ -333,7 +333,7 @@ test.describe("Form validation edge cases", () => {
 
   test("Sign-up name field rejects empty value and shows required error", async ({ page }) => {
     await page.goto("/signup?role=company");
-    await page.waitForLoadState("networkidle");
+    await page.waitForLoadState("domcontentloaded");
     await page.locator('input[type="email"], input[name="email"]').first().fill("empty-name@test.example.com");
     await page.locator('input[type="password"], input[name="password"]').first().fill("TestPass123!");
     await page.locator('button[type="submit"]').first().click();
@@ -344,7 +344,7 @@ test.describe("Form validation edge cases", () => {
 
   test("Sign-in with empty email field shows validation error", async ({ page }) => {
     await page.goto("/signin");
-    await page.waitForLoadState("networkidle");
+    await page.waitForLoadState("domcontentloaded");
     await page.locator('button[type="submit"]').first().click();
     const hasError = await page.locator("text=/required|email.*required|enter.*email/i").first().isVisible({ timeout: 5_000 }).catch(() => false);
     const nativeInvalid = await page.locator('input[type="email"]').first().evaluate((el) => !(el as HTMLInputElement).validity.valid).catch(() => false);
@@ -353,7 +353,7 @@ test.describe("Form validation edge cases", () => {
 
   test("Forgot-password with invalid email format shows validation error", async ({ page }) => {
     await page.goto("/forgot-password");
-    await page.waitForLoadState("networkidle");
+    await page.waitForLoadState("domcontentloaded");
     await page.locator('input[type="email"], input[name="email"]').first().fill("bademail");
     await page.locator('button[type="submit"]').first().click();
     const hasError = await page.locator("text=/valid email|invalid email/i").first().isVisible({ timeout: 5_000 }).catch(() => false);
@@ -363,7 +363,7 @@ test.describe("Form validation edge cases", () => {
 
   test("Reset-password form rejects mismatched confirm password", async ({ page }) => {
     await page.goto("/reset-password?token=test-token-xyz");
-    await page.waitForLoadState("networkidle");
+    await page.waitForLoadState("domcontentloaded");
     const pwInput = page.locator('input[type="password"]').first();
     if (await pwInput.isVisible({ timeout: 3_000 }).catch(() => false)) {
       await pwInput.fill("NewPassword123!");
@@ -380,7 +380,7 @@ test.describe("Form validation edge cases", () => {
 
   test("Sign-up name field with HTML script tag is rendered safely (XSS prevention)", async ({ page }) => {
     await page.goto("/signup?role=company");
-    await page.waitForLoadState("networkidle");
+    await page.waitForLoadState("domcontentloaded");
     const ts = Date.now();
     const xssPayload = `<script>window.__xss_executed=true</script>E2E ${ts}`;
     await page.locator('input[name="name"], input[name="companyName"], input[placeholder*="name" i]').first().fill(xssPayload);
@@ -397,7 +397,7 @@ test.describe("Authenticated redirect flows", () => {
   test("Authenticated company admin visiting / is redirected to /company", async ({ page }) => {
     await loginAsCompany(page);
     await page.goto("/");
-    await page.waitForLoadState("networkidle");
+    await page.waitForLoadState("domcontentloaded");
     // Should be on /company or show company dashboard content
     const onCompany = page.url().includes("/company");
     const showsCompanyContent = await page.locator("text=/company dashboard|properties|maintenance/i").first().isVisible({ timeout: 5_000 }).catch(() => false);
@@ -407,7 +407,7 @@ test.describe("Authenticated redirect flows", () => {
   test("Authenticated contractor visiting / is redirected to /contractor", async ({ page }) => {
     await loginAsContractor(page);
     await page.goto("/");
-    await page.waitForLoadState("networkidle");
+    await page.waitForLoadState("domcontentloaded");
     const onContractor = page.url().includes("/contractor");
     const showsContractorContent = await page.locator("text=/contractor dashboard|job board|my jobs/i").first().isVisible({ timeout: 5_000 }).catch(() => false);
     expect(onContractor || showsContractorContent).toBeTruthy();
@@ -416,7 +416,7 @@ test.describe("Authenticated redirect flows", () => {
   test("Authenticated admin visiting / is redirected to /admin", async ({ page }) => {
     await loginAsAdmin(page);
     await page.goto("/");
-    await page.waitForLoadState("networkidle");
+    await page.waitForLoadState("domcontentloaded");
     const onAdmin = page.url().includes("/admin");
     const showsAdminContent = await page.locator("text=/platform admin|companies|contractors/i").first().isVisible({ timeout: 5_000 }).catch(() => false);
     expect(onAdmin || showsAdminContent).toBeTruthy();
@@ -427,7 +427,7 @@ test.describe("Authenticated redirect flows", () => {
     const dashboardUrl = page.url();
     await logOut(page);
     await page.goBack();
-    await page.waitForLoadState("networkidle");
+    await page.waitForLoadState("domcontentloaded");
     // Should NOT be on the company dashboard with active session
     const isOnDashboard = page.url() === dashboardUrl;
     if (isOnDashboard) {
@@ -443,7 +443,7 @@ test.describe("Authenticated redirect flows", () => {
 test.describe("Keyboard accessibility", () => {
   test("Sign-in form can be completed and submitted using only keyboard Tab and Enter", async ({ page }) => {
     await page.goto("/signin");
-    await page.waitForLoadState("networkidle");
+    await page.waitForLoadState("domcontentloaded");
 
     // Focus first input via Tab
     await page.keyboard.press("Tab");
@@ -454,14 +454,14 @@ test.describe("Keyboard accessibility", () => {
     await page.keyboard.press("Enter");
 
     // Should navigate to company dashboard or show error (not hang)
-    await page.waitForLoadState("networkidle");
+    await page.waitForLoadState("domcontentloaded");
     const navigated = page.url().includes("/company") || page.url().includes("/signin");
     expect(navigated).toBeTruthy();
   });
 
   test("Registration form can be tabbed through all fields in logical order", async ({ page }) => {
     await page.goto("/signup?role=company");
-    await page.waitForLoadState("networkidle");
+    await page.waitForLoadState("domcontentloaded");
 
     // Tab through all visible form fields
     const inputs = page.locator('input:visible, select:visible, textarea:visible');
@@ -478,7 +478,7 @@ test.describe("Keyboard accessibility", () => {
 test.describe("Error boundary behavior", () => {
   test("Navigating to /404 shows a not-found page without crashing the app", async ({ page }) => {
     await page.goto("/this-route-does-not-exist-xyz");
-    await page.waitForLoadState("networkidle");
+    await page.waitForLoadState("domcontentloaded");
 
     // Should show 404 page or redirect to home — not a blank white screen
     const has404 = await page.locator("text=/not found|404|page.*not.*exist/i").first().isVisible({ timeout: 5_000 }).catch(() => false);

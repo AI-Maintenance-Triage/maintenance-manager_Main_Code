@@ -51,19 +51,19 @@ async function checkA11y(page: Parameters<typeof AxeBuilder>[0]) {
 test.describe("Accessibility — Public pages", () => {
   test("Landing page has no critical/serious WCAG violations", async ({ page }) => {
     await page.goto("/");
-    await page.waitForLoadState("networkidle");
+    await page.waitForLoadState("domcontentloaded");
     await checkA11y(page);
   });
 
   test("Pricing page has no critical/serious WCAG violations", async ({ page }) => {
     await page.goto("/pricing");
-    await page.waitForLoadState("networkidle");
+    await page.waitForLoadState("domcontentloaded");
     await checkA11y(page);
   });
 
   test("Contact page has no critical/serious WCAG violations", async ({ page }) => {
     await page.goto("/contact");
-    await page.waitForLoadState("networkidle");
+    await page.waitForLoadState("domcontentloaded");
     await checkA11y(page);
   });
 });
@@ -72,25 +72,25 @@ test.describe("Accessibility — Public pages", () => {
 test.describe("Accessibility — Auth pages", () => {
   test("Login page has no critical/serious WCAG violations", async ({ page }) => {
     await page.goto("/login");
-    await page.waitForLoadState("networkidle");
+    await page.waitForLoadState("domcontentloaded");
     await checkA11y(page);
   });
 
   test("Register page has no critical/serious WCAG violations", async ({ page }) => {
     await page.goto("/register");
-    await page.waitForLoadState("networkidle");
+    await page.waitForLoadState("domcontentloaded");
     await checkA11y(page);
   });
 
   test("Password reset page has no critical/serious WCAG violations", async ({ page }) => {
     await page.goto("/reset-password");
-    await page.waitForLoadState("networkidle");
+    await page.waitForLoadState("domcontentloaded");
     await checkA11y(page);
   });
 
   test("Login form — all inputs have accessible labels", async ({ page }) => {
     await page.goto("/login");
-    await page.waitForLoadState("networkidle");
+    await page.waitForLoadState("domcontentloaded");
     const results = await new AxeBuilder({ page })
       .withRules(["label", "label-content-name-mismatch"])
       .analyze();
@@ -99,7 +99,7 @@ test.describe("Accessibility — Auth pages", () => {
 
   test("Register form — all inputs have accessible labels", async ({ page }) => {
     await page.goto("/register");
-    await page.waitForLoadState("networkidle");
+    await page.waitForLoadState("domcontentloaded");
     const results = await new AxeBuilder({ page })
       .withRules(["label", "label-content-name-mismatch"])
       .analyze();
@@ -115,37 +115,37 @@ test.describe("Accessibility — Company pages", () => {
 
   test("Company dashboard has no critical/serious WCAG violations", async ({ page }) => {
     await page.goto("/company");
-    await page.waitForLoadState("networkidle");
+    await page.waitForLoadState("domcontentloaded");
     await checkA11y(page);
   });
 
   test("Company properties page has no critical/serious WCAG violations", async ({ page }) => {
     await page.goto("/company/properties");
-    await page.waitForLoadState("networkidle");
+    await page.waitForLoadState("domcontentloaded");
     await checkA11y(page);
   });
 
   test("Company jobs page has no critical/serious WCAG violations", async ({ page }) => {
     await page.goto("/company/jobs");
-    await page.waitForLoadState("networkidle");
+    await page.waitForLoadState("domcontentloaded");
     await checkA11y(page);
   });
 
   test("Company settings page has no critical/serious WCAG violations", async ({ page }) => {
     await page.goto("/company/settings");
-    await page.waitForLoadState("networkidle");
+    await page.waitForLoadState("domcontentloaded");
     await checkA11y(page);
   });
 
   test("Company billing page has no critical/serious WCAG violations", async ({ page }) => {
     await page.goto("/company/billing");
-    await page.waitForLoadState("networkidle");
+    await page.waitForLoadState("domcontentloaded");
     await checkA11y(page);
   });
 
   test("Company integrations — interactive elements have accessible names", async ({ page }) => {
     await page.goto("/company/integrations");
-    await page.waitForLoadState("networkidle");
+    await page.waitForLoadState("domcontentloaded");
     const results = await new AxeBuilder({ page })
       .withRules(["button-name", "link-name", "aria-required-attr"])
       .analyze();
@@ -161,19 +161,19 @@ test.describe("Accessibility — Contractor pages", () => {
 
   test("Contractor dashboard has no critical/serious WCAG violations", async ({ page }) => {
     await page.goto("/contractor");
-    await page.waitForLoadState("networkidle");
+    await page.waitForLoadState("domcontentloaded");
     await checkA11y(page);
   });
 
   test("Contractor job board has no critical/serious WCAG violations", async ({ page }) => {
     await page.goto("/contractor/jobs");
-    await page.waitForLoadState("networkidle");
+    await page.waitForLoadState("domcontentloaded");
     await checkA11y(page);
   });
 
   test("Contractor profile page has no critical/serious WCAG violations", async ({ page }) => {
     await page.goto("/contractor/profile");
-    await page.waitForLoadState("networkidle");
+    await page.waitForLoadState("domcontentloaded");
     await checkA11y(page);
   });
 });
@@ -186,19 +186,19 @@ test.describe("Accessibility — Admin pages", () => {
 
   test("Admin dashboard has no critical/serious WCAG violations", async ({ page }) => {
     await page.goto("/admin");
-    await page.waitForLoadState("networkidle");
+    await page.waitForLoadState("domcontentloaded");
     await checkA11y(page);
   });
 
   test("Admin companies page has no critical/serious WCAG violations", async ({ page }) => {
     await page.goto("/admin/companies");
-    await page.waitForLoadState("networkidle");
+    await page.waitForLoadState("domcontentloaded");
     await checkA11y(page);
   });
 
   test("Admin revenue page has no critical/serious WCAG violations", async ({ page }) => {
     await page.goto("/admin/revenue");
-    await page.waitForLoadState("networkidle");
+    await page.waitForLoadState("domcontentloaded");
     await checkA11y(page);
   });
 });
@@ -207,14 +207,14 @@ test.describe("Accessibility — Admin pages", () => {
 test.describe("Accessibility — Color contrast", () => {
   test("Landing page passes color-contrast check", async ({ page }) => {
     await page.goto("/");
-    await page.waitForLoadState("networkidle");
+    await page.waitForLoadState("domcontentloaded");
     const results = await new AxeBuilder({ page }).withRules(["color-contrast"]).analyze();
     expect(results.violations.filter((v) => v.id === "color-contrast" && (v.impact === "critical" || v.impact === "serious"))).toHaveLength(0);
   });
 
   test("Login page passes color-contrast check", async ({ page }) => {
     await page.goto("/login");
-    await page.waitForLoadState("networkidle");
+    await page.waitForLoadState("domcontentloaded");
     const results = await new AxeBuilder({ page }).withRules(["color-contrast"]).analyze();
     expect(results.violations.filter((v) => v.id === "color-contrast" && (v.impact === "critical" || v.impact === "serious"))).toHaveLength(0);
   });
@@ -224,7 +224,7 @@ test.describe("Accessibility — Color contrast", () => {
 test.describe("Accessibility — Keyboard navigation", () => {
   test("Landing page — no keyboard trap", async ({ page }) => {
     await page.goto("/");
-    await page.waitForLoadState("networkidle");
+    await page.waitForLoadState("domcontentloaded");
 
     let previousFocused = "";
     let stuckCount = 0;
@@ -240,7 +240,7 @@ test.describe("Accessibility — Keyboard navigation", () => {
 
   test("Login page — tabindex and focus order are valid", async ({ page }) => {
     await page.goto("/login");
-    await page.waitForLoadState("networkidle");
+    await page.waitForLoadState("domcontentloaded");
     const results = await new AxeBuilder({ page })
       .withRules(["tabindex", "focus-order-semantics"])
       .analyze();

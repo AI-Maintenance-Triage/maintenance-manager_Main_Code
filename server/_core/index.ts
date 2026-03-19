@@ -15,6 +15,8 @@ import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
 import { startCronJobs } from "../cron";
+import { registerCronRoutes } from "../cron-routes";
+import { registerTestSetupRoute } from "../test-setup";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -60,6 +62,10 @@ async function startServer() {
   registerInvoiceBulkRoute(app);
   // Contractor payment receipt PDF endpoint
   registerReceiptRoute(app);
+  // Cron job HTTP trigger endpoints (protected by x-cron-secret header)
+  registerCronRoutes(app);
+  // E2E test setup endpoint (only active when TEST_SETUP_SECRET is set)
+  registerTestSetupRoute(app);
   // tRPC API
   app.use(
     "/api/trpc",
