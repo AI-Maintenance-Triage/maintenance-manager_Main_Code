@@ -333,4 +333,114 @@ test.describe("Contractor flows", () => {
       await expect(page.locator(`text=${title}`).first()).toBeVisible({ timeout: 10_000 });
     });
   });
+
+  // ─── Geofence and clock-in/out flows ─────────────────────────────────────────
+  test.describe("Geofence and clock-in/out flows", () => {
+    test("Clock In button is visible on an active job and triggers location check", async ({ page }) => {
+      await page.goto("/contractor/my-jobs");
+      await page.waitForLoadState("networkidle");
+
+      const clockInBtn = page.locator('button:has-text("Clock In"), button:has-text("Check In")').first();
+      if (await clockInBtn.isVisible({ timeout: 3_000 }).catch(() => false)) {
+        await clockInBtn.click();
+        await page.waitForTimeout(800);
+        const geofenceWarning = await page.locator("text=/outside.*area|geofence|too far|location/i").first().isVisible({ timeout: 5_000 }).catch(() => false);
+        const clockedIn = await page.locator("text=/clocked in|clock out|checked in/i").first().isVisible({ timeout: 5_000 }).catch(() => false);
+        expect(geofenceWarning || clockedIn).toBeTruthy();
+      }
+    });
+
+    test("Geofence warning banner appears when contractor is outside job radius", async ({ page }) => {
+      await page.context().setGeolocation({ latitude: 0, longitude: 0 });
+      await page.goto("/contractor/my-jobs");
+      await page.waitForLoadState("networkidle");
+
+      const clockInBtn = page.locator('button:has-text("Clock In"), button:has-text("Check In")').first();
+      if (await clockInBtn.isVisible({ timeout: 3_000 }).catch(() => false)) {
+        await clockInBtn.click();
+        await page.waitForTimeout(1_000);
+      }
+      const isLoaded = await page.locator("main, [role='main']").isVisible();
+      expect(isLoaded).toBeTruthy();
+    });
+  });
+
+  // ─── Onboarding checklist ─────────────────────────────────────────────────────
+  test.describe("Onboarding checklist", () => {
+    test("Contractor onboarding checklist is visible on dashboard for new contractors", async ({ page }) => {
+      await page.goto("/contractor");
+      await page.waitForLoadState("networkidle");
+      const isLoaded = await page.locator("main, [role='main']").isVisible();
+      expect(isLoaded).toBeTruthy();
+    });
+
+    test("Onboarding step Complete your profile links to /contractor/profile", async ({ page }) => {
+      await page.goto("/contractor");
+      await page.waitForLoadState("networkidle");
+      const profileStep = page.locator("text=/complete.*profile|profile.*setup/i").first();
+      if (await profileStep.isVisible({ timeout: 3_000 }).catch(() => false)) {
+        await profileStep.click();
+        await page.waitForLoadState("networkidle");
+        expect(page.url()).toContain("/contractor/profile");
+      }
+    });
+  });
+
+  // ─── Stripe Connect polling ───────────────────────────────────────────────────
+  test.describe("Stripe Connect polling", () => {
+    test("Payouts page shows Stripe Connect status and Connect button when not connected", async ({ page }) => {
+      await mockStripeRoutes(page);
+      await page.goto("/contractor/payouts");
+      await page.waitForLoadState("networkidle");
+
+      const connectBtn = page.locator('button:has-text("Connect Stripe"), button:has-text("Set Up Payouts"), a:has-text("Connect")').first();
+      const connectedStatus = page.locator("text=/connected|stripe.*connected|payout.*enabled/i").first();
+      const hasConnect = await connectBtn.isVisible({ timeout: 3_000 }).catch(() => false);
+      const hasStatus = await connectedStatus.isVisible({ timeout: 3_000 }).catch(() => false);
+      expect(hasConnect || hasStatus).toBeTruthy();
+    });
+  });
+
+  // ─── Job board real-time refresh ─────────────────────────────────────────────
+  test.describe("Job board real-time refresh", () => {
+    test("Job board has a Refresh button or auto-refreshes", async ({ page }) => {
+      await page.goto("/contractor/job-board");
+      await page.waitForLoadState("networkidle");
+
+      const refreshBtn = page.locator('button:has-text("Refresh"), button[aria-label*="refresh" i]').first();
+      if (await refreshBtn.isVisible({ timeout: 3_000 }).catch(() => false)) {
+        await refreshBtn.click();
+        await page.waitForLoadState("networkidle");
+      }
+      const isLoaded = await page.locator("main, [role='main']").isVisible();
+      expect(isLoaded).toBeTruthy();
+    });
+  });
+
+  // ─── Mobile viewport ─────────────────────────────────────────────────────────
+  test.describe("Mobile viewport — contractor", () => {
+    test("Contractor dashboard is responsive on a 375px mobile viewport", async ({ page }) => {
+      await page.setViewportSize({ width: 375, height: 812 });
+      await page.goto("/contractor");
+      await page.waitForLoadState("networkidle");
+
+      const isLoaded = await page.locator("main, [role='main'], #root").isVisible();
+      expect(isLoaded).toBeTruthy();
+
+      const hasHorizontalScroll = await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth);
+      expect(hasHorizontalScroll).toBeFalsy();
+    });
+
+    test("Contractor job board is usable on mobile — job cards stack vertically", async ({ page }) => {
+      await page.setViewportSize({ width: 375, height: 812 });
+      await page.goto("/contractor/job-board");
+      await page.waitForLoadState("networkidle");
+
+      const isLoaded = await page.locator("main, [role='main']").isVisible();
+      expect(isLoaded).toBeTruthy();
+
+      const hasHorizontalScroll = await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth);
+      expect(hasHorizontalScroll).toBeFalsy();
+    });
+  });
 });

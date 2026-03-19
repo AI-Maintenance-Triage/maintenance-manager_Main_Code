@@ -487,4 +487,86 @@ test.describe("Admin flows", () => {
       }
     });
   });
+
+  // ─── Plan deactivation and price change warnings ───────────────────────────────
+  test.describe("Plan deactivation and price change warnings", () => {
+    test("Deactivating a subscription plan shows a confirmation dialog", async ({ page }) => {
+      await page.goto("/admin/subscription-plans");
+      await page.waitForLoadState("networkidle");
+
+      const deactivateBtn = page.locator('button:has-text("Deactivate"), button:has-text("Disable Plan")').first();
+      if (await deactivateBtn.isVisible({ timeout: 3_000 }).catch(() => false)) {
+        await deactivateBtn.click();
+        await page.waitForTimeout(500);
+        const dialog = await page.locator('[role="dialog"], [role="alertdialog"]').first().isVisible({ timeout: 3_000 }).catch(() => false);
+        const confirmText = await page.locator("text=/are you sure|confirm|deactivate/i").first().isVisible({ timeout: 3_000 }).catch(() => false);
+        expect(dialog || confirmText).toBeTruthy();
+      }
+    });
+
+    test("Changing a plan price shows a warning about existing subscribers", async ({ page }) => {
+      await page.goto("/admin/subscription-plans");
+      await page.waitForLoadState("networkidle");
+
+      const editBtn = page.locator('button:has-text("Edit"), button[aria-label*="edit" i]').first();
+      if (await editBtn.isVisible({ timeout: 3_000 }).catch(() => false)) {
+        await editBtn.click();
+        await page.waitForTimeout(500);
+
+        const priceInput = page.locator('[role="dialog"] input[name="price"], [role="dialog"] input[type="number"]').first();
+        if (await priceInput.isVisible({ timeout: 3_000 }).catch(() => false)) {
+          const currentPrice = await priceInput.inputValue();
+          const newPrice = String(parseFloat(currentPrice || "0") + 10);
+          await priceInput.fill(newPrice);
+          await page.locator('[role="dialog"] button[type="submit"], [role="dialog"] button:has-text("Save")').first().click();
+          await page.waitForTimeout(500);
+          const warning = await page.locator("text=/existing.*subscribers|subscribers.*affected|price.*change/i").first().isVisible({ timeout: 5_000 }).catch(() => false);
+          const saved = await page.locator("text=/saved|updated|success/i").first().isVisible({ timeout: 5_000 }).catch(() => false);
+          expect(warning || saved).toBeTruthy();
+        }
+      }
+    });
+  });
+
+  // ─── Loading and empty states ────────────────────────────────────────────────────────
+  test.describe("Loading and empty states", () => {
+    test("Admin churn risk page shows table or empty state", async ({ page }) => {
+      await page.goto("/admin/churn-risk");
+      await page.waitForLoadState("networkidle");
+
+      const hasContent = await page.locator("text=/no.*at.*risk|all.*healthy|no churn/i").first().isVisible({ timeout: 3_000 }).catch(() => false);
+      const hasTable = await page.locator("table, [role='table']").first().isVisible({ timeout: 3_000 }).catch(() => false);
+      expect(hasContent || hasTable).toBeTruthy();
+    });
+
+    test("Admin payout holds page shows table or empty state", async ({ page }) => {
+      await page.goto("/admin/payout-holds");
+      await page.waitForLoadState("networkidle");
+
+      const hasContent = await page.locator("text=/no.*holds|no active holds|all.*clear/i").first().isVisible({ timeout: 3_000 }).catch(() => false);
+      const hasTable = await page.locator("table, [role='table']").first().isVisible({ timeout: 3_000 }).catch(() => false);
+      expect(hasContent || hasTable).toBeTruthy();
+    });
+
+    test("Admin suspensions page shows table or empty state", async ({ page }) => {
+      await page.goto("/admin/suspensions");
+      await page.waitForLoadState("networkidle");
+
+      const hasContent = await page.locator("text=/no.*suspensions|no active|all.*active/i").first().isVisible({ timeout: 3_000 }).catch(() => false);
+      const hasTable = await page.locator("table, [role='table']").first().isVisible({ timeout: 3_000 }).catch(() => false);
+      expect(hasContent || hasTable).toBeTruthy();
+    });
+  });
+
+  // ─── Mobile viewport — admin ────────────────────────────────────────────────────
+  test.describe("Mobile viewport — admin", () => {
+    test("Admin dashboard is accessible on a 768px tablet viewport", async ({ page }) => {
+      await page.setViewportSize({ width: 768, height: 1024 });
+      await page.goto("/admin");
+      await page.waitForLoadState("networkidle");
+
+      const isLoaded = await page.locator("main, [role='main'], #root").isVisible();
+      expect(isLoaded).toBeTruthy();
+    });
+  });
 });

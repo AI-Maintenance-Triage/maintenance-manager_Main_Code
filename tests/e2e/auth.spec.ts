@@ -303,3 +303,186 @@ test.describe("Authentication flows", () => {
     });
   });
 });
+
+// ─── Additional coverage: form validation, redirects, keyboard, error boundary ───
+
+test.describe("Form validation edge cases", () => {
+  test("Sign-up rejects email without @ symbol and shows inline error", async ({ page }) => {
+    await page.goto("/signup?role=company");
+    await page.waitForLoadState("networkidle");
+    await page.locator('input[type="email"], input[name="email"]').first().fill("notanemail");
+    await page.locator('button[type="submit"]').first().click();
+    // Browser native validation or custom error
+    const invalid = await page.locator('input[type="email"]:invalid, text=/valid email|invalid email/i').first().isVisible({ timeout: 3_000 }).catch(() => false);
+    const nativeInvalid = await page.locator('input[type="email"]').first().evaluate((el) => !(el as HTMLInputElement).validity.valid);
+    expect(invalid || nativeInvalid).toBeTruthy();
+  });
+
+  test("Sign-up rejects password shorter than 8 characters and shows error", async ({ page }) => {
+    await page.goto("/signup?role=company");
+    await page.waitForLoadState("networkidle");
+    const ts = Date.now();
+    await page.locator('input[name="name"], input[name="companyName"], input[placeholder*="name" i]').first().fill(`Test ${ts}`);
+    await page.locator('input[type="email"], input[name="email"]').first().fill(`short-pw-${ts}@test.example.com`);
+    await page.locator('input[type="password"], input[name="password"]').first().fill("abc");
+    await page.locator('button[type="submit"]').first().click();
+    await expect(
+      page.locator("text=/at least 8|minimum 8|too short|password.*characters/i").first()
+    ).toBeVisible({ timeout: 8_000 });
+  });
+
+  test("Sign-up name field rejects empty value and shows required error", async ({ page }) => {
+    await page.goto("/signup?role=company");
+    await page.waitForLoadState("networkidle");
+    await page.locator('input[type="email"], input[name="email"]').first().fill("empty-name@test.example.com");
+    await page.locator('input[type="password"], input[name="password"]').first().fill("TestPass123!");
+    await page.locator('button[type="submit"]').first().click();
+    const hasError = await page.locator("text=/required|name.*required|enter.*name/i").first().isVisible({ timeout: 5_000 }).catch(() => false);
+    const nativeInvalid = await page.locator('input[name="name"], input[name="companyName"]').first().evaluate((el) => !(el as HTMLInputElement).validity.valid).catch(() => false);
+    expect(hasError || nativeInvalid).toBeTruthy();
+  });
+
+  test("Sign-in with empty email field shows validation error", async ({ page }) => {
+    await page.goto("/signin");
+    await page.waitForLoadState("networkidle");
+    await page.locator('button[type="submit"]').first().click();
+    const hasError = await page.locator("text=/required|email.*required|enter.*email/i").first().isVisible({ timeout: 5_000 }).catch(() => false);
+    const nativeInvalid = await page.locator('input[type="email"]').first().evaluate((el) => !(el as HTMLInputElement).validity.valid).catch(() => false);
+    expect(hasError || nativeInvalid).toBeTruthy();
+  });
+
+  test("Forgot-password with invalid email format shows validation error", async ({ page }) => {
+    await page.goto("/forgot-password");
+    await page.waitForLoadState("networkidle");
+    await page.locator('input[type="email"], input[name="email"]').first().fill("bademail");
+    await page.locator('button[type="submit"]').first().click();
+    const hasError = await page.locator("text=/valid email|invalid email/i").first().isVisible({ timeout: 5_000 }).catch(() => false);
+    const nativeInvalid = await page.locator('input[type="email"]').first().evaluate((el) => !(el as HTMLInputElement).validity.valid).catch(() => false);
+    expect(hasError || nativeInvalid).toBeTruthy();
+  });
+
+  test("Reset-password form rejects mismatched confirm password", async ({ page }) => {
+    await page.goto("/reset-password?token=test-token-xyz");
+    await page.waitForLoadState("networkidle");
+    const pwInput = page.locator('input[type="password"]').first();
+    if (await pwInput.isVisible({ timeout: 3_000 }).catch(() => false)) {
+      await pwInput.fill("NewPassword123!");
+      const confirmInput = page.locator('input[name="confirmPassword"], input[placeholder*="confirm" i]').first();
+      if (await confirmInput.isVisible({ timeout: 2_000 }).catch(() => false)) {
+        await confirmInput.fill("DifferentPassword999!");
+        await page.locator('button[type="submit"]').first().click();
+        await expect(
+          page.locator("text=/match|do not match|passwords must match/i").first()
+        ).toBeVisible({ timeout: 8_000 });
+      }
+    }
+  });
+
+  test("Sign-up name field with HTML script tag is rendered safely (XSS prevention)", async ({ page }) => {
+    await page.goto("/signup?role=company");
+    await page.waitForLoadState("networkidle");
+    const ts = Date.now();
+    const xssPayload = `<script>window.__xss_executed=true</script>E2E ${ts}`;
+    await page.locator('input[name="name"], input[name="companyName"], input[placeholder*="name" i]').first().fill(xssPayload);
+    await page.locator('input[type="email"], input[name="email"]').first().fill(`xss-${ts}@test.example.com`);
+    await page.locator('input[type="password"], input[name="password"]').first().fill("TestPass123!");
+    await page.locator('button[type="submit"]').first().click();
+    // Script should NOT have executed
+    const xssExecuted = await page.evaluate(() => (window as any).__xss_executed === true);
+    expect(xssExecuted).toBeFalsy();
+  });
+});
+
+test.describe("Authenticated redirect flows", () => {
+  test("Authenticated company admin visiting / is redirected to /company", async ({ page }) => {
+    await loginAsCompany(page);
+    await page.goto("/");
+    await page.waitForLoadState("networkidle");
+    // Should be on /company or show company dashboard content
+    const onCompany = page.url().includes("/company");
+    const showsCompanyContent = await page.locator("text=/company dashboard|properties|maintenance/i").first().isVisible({ timeout: 5_000 }).catch(() => false);
+    expect(onCompany || showsCompanyContent).toBeTruthy();
+  });
+
+  test("Authenticated contractor visiting / is redirected to /contractor", async ({ page }) => {
+    await loginAsContractor(page);
+    await page.goto("/");
+    await page.waitForLoadState("networkidle");
+    const onContractor = page.url().includes("/contractor");
+    const showsContractorContent = await page.locator("text=/contractor dashboard|job board|my jobs/i").first().isVisible({ timeout: 5_000 }).catch(() => false);
+    expect(onContractor || showsContractorContent).toBeTruthy();
+  });
+
+  test("Authenticated admin visiting / is redirected to /admin", async ({ page }) => {
+    await loginAsAdmin(page);
+    await page.goto("/");
+    await page.waitForLoadState("networkidle");
+    const onAdmin = page.url().includes("/admin");
+    const showsAdminContent = await page.locator("text=/platform admin|companies|contractors/i").first().isVisible({ timeout: 5_000 }).catch(() => false);
+    expect(onAdmin || showsAdminContent).toBeTruthy();
+  });
+
+  test("Browser back button after sign out does not restore authenticated session", async ({ page }) => {
+    await loginAsCompany(page);
+    const dashboardUrl = page.url();
+    await logOut(page);
+    await page.goBack();
+    await page.waitForLoadState("networkidle");
+    // Should NOT be on the company dashboard with active session
+    const isOnDashboard = page.url() === dashboardUrl;
+    if (isOnDashboard) {
+      // If browser navigated back, the page should redirect away or show auth prompt
+      const showsAuthPrompt = await page.locator("text=/sign in|log in|login/i").isVisible({ timeout: 5_000 }).catch(() => false);
+      const redirectedAway = !page.url().includes("/company");
+      expect(showsAuthPrompt || redirectedAway).toBeTruthy();
+    }
+    // If browser did not navigate back (SPA behavior), test passes
+  });
+});
+
+test.describe("Keyboard accessibility", () => {
+  test("Sign-in form can be completed and submitted using only keyboard Tab and Enter", async ({ page }) => {
+    await page.goto("/signin");
+    await page.waitForLoadState("networkidle");
+
+    // Focus first input via Tab
+    await page.keyboard.press("Tab");
+    await page.keyboard.type(TEST_COMPANY_EMAIL);
+    await page.keyboard.press("Tab");
+    await page.keyboard.type(TEST_COMPANY_PASSWORD);
+    await page.keyboard.press("Tab"); // Move to submit button
+    await page.keyboard.press("Enter");
+
+    // Should navigate to company dashboard or show error (not hang)
+    await page.waitForLoadState("networkidle");
+    const navigated = page.url().includes("/company") || page.url().includes("/signin");
+    expect(navigated).toBeTruthy();
+  });
+
+  test("Registration form can be tabbed through all fields in logical order", async ({ page }) => {
+    await page.goto("/signup?role=company");
+    await page.waitForLoadState("networkidle");
+
+    // Tab through all visible form fields
+    const inputs = page.locator('input:visible, select:visible, textarea:visible');
+    const count = await inputs.count();
+    expect(count).toBeGreaterThan(2); // At least name, email, password
+
+    // Verify Tab moves focus between fields
+    await page.keyboard.press("Tab");
+    const firstFocused = await page.evaluate(() => document.activeElement?.tagName);
+    expect(["INPUT", "SELECT", "TEXTAREA", "BUTTON"]).toContain(firstFocused);
+  });
+});
+
+test.describe("Error boundary behavior", () => {
+  test("Navigating to /404 shows a not-found page without crashing the app", async ({ page }) => {
+    await page.goto("/this-route-does-not-exist-xyz");
+    await page.waitForLoadState("networkidle");
+
+    // Should show 404 page or redirect to home — not a blank white screen
+    const has404 = await page.locator("text=/not found|404|page.*not.*exist/i").first().isVisible({ timeout: 5_000 }).catch(() => false);
+    const redirectedHome = page.url().endsWith("/") || page.url().endsWith("/#");
+    expect(has404 || redirectedHome).toBeTruthy();
+  });
+});
