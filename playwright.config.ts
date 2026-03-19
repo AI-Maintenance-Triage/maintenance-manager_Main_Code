@@ -1,7 +1,9 @@
 import { defineConfig, devices } from "@playwright/test";
 import path from "path";
+import { fileURLToPath } from "url";
 
 // Storage state paths for pre-authenticated sessions
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const AUTH_DIR = path.join(__dirname, "tests/e2e/.auth");
 
 export default defineConfig({
