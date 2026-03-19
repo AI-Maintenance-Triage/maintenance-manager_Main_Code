@@ -1912,3 +1912,27 @@ _Note: Core items were completed in earlier sessions. These are the remaining ed
 - [x] Switch sync insert to upsertMaintenanceRequestFromPms (pre-flight dedup check + skip if exists)
 - [x] Update Buildium adapter fetchRequests to pass createddatefrom=sinceDate parameter
 - [x] Update CompanyIntegrations UI with webhook-first callout and setup instructions
+
+## Playwright E2E Test Suite (Session Current)
+- [x] Install @playwright/test as dev dependency
+- [x] Create playwright.config.ts (Chromium, baseURL localhost:5000, 30s timeout)
+- [x] Create tests/e2e/helpers/auth.ts (loginAsCompany, loginAsContractor, loginAsAdmin, logOut, mockStripeRoutes, mockGoogleMapsRoutes, mockGeolocation)
+- [x] Create tests/e2e/public.spec.ts (11 tests: homepage, get-started, pricing, register, sign-in)
+- [x] Create tests/e2e/auth.spec.ts (24 tests: sign-up, sign-in, sign-out, password reset, invite accept)
+- [x] Create tests/e2e/company.spec.ts (39 tests: dashboard, properties, contractors, jobs, settings, reports, integrations, analytics, verification, expense reports)
+- [x] Create tests/e2e/contractor.spec.ts (26 tests: dashboard, job board, my jobs, profile, earnings, payouts, feature requests)
+- [x] Create tests/e2e/admin.spec.ts (40 tests: dashboard, companies, contractors, revenue, subscription plans, activity feed, audit log, leaderboard, churn risk, email blast, payout holds, credits, suspensions, feature flags, announcements, promo codes, maintenance mode, settings)
+- [x] Add test:e2e, test:e2e:ui, test:e2e:report scripts to package.json
+- Total: 140 E2E tests across 5 spec files
+
+## Playwright E2E Test Suite
+- [x] Install @playwright/test as dev dependency
+- [x] Create playwright.config.ts (Chromium, baseURL localhost:5000, 30s timeout)
+- [x] Create tests/e2e/helpers/auth.ts (loginAsCompany, loginAsContractor, loginAsAdmin, logOut, mockStripeRoutes, mockGoogleMapsRoutes, mockGeolocation)
+- [x] Create tests/e2e/public.spec.ts (11 tests: homepage, get-started, pricing, register, sign-in)
+- [x] Create tests/e2e/auth.spec.ts (24 tests: sign-up, sign-in, sign-out, password reset, invite accept)
+- [x] Create tests/e2e/company.spec.ts (39 tests: dashboard, properties, contractors, jobs, settings, reports, integrations, analytics, verification, expense reports)
+- [x] Create tests/e2e/contractor.spec.ts (26 tests: dashboard, job board, my jobs, profile, earnings, payouts, feature requests)
+- [x] Create tests/e2e/admin.spec.ts (40 tests: dashboard, companies, contractors, revenue, subscription plans, activity feed, audit log, leaderboard, churn risk, email blast, payout holds, credits, suspensions, feature flags, announcements, promo codes, maintenance mode, settings)
+- [x] Add test:e2e, test:e2e:ui, test:e2e:report scripts to package.json
+- Total: 140 E2E tests across 5 spec files
