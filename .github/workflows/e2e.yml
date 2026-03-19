@@ -31,7 +31,7 @@ jobs:
 
       - name: Run E2E tests
         run: pnpm test:e2e
-                env:
+        env:
           PLAYWRIGHT_BASE_URL: $</LaTex>{{ secrets.PLAYWRIGHT_BASE_URL }}
           CI: true
 
