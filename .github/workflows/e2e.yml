@@ -32,8 +32,9 @@ jobs:
       - name: Run E2E tests
         run: pnpm test:e2e
         env:
-          PLAYWRIGHT_BASE_URL: $</LaTex>{{ secrets.PLAYWRIGHT_BASE_URL }}
+          PLAYWRIGHT_BASE_URL: ${{ secrets.PLAYWRIGHT_BASE_URL }}
           CI: true
+
 
       - name: Upload test report
         if: always( )
