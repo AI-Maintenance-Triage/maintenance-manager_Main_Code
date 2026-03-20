@@ -82,8 +82,8 @@ test.describe("Public pages — unauthenticated access", () => {
     await page.goto("/reset-password");
     await page.waitForLoadState("domcontentloaded");
     // Should either show the reset form or an error about missing/invalid token
-    const hasForm = await page.locator('input[type="password"]').isVisible({ timeout: 30_000 }).catch(() => false);
-    const hasError = await page.locator("text=/invalid|expired|token|missing/i").isVisible({ timeout: 30_000 }).catch(() => false);
+    const hasForm = await page.locator('input[type="password"]').first().isVisible({ timeout: 30_000 }).catch(() => false);
+    const hasError = await page.locator("text=/invalid|expired|token|missing/i").first().isVisible({ timeout: 30_000 }).catch(() => false);
     expect(hasForm || hasError).toBeTruthy();
   });
 
