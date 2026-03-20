@@ -75,13 +75,13 @@ jobs:
           echo "Waiting for DigitalOcean to deploy commit $GITHUB_SHA..."
           EXPECTED_SHA="$GITHUB_SHA"
           for i in $(seq 1 40); do
-            RESPONSE=$(curl -s "$PLAYWRIGHT_BASE_URL/api/trpc/system.health?input=%7B%22json%22%3A%7B%22timestamp%22%3A0%7D%7D")
-            DEPLOYED_SHA=$(echo "$RESPONSE" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('result',{}).get('data',{}).get('json',{}).get('sha',''))" 2>/dev/null || echo "")
+            RESPONSE=$(curl -sf "$PLAYWRIGHT_BASE_URL/api/health" 2>/dev/null || echo "{}")
+            DEPLOYED_SHA=$(echo "$RESPONSE" | python3 -c "import sys,json; print(json.load(sys.stdin).get('sha',''))" 2>/dev/null || echo "")
+            echo "Attempt $i/40: deployed=$DEPLOYED_SHA expected=$EXPECTED_SHA"
             if [ "$DEPLOYED_SHA" = "$EXPECTED_SHA" ]; then
-              echo "Deployment confirmed: SHA $DEPLOYED_SHA matches!"
+              echo "Deployment confirmed: SHA matches!"
               exit 0
             fi
-            echo "Attempt $i/40: deployed=$DEPLOYED_SHA expected=$EXPECTED_SHA — waiting 15s..."
             sleep 15
           done
           echo "ERROR: Deployment did not complete within 10 minutes"

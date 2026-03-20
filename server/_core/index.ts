@@ -66,6 +66,10 @@ async function startServer() {
   registerCronRoutes(app);
   // E2E test setup endpoint (only active when TEST_SETUP_SECRET is set)
   registerTestSetupRoute(app);
+  // Simple REST health check (used by CI to verify deployment SHA)
+  app.get("/api/health", (_req, res) => {
+    res.json({ ok: true, sha: process.env.GIT_COMMIT_SHA ?? "" });
+  });
   // tRPC API
   app.use(
     "/api/trpc",
