@@ -28,7 +28,7 @@ export const CONTRACTOR_STORAGE_STATE = path.join(__dirname, ".auth", "contracto
 
 /**
  * Login via the /signin page and save the auth state.
- * Intercepts the /api/auth/login response to detect errors early.
+ * Uses waitForResponse to capture the login API response body reliably.
  */
 async function loginAndSaveState(
   browser: Awaited<ReturnType<typeof chromium.launch>>,
@@ -41,25 +41,6 @@ async function loginAndSaveState(
   const context = await browser.newContext();
   const page = await context.newPage();
 
-  let loginApiResponse: { success?: boolean; error?: string; role?: string } | null = null;
-
-  // Intercept the login API response for early error detection
-  page.on("response", async (response) => {
-    if (response.url().includes("/api/auth/login") && response.request().method() === "POST") {
-      try {
-        const body = await response.json();
-        loginApiResponse = body;
-        if (body.success) {
-          console.log(`[global-setup] ${label} login API success, role: ${body.user?.role}`);
-        } else {
-          console.warn(`[global-setup] ${label} login API error (${response.status()}): ${body.error}`);
-        }
-      } catch {
-        console.warn(`[global-setup] ${label} could not parse login API response`);
-      }
-    }
-  });
-
   try {
     await page.goto(`${BASE_URL}/signin`);
     // Wait for the page to be fully loaded including JS bundle (first load can be slow)
@@ -68,13 +49,28 @@ async function loginAndSaveState(
     await page.waitForSelector('input[type="email"], input[name="email"], #email', { timeout: 60_000 });
     await page.fill('input[type="email"], input[name="email"], #email', email);
     await page.fill('input[type="password"], input[name="password"], #password', password);
-    await page.click('button[type="submit"]');
 
-    // Wait for the login API response first (up to 20s)
-    await page.waitForResponse(
+    // Set up the response promise BEFORE clicking submit to avoid race conditions
+    const loginResponsePromise = page.waitForResponse(
       (res) => res.url().includes("/api/auth/login") && res.request().method() === "POST",
       { timeout: 20_000 }
-    ).catch(() => console.warn(`[global-setup] ${label} login API response not detected within 20s`));
+    );
+
+    await page.click('button[type="submit"]');
+
+    // Wait for the login API response and parse it
+    let loginApiResponse: { success?: boolean; error?: string; user?: { role?: string } } | null = null;
+    try {
+      const loginResponse = await loginResponsePromise;
+      loginApiResponse = await loginResponse.json();
+      if (loginApiResponse?.success) {
+        console.log(`[global-setup] ${label} login API success, role: ${loginApiResponse.user?.role}`);
+      } else {
+        console.warn(`[global-setup] ${label} login API error (${loginResponse.status()}): ${loginApiResponse?.error}`);
+      }
+    } catch {
+      console.warn(`[global-setup] ${label} login API response not detected or could not be parsed within 20s`);
+    }
 
     // If the API returned an error, don't wait for URL change
     if (loginApiResponse && !loginApiResponse.success) {
@@ -141,11 +137,45 @@ async function globalSetup(_config: FullConfig) {
     await adminPage.waitForLoadState("domcontentloaded");
     await adminPage.fill('input[type="email"], input[name="email"], #email', "admin@example.com");
     await adminPage.fill('input[type="password"], input[name="password"], #password', "TestAdmin123!");
+
+    // Set up response promise BEFORE clicking to avoid race conditions
+    const adminLoginResponsePromise = adminPage.waitForResponse(
+      (res) => res.url().includes("/api/auth/login") && res.request().method() === "POST",
+      { timeout: 20_000 }
+    );
+
     await adminPage.click('button[type="submit"]');
-    await adminPage.waitForURL(/\/admin/, { timeout: 30_000 });
-    await adminContext.storageState({ path: ADMIN_STORAGE_STATE });
-    await adminContext.close();
-    console.log("[global-setup] Admin auth state saved.");
+
+    // Wait for the login API response
+    let adminLoginOk = false;
+    try {
+      const adminLoginResponse = await adminLoginResponsePromise;
+      const adminLoginBody = await adminLoginResponse.json();
+      if (adminLoginBody?.success && adminLoginBody?.user?.role === "admin") {
+        console.log("[global-setup] Admin login API success");
+        adminLoginOk = true;
+      } else {
+        console.warn("[global-setup] Admin login API returned unexpected response:", adminLoginBody);
+      }
+    } catch {
+      console.warn("[global-setup] Admin login API response not detected within 20s");
+    }
+
+    if (!adminLoginOk) {
+      console.warn("[global-setup] Admin login failed — tests will run without admin auth");
+      await adminContext.close();
+      fs.writeFileSync(ADMIN_STORAGE_STATE, JSON.stringify({ cookies: [], origins: [] }));
+    } else {
+      // Wait for the redirect to /admin (not /admin/login) to complete
+      // Use a strict pattern that does NOT match /admin/login
+      await adminPage.waitForURL(
+        (url) => url.pathname.startsWith("/admin") && !url.pathname.startsWith("/admin/login"),
+        { timeout: 30_000 }
+      );
+      await adminContext.storageState({ path: ADMIN_STORAGE_STATE });
+      await adminContext.close();
+      console.log("[global-setup] Admin auth state saved.");
+    }
   } catch (err) {
     console.warn("[global-setup] Admin login failed (tests will run without auth):", err);
     fs.writeFileSync(ADMIN_STORAGE_STATE, JSON.stringify({ cookies: [], origins: [] }));
