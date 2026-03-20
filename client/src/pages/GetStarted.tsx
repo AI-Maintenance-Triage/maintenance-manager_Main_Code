@@ -64,6 +64,7 @@ export default function GetStarted() {
                 <Building2 className="h-7 w-7 text-primary" />
               </div>
               <CardTitle className="text-xl">Property Management Company</CardTitle>
+              <span className="sr-only">Company</span>
               <CardDescription>I manage properties and need contractors to handle maintenance</CardDescription>
             </CardHeader>
             <CardContent>

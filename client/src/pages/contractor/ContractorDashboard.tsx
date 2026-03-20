@@ -3,7 +3,7 @@ import { useViewAs } from "@/contexts/ViewAsContext";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Briefcase, Clock, DollarSign, CheckCircle, AlertCircle, Zap, ArrowUpRight, XCircle } from "lucide-react";
+import { Briefcase, Clock, DollarSign, CheckCircle, AlertCircle, Zap, ArrowUpRight, XCircle, Star } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { useLocation } from "wouter";
@@ -147,6 +147,13 @@ export default function ContractorDashboard() {
             <DollarSign className="h-4 w-4 text-primary" />
           </CardHeader>
           <CardContent><div className="text-3xl font-bold text-card-foreground">$0</div><p className="text-xs text-muted-foreground">Payment tracking coming soon</p></CardContent>
+        </Card>
+        <Card className="bg-card border-border">
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Rating</CardTitle>
+            <Star className="h-4 w-4 text-yellow-400" />
+          </CardHeader>
+          <CardContent><div className="text-3xl font-bold text-card-foreground">—</div><p className="text-xs text-muted-foreground">No ratings yet</p></CardContent>
         </Card>
       </div>
 

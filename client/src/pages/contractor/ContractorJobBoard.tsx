@@ -402,7 +402,7 @@ export default function ContractorJobBoard() {
                   <AlertTriangle className="h-3 w-3 mr-1" /> Emergency jobs available
                 </Badge>
               )}
-              <span className="ml-auto text-xs text-muted-foreground/60 hidden sm:block">Auto-refreshes every 30s</span>
+              <span className="ml-auto text-xs text-muted-foreground hidden sm:block">Auto-refreshes every 30s</span>
             </div>
           )}
           {isLoading ? (
@@ -474,7 +474,7 @@ export default function ContractorJobBoard() {
                   <Briefcase className="h-4 w-4 text-emerald-400" />
                   <span className="font-semibold text-foreground">{privateJobs.length}</span> private job{privateJobs.length !== 1 ? "s" : ""} from trusted companies in your area
                 </span>
-                <span className="ml-auto text-xs text-muted-foreground/60 hidden sm:block">Auto-refreshes every 30s</span>
+                <span className="ml-auto text-xs text-muted-foreground hidden sm:block">Auto-refreshes every 30s</span>
               </div>
               <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
                 {privateJobs.map((row: any) => (

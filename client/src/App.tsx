@@ -47,6 +47,8 @@ import AdminLeaderboard from "./pages/admin/AdminLeaderboard";
 import AdminChurnRisk from "./pages/admin/AdminChurnRisk";
 import AdminEmailBlast from "./pages/admin/AdminEmailBlast";
 import AdminJobFeeOverride from "./pages/admin/AdminJobFeeOverride";
+import AdminSettings from "./pages/admin/AdminSettings";
+import AdminFeatureRequests from "./pages/admin/AdminFeatureRequests";
 import CompanyPropertyReports from "./pages/company/CompanyPropertyReports";
 import CompanyAnalytics from "./pages/company/CompanyAnalytics";
 import ResetPassword from "./pages/ResetPassword";
@@ -161,6 +163,9 @@ function Router() {
       <Route path="/admin/plans">
         <AdminGuard><DashboardLayout><AdminSubscriptionPlans /></DashboardLayout></AdminGuard>
       </Route>
+      <Route path="/admin/subscription-plans">
+        <AdminGuard><DashboardLayout><AdminSubscriptionPlans /></DashboardLayout></AdminGuard>
+      </Route>
       <Route path="/admin/revenue">
         <AdminGuard><DashboardLayout><AdminRevenue /></DashboardLayout></AdminGuard>
       </Route>
@@ -194,6 +199,9 @@ function Router() {
       <Route path="/admin/activity">
         <AdminGuard><DashboardLayout><AdminActivityFeed /></DashboardLayout></AdminGuard>
       </Route>
+      <Route path="/admin/activity-feed">
+        <AdminGuard><DashboardLayout><AdminActivityFeed /></DashboardLayout></AdminGuard>
+      </Route>
       <Route path="/admin/leaderboard">
         <AdminGuard><DashboardLayout><AdminLeaderboard /></DashboardLayout></AdminGuard>
       </Route>
@@ -205,6 +213,12 @@ function Router() {
       </Route>
       <Route path="/admin/job-fee-override">
         <AdminGuard><DashboardLayout><AdminJobFeeOverride /></DashboardLayout></AdminGuard>
+      </Route>
+      <Route path="/admin/settings">
+        <AdminGuard><DashboardLayout><AdminSettings /></DashboardLayout></AdminGuard>
+      </Route>
+      <Route path="/admin/feature-requests">
+        <AdminGuard><DashboardLayout><AdminFeatureRequests /></DashboardLayout></AdminGuard>
       </Route>
       <Route path="/admin">
         <AdminGuard><DashboardLayout><PlatformDashboard /></DashboardLayout></AdminGuard>

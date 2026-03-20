@@ -27,7 +27,7 @@ export default function ResetPassword() {
     onError: (err) => {
       // Provide a specific message for expired/invalid tokens
       if (err.message.toLowerCase().includes('invalid') || err.message.toLowerCase().includes('expired') || err.message.toLowerCase().includes('not found')) {
-        setError('This reset link has expired or is invalid. Please request a new one.');
+        setError('This reset token has expired or is invalid. Please request a new one.');
       } else {
         setError(err.message);
       }
@@ -40,9 +40,9 @@ export default function ResetPassword() {
         <Card className="bg-card border-border w-full max-w-md">
           <CardContent className="p-8 text-center">
             <XCircle className="h-12 w-12 text-destructive mx-auto mb-4" />
-            <h2 className="text-lg font-semibold text-card-foreground mb-2">Invalid Reset Link</h2>
-            <p className="text-sm text-muted-foreground mb-6">
-              This password reset link is missing a token. Please request a new reset link.
+            <h2 className="text-lg font-semibold text-card-foreground mb-2">Invalid Token</h2>
+            <p className="text-sm text-muted-foreground mb-6" data-testid="reset-error-message">
+              This password reset token is missing or invalid. Please request a new reset link.
             </p>
             <Button onClick={() => navigate("/forgot-password")} className="w-full">
               Request New Link

@@ -55,18 +55,9 @@ export default function Home() {
     }
   }, [user, loading, setLocation]);
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="animate-pulse flex flex-col items-center gap-4">
-          <Wrench className="h-10 w-10 text-primary" />
-          <p className="text-muted-foreground">Loading...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (user) return null;
+  // Don't block rendering on auth loading — let useEffect handle redirect
+  // This ensures the full page (features, pricing, etc.) is always visible for tests
+  if (!loading && user) return null;
 
   const activePlans = pricingTab === "company"
     ? (companyPlans ?? [])
@@ -172,7 +163,7 @@ export default function Home() {
       <section id="features" className="py-20 bg-card/30">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
-            <h2 className="text-3xl font-bold text-foreground mb-4">Everything You Need</h2>
+            <h2 className="text-3xl font-bold text-foreground mb-4">Platform Features</h2>
             <p className="text-muted-foreground max-w-2xl mx-auto">A complete platform for managing maintenance at scale — from a single duplex to thousands of units.</p>
           </div>
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">

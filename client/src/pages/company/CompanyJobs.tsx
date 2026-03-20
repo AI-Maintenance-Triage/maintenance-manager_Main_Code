@@ -22,8 +22,8 @@ import { RateContractorDialog } from "@/components/RateContractorDialog";
 import { JobComments } from "@/components/JobComments";
 
 const priorityColors: Record<string, string> = {
-  emergency: "bg-red-500/20 text-red-400 border-red-500/30",
-  high: "bg-orange-500/20 text-orange-400 border-orange-500/30",
+  emergency: "bg-red-500/20 text-red-700 dark:text-red-400 border-red-500/30",
+  high: "bg-orange-500/20 text-orange-700 dark:text-orange-400 border-orange-500/30",
   medium: "bg-yellow-500/20 text-yellow-400 border-yellow-500/30",
   low: "bg-green-500/20 text-green-400 border-green-500/30",
 };
@@ -58,8 +58,8 @@ const PRIORITY_FILTERS: { label: string; value: string | null; chipClass: string
   { label: "All Priorities", value: null, chipClass: "border-border text-muted-foreground hover:bg-muted/50" },
   { label: "Low", value: "low", chipClass: "border-green-500/40 text-green-400 bg-green-500/10 hover:bg-green-500/20" },
   { label: "Medium", value: "medium", chipClass: "border-yellow-500/40 text-yellow-400 bg-yellow-500/10 hover:bg-yellow-500/20" },
-  { label: "High", value: "high", chipClass: "border-orange-500/40 text-orange-400 bg-orange-500/10 hover:bg-orange-500/20" },
-  { label: "Emergency", value: "emergency", chipClass: "border-red-500/40 text-red-400 bg-red-500/10 hover:bg-red-500/20" },
+  { label: "High", value: "high", chipClass: "border-orange-600/60 text-orange-600 bg-orange-500/10 hover:bg-orange-500/20" },
+  { label: "Emergency", value: "emergency", chipClass: "border-red-600/60 text-red-600 bg-red-500/10 hover:bg-red-500/20" },
 ];
 
 // Change history type labels
@@ -765,7 +765,7 @@ export default function CompanyJobs() {
                         <Button
                           size="sm"
                           variant="outline"
-                          className="text-xs gap-1 h-7 border-orange-500/40 text-orange-400 hover:bg-orange-500/10"
+                          className="text-xs gap-1 h-7 border-orange-600/60 text-orange-600 hover:bg-orange-500/10"
                           disabled={retryPayment.isPending}
                           onClick={() => retryPayment.mutate({ jobId: job.id })}
                         >
@@ -835,7 +835,7 @@ export default function CompanyJobs() {
                             <Button
                               size="sm"
                               variant="outline"
-                              className="text-xs gap-1 h-7 border-orange-500/40 text-orange-400 hover:bg-orange-500/10"
+                              className="text-xs gap-1 h-7 border-orange-600/60 text-orange-600 hover:bg-orange-500/10"
                               onClick={() => removeFromBoard.mutate({ jobId: job.id })}
                               disabled={removeFromBoard.isPending}
                             >

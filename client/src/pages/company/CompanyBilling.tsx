@@ -821,7 +821,7 @@ export default function CompanyBilling() {
                             {enabled
                               ? <Check className="h-3 w-3 text-green-400 shrink-0" />
                               : <X className="h-3 w-3 text-muted-foreground/30 shrink-0" />}
-                            <span className={enabled ? "text-foreground" : "text-muted-foreground/50"}>{label}</span>
+                            <span className={enabled ? "text-foreground" : "text-muted-foreground"}>{label}</span>
                           </div>
                         );
                       })}

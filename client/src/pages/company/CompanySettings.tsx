@@ -159,7 +159,7 @@ function GeneralSettings({ readOnly, companyId }: { readOnly: boolean; companyId
                 }
               }}
             >
-              <SelectTrigger className="w-48">
+              <SelectTrigger className="w-48" aria-label="Default Job Board Visibility">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -363,7 +363,7 @@ function TrackingSettings({ readOnly, companyId }: { readOnly: boolean; companyI
             <Label>Billable Time Policy</Label>
             <p className="text-xs text-muted-foreground">How contractor time is calculated for billing</p>
             <Select value={billablePolicy} disabled={readOnly} onValueChange={(v) => { if (!readOnly) { setBillablePolicy(v); updateSettings.mutate({ billableTimePolicy: v as any }); } }}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectTrigger aria-label="Billable Time Policy"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="on_site_only">On-Site Only — Only time at the property</SelectItem>
                 <SelectItem value="full_trip">Full Trip — From clock-in to clock-out including travel</SelectItem>
@@ -554,7 +554,7 @@ function IntegrationSettings({ readOnly, companyId }: { readOnly: boolean; compa
             <div className="space-y-2">
               <Label>Provider</Label>
               <Select value={provider} onValueChange={setProvider}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectTrigger aria-label="Provider"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {providers.map((p) => <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>)}
                 </SelectContent>
@@ -794,7 +794,7 @@ function TeamSettings() {
                           onValueChange={(v) => updateRoleMutation.mutate({ userId: member.userId, teamRole: v as "admin" | "member" })}
                           disabled={updateRoleMutation.isPending}
                         >
-                          <SelectTrigger className="h-7 text-xs w-24">
+                          <SelectTrigger className="h-7 text-xs w-24" aria-label="Team Role">
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>

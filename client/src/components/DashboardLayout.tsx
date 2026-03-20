@@ -46,7 +46,7 @@ const adminSections: MenuSection[] = [
       { icon: Shield, label: "Overview", path: "/admin" },
       { icon: Building2, label: "Companies", path: "/admin/companies" },
       { icon: HardHat, label: "Contractors", path: "/admin/contractors" },
-      { icon: CreditCard, label: "Plans", path: "/admin/plans" },
+      { icon: CreditCard, label: "Subscription Plans", path: "/admin/subscription-plans" },
       { icon: BarChart3, label: "Revenue", path: "/admin/revenue" },
       { icon: Tag, label: "Promo Codes", path: "/admin/promo-codes" },
       { icon: Webhook, label: "Webhooks", path: "/admin/webhooks" },
@@ -63,10 +63,12 @@ const adminSections: MenuSection[] = [
       { icon: ScrollText, label: "Audit Log", path: "/admin/audit-log" },
       { icon: Gift, label: "Credits", path: "/admin/credits" },
       { icon: PauseCircle, label: "Payout Holds", path: "/admin/payout-holds" },
-      { icon: Activity, label: "Activity Feed", path: "/admin/activity" },
+      { icon: Activity, label: "Activity Feed", path: "/admin/activity-feed" },
       { icon: Trophy, label: "Leaderboard", path: "/admin/leaderboard" },
       { icon: TrendingDown, label: "Churn Risk", path: "/admin/churn-risk" },
       { icon: Pencil, label: "Job Fee Override", path: "/admin/job-fee-override" },
+      { icon: Flag, label: "Feature Requests", path: "/admin/feature-requests" },
+      { icon: Settings, label: "Settings", path: "/admin/settings" },
     ],
   },
 ];
@@ -122,12 +124,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     localStorage.setItem(SIDEBAR_WIDTH_KEY, sidebarWidth.toString());
   }, [sidebarWidth]);
 
-  if (loading) return <DashboardLayoutSkeleton />;
+  useEffect(() => {
+    if (!loading && !user) {
+      window.location.href = "/";
+    }
+  }, [loading, user]);
 
-  if (!user) {
-    window.location.href = "/signin";
-    return <DashboardLayoutSkeleton />;
-  }
+  if (loading || !user) return <DashboardLayoutSkeleton />;
 
   return (
     <SidebarProvider style={{ "--sidebar-width": `${sidebarWidth}px` } as CSSProperties}>

@@ -258,21 +258,21 @@ export default function PlatformDashboard() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <Card className="bg-card border-border">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Companies</CardTitle>
+              <CardTitle className="text-sm font-medium text-muted-foreground">Total Companies</CardTitle>
               <Building2 className="h-4 w-4 text-blue-400" />
             </CardHeader>
             <CardContent><div className="text-3xl font-bold text-card-foreground">{stats?.totalCompanies ?? 0}</div></CardContent>
           </Card>
           <Card className="bg-card border-border">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Contractors</CardTitle>
+              <CardTitle className="text-sm font-medium text-muted-foreground">Total Contractors</CardTitle>
               <HardHat className="h-4 w-4 text-green-400" />
             </CardHeader>
             <CardContent><div className="text-3xl font-bold text-card-foreground">{stats?.totalContractors ?? 0}</div></CardContent>
           </Card>
           <Card className="bg-card border-border">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Jobs (Paid)</CardTitle>
+              <CardTitle className="text-sm font-medium text-muted-foreground">Total Jobs</CardTitle>
               <ClipboardList className="h-4 w-4 text-yellow-400" />
             </CardHeader>
             <CardContent>
@@ -473,7 +473,7 @@ export default function PlatformDashboard() {
       {/* Companies List */}
       <Card className="bg-card border-border">
         <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle className="text-card-foreground">Registered Companies</CardTitle>
+          <CardTitle className="text-card-foreground">Recent Registrations</CardTitle>
           <Badge variant="secondary" className="text-xs">{companies?.length ?? 0} total</Badge>
         </CardHeader>
         <CardContent>

@@ -225,7 +225,7 @@ export default function SignUp() {
                 <div className="space-y-2">
                   <Label htmlFor="name">Full Name</Label>
                   <div className="relative">
-                    <Input id="name" value={name} onChange={(e) => setName(e.target.value)} placeholder="John Smith" className="pl-9" autoFocus autoComplete="name" />
+                    <Input id="name" name={roleIntent === "company" ? "companyName" : roleIntent === "contractor" ? "businessName" : "name"} value={name} onChange={(e) => setName(e.target.value)} placeholder="John Smith" className="pl-9" autoFocus autoComplete="name" />
                     <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   </div>
                 </div>
