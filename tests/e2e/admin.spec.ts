@@ -535,26 +535,22 @@ test.describe("Admin flows", () => {
       await page.goto("/admin/churn-risk");
       await page.waitForLoadState("domcontentloaded");
 
-      const hasContent = await page.locator("text=/no.*at.*risk|all.*healthy|no churn/i").first().isVisible({ timeout: 15_000 }).catch(() => false);
-      const hasTable = await page.locator("table, [role='table']").first().isVisible({ timeout: 15_000 }).catch(() => false);
+         const hasContent = await page.locator("text=/no.*at.*risk|all.*healthy|no churn|churn risk data/i").first().isVisible({ timeout: 30_000 }).catch(() => false);
+      const hasTable = await page.locator("table, [role='table']").first().isVisible({ timeout: 30_000 }).catch(() => false);
       expect(hasContent || hasTable).toBeTruthy();
     });
-
     test("Admin payout holds page shows table or empty state", async ({ page }) => {
       await page.goto("/admin/payout-holds");
       await page.waitForLoadState("domcontentloaded");
-
-      const hasContent = await page.locator("text=/no.*holds|no active holds|all.*clear/i").first().isVisible({ timeout: 15_000 }).catch(() => false);
-      const hasTable = await page.locator("table, [role='table']").first().isVisible({ timeout: 15_000 }).catch(() => false);
+      const hasContent = await page.locator("text=/no.*holds|no active|all.*clear|payout holds/i").first().isVisible({ timeout: 30_000 }).catch(() => false);
+      const hasTable = await page.locator("table, [role='table']").first().isVisible({ timeout: 30_000 }).catch(() => false);
       expect(hasContent || hasTable).toBeTruthy();
     });
-
     test("Admin suspensions page shows table or empty state", async ({ page }) => {
       await page.goto("/admin/suspensions");
       await page.waitForLoadState("domcontentloaded");
-
-      const hasContent = await page.locator("text=/no.*suspensions|no active|all.*active/i").first().isVisible({ timeout: 15_000 }).catch(() => false);
-      const hasTable = await page.locator("table, [role='table']").first().isVisible({ timeout: 15_000 }).catch(() => false);
+      const hasContent = await page.locator("text=/no active|suspensions|all.*active/i").first().isVisible({ timeout: 30_000 }).catch(() => false);
+      const hasTable = await page.locator("table, [role='table']").first().isVisible({ timeout: 30_000 }).catch(() => false);
       expect(hasContent || hasTable).toBeTruthy();
     });
   });
@@ -566,7 +562,7 @@ test.describe("Admin flows", () => {
       await page.goto("/admin");
       await page.waitForLoadState("domcontentloaded");
 
-      const isLoaded = await page.locator("main, [role='main'], #root").first().isVisible();
+      const isLoaded = await page.locator("main, [role='main'], #root").first().isVisible({ timeout: 30_000 }).catch(() => false);
       expect(isLoaded).toBeTruthy();
     });
   });

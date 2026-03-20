@@ -28,6 +28,22 @@ const EXCHANGE_TOKEN_PATH = `/webdev.v1.WebDevAuthPublicService/ExchangeToken`;
 const GET_USER_INFO_PATH = `/webdev.v1.WebDevAuthPublicService/GetUserInfo`;
 const GET_USER_INFO_WITH_JWT_PATH = `/webdev.v1.WebDevAuthPublicService/GetUserInfoWithJwt`;
 
+// Short-lived in-memory cache for user lookups to reduce DB round-trips on every request
+const USER_CACHE_TTL_MS = 30_000; // 30 seconds
+const _userCache = new Map<string, { user: User; expiresAt: number }>();
+function getCachedUser(openId: string): User | null {
+  const entry = _userCache.get(openId);
+  if (!entry) return null;
+  if (Date.now() > entry.expiresAt) {
+    _userCache.delete(openId);
+    return null;
+  }
+  return entry.user;
+}
+function setCachedUser(user: User): void {
+  _userCache.set(user.openId, { user, expiresAt: Date.now() + USER_CACHE_TTL_MS });
+}
+
 class OAuthService {
   constructor(private client: ReturnType<typeof axios.create>) {
     console.log("[OAuth] Initialized with baseURL:", ENV.oAuthServerUrl);
@@ -268,7 +284,9 @@ class SDKServer {
 
     const sessionUserId = session.openId;
     const signedInAt = new Date();
-    let user = await db.getUserByOpenId(sessionUserId);
+    // Check in-memory cache first to avoid DB round-trip on every request
+    const dbUser = getCachedUser(sessionUserId) ?? await db.getUserByOpenId(sessionUserId);
+    let user: User | null = dbUser ?? null;
 
     // If user not in DB, sync from OAuth server automatically
     if (!user) {
@@ -281,7 +299,7 @@ class SDKServer {
           loginMethod: userInfo.loginMethod ?? userInfo.platform ?? null,
           lastSignedIn: signedInAt,
         });
-        user = await db.getUserByOpenId(userInfo.openId);
+        user = await db.getUserByOpenId(userInfo.openId) ?? null;
       } catch (error) {
         console.error("[Auth] Failed to sync user from OAuth:", error);
         throw ForbiddenError("Failed to sync user info");
@@ -292,10 +310,14 @@ class SDKServer {
       throw ForbiddenError("User not found");
     }
 
-    await db.upsertUser({
+    // Cache the user for subsequent requests (30s TTL)
+    setCachedUser(user);
+
+    // Fire-and-forget: update lastSignedIn without blocking the response
+    db.upsertUser({
       openId: user.openId,
       lastSignedIn: signedInAt,
-    });
+    }).catch(err => console.error('[Auth] Failed to update lastSignedIn:', err));
 
     return user;
   }

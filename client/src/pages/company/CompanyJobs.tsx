@@ -369,11 +369,11 @@ export default function CompanyJobs() {
               </div>
               <div className="space-y-2">
                 <Label>Title</Label>
-                <Input placeholder="e.g. Water leaking under kitchen sink" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
+                <Input name="title" placeholder="e.g. Water leaking under kitchen sink" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
               </div>
               <div className="space-y-2">
                 <Label>Description</Label>
-                <Textarea placeholder="Describe the issue in detail..." value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} rows={3} />
+                <Textarea name="description" placeholder="Describe the issue in detail..." value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} rows={3} />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">

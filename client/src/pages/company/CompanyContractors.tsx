@@ -395,6 +395,7 @@ export default function CompanyContractors() {
                   <Label htmlFor="invite-email">Email Address <span className="text-red-400">*</span></Label>
                   <Input
                     id="invite-email"
+                    name="email"
                     type="email"
                     placeholder="contractor@example.com"
                     value={inviteEmail}
@@ -406,6 +407,7 @@ export default function CompanyContractors() {
                   <Label htmlFor="invite-name">Name <span className="text-muted-foreground text-xs">(optional)</span></Label>
                   <Input
                     id="invite-name"
+                    name="name"
                     placeholder="John Smith"
                     value={inviteName}
                     onChange={(e) => setInviteName(e.target.value)}

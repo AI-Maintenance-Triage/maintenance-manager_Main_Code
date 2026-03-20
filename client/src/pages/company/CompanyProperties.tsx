@@ -291,15 +291,15 @@ export default function CompanyProperties() {
               <div className="grid grid-cols-3 gap-3">
                 <div className="space-y-2">
                   <Label>City</Label>
-                  <Input placeholder="Boston" value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} />
+                  <Input name="city" placeholder="Boston" value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} />
                 </div>
                 <div className="space-y-2">
                   <Label>State</Label>
-                  <Input placeholder="MA" value={form.state} onChange={(e) => setForm({ ...form, state: e.target.value })} />
+                  <Input name="state" placeholder="MA" value={form.state} onChange={(e) => setForm({ ...form, state: e.target.value })} />
                 </div>
                 <div className="space-y-2">
                   <Label>Zip</Label>
-                  <Input placeholder="02101" value={form.zipCode} onChange={(e) => setForm({ ...form, zipCode: e.target.value })} />
+                  <Input name="zip" placeholder="02101" value={form.zipCode} onChange={(e) => setForm({ ...form, zipCode: e.target.value })} />
                 </div>
               </div>
               <div className="space-y-2">

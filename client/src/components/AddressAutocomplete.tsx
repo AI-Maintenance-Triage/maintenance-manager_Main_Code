@@ -206,6 +206,7 @@ export default function AddressAutocomplete({
       )}
       <Input
         ref={inputRef}
+        name="address"
         value={value}
         onChange={handleInputChange}
         onKeyDown={handleKeyDown}

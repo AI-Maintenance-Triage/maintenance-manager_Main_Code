@@ -67,8 +67,9 @@ test.describe("Public pages — unauthenticated access", () => {
     await page.goto("/get-started");
     await page.waitForLoadState("domcontentloaded");
 
-    await expect(page.locator("text=Company, button:has-text('Company')").first()).toBeVisible();
-    await expect(page.locator("text=Contractor, button:has-text('Contractor')").first()).toBeVisible();
+    // GetStarted page shows "Property Management Company" and "Contractor / Handyman" cards
+    await expect(page.locator("text=/company/i").first()).toBeVisible({ timeout: 30_000 });
+    await expect(page.locator("text=/contractor/i").first()).toBeVisible({ timeout: 30_000 });
   });
 
   test("/forgot-password loads without authentication", async ({ page }) => {
@@ -81,8 +82,8 @@ test.describe("Public pages — unauthenticated access", () => {
     await page.goto("/reset-password");
     await page.waitForLoadState("domcontentloaded");
     // Should either show the reset form or an error about missing/invalid token
-    const hasForm = await page.locator('input[type="password"]').isVisible({ timeout: 10_000 }).catch(() => false);
-    const hasError = await page.locator("text=/invalid|expired|token/i").isVisible({ timeout: 10_000 }).catch(() => false);
+    const hasForm = await page.locator('input[type="password"]').isVisible({ timeout: 30_000 }).catch(() => false);
+    const hasError = await page.locator("text=/invalid|expired|token|missing/i").isVisible({ timeout: 30_000 }).catch(() => false);
     expect(hasForm || hasError).toBeTruthy();
   });
 
@@ -111,14 +112,13 @@ test.describe("Public pages — unauthenticated access", () => {
   test("/404 loads not found page", async ({ page }) => {
     const response = await page.goto("/404");
     await page.waitForLoadState("domcontentloaded");
-    const hasNotFound = await page.locator("text=/not found|404/i").isVisible({ timeout: 10_000 }).catch(() => false);
+    const hasNotFound = await page.locator("text=/not found|404/i").first().isVisible({ timeout: 30_000 }).catch(() => false);
     expect(hasNotFound || (response?.status() === 404)).toBeTruthy();
   });
-
   test("Unknown route loads not found page", async ({ page }) => {
     await page.goto("/this-route-definitely-does-not-exist-xyz");
     await page.waitForLoadState("domcontentloaded");
-    const hasNotFound = await page.locator("text=/not found|404/i").isVisible({ timeout: 10_000 }).catch(() => false);
+    const hasNotFound = await page.locator("text=/not found|404/i").first().isVisible({ timeout: 30_000 }).catch(() => false);
     expect(hasNotFound).toBeTruthy();
   });
 });

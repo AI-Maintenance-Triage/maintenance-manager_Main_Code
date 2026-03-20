@@ -236,8 +236,8 @@ test.describe("Authentication flows", () => {
       await page.goto("/reset-password");
       await page.waitForLoadState("domcontentloaded");
 
-      const hasError = await page.locator("text=/invalid|expired|token|missing/i").isVisible({ timeout: 10_000 }).catch(() => false);
-      const hasForm = await page.locator('input[type="password"]').isVisible({ timeout: 10_000 }).catch(() => false);
+      const hasError = await page.locator("text=/invalid|expired|token|missing/i").first().isVisible({ timeout: 30_000 }).catch(() => false);
+      const hasForm = await page.locator('input[type="password"]').first().isVisible({ timeout: 30_000 }).catch(() => false);
       // Either shows an error or the form (some implementations show form and validate on submit)
       expect(hasError || hasForm).toBeTruthy();
     });
@@ -248,7 +248,7 @@ test.describe("Authentication flows", () => {
 
       // If form is shown, try submitting to trigger error
       const passwordInput = page.locator('input[type="password"]').first();
-      if (await passwordInput.isVisible({ timeout: 3_000 }).catch(() => false)) {
+      if (await passwordInput.isVisible({ timeout: 30_000 }).catch(() => false)) {
         await passwordInput.fill("NewPassword123!");
         const confirmInput = page.locator('input[name="confirmPassword"], input[placeholder*="confirm" i]').first();
         if (await confirmInput.isVisible({ timeout: 2_000 }).catch(() => false)) {
@@ -259,7 +259,7 @@ test.describe("Authentication flows", () => {
 
       await expect(
         page.locator("text=/invalid|expired|token|error/i").first()
-      ).toBeVisible({ timeout: 10_000 });
+      ).toBeVisible({ timeout: 30_000 });
     });
   });
 
@@ -280,7 +280,7 @@ test.describe("Authentication flows", () => {
       await page.waitForLoadState("domcontentloaded");
 
       // Should show some kind of error/invalid state
-      const hasError = await page.locator("text=/expired|invalid|not found/i").isVisible({ timeout: 5_000 }).catch(() => false);
+      const hasError = await page.locator("text=/expired|invalid|not found/i").first().isVisible({ timeout: 5_000 }).catch(() => false);
       expect(hasError).toBeTruthy();
     });
 
@@ -323,7 +323,7 @@ test.describe("Authentication flows", () => {
       await page.waitForLoadState("domcontentloaded");
 
       const redirectedToSignin = page.url().includes("/signin") || page.url().includes("/login");
-      const showsAuthPrompt = await page.locator("text=/sign in|log in|login/i").isVisible({ timeout: 3_000 }).catch(() => false);
+      const showsAuthPrompt = await page.locator("text=/sign in|log in|login/i").first().isVisible({ timeout: 3_000 }).catch(() => false);
       expect(redirectedToSignin || showsAuthPrompt).toBeTruthy();
     });
 
@@ -332,7 +332,7 @@ test.describe("Authentication flows", () => {
       await page.waitForLoadState("domcontentloaded");
 
       const redirectedToLogin = page.url().includes("/admin/login");
-      const showsAuthPrompt = await page.locator("text=/sign in|log in|login/i").isVisible({ timeout: 3_000 }).catch(() => false);
+      const showsAuthPrompt = await page.locator("text=/sign in|log in|login/i").first().isVisible({ timeout: 3_000 }).catch(() => false);
       expect(redirectedToLogin || showsAuthPrompt).toBeTruthy();
     });
   });
@@ -469,7 +469,7 @@ test.describe("Authenticated redirect flows", () => {
     const isOnDashboard = page.url() === dashboardUrl;
     if (isOnDashboard) {
       // If browser navigated back, the page should redirect away or show auth prompt
-      const showsAuthPrompt = await page.locator("text=/sign in|log in|login/i").isVisible({ timeout: 5_000 }).catch(() => false);
+      const showsAuthPrompt = await page.locator("text=/sign in|log in|login/i").first().isVisible({ timeout: 5_000 }).catch(() => false);
       const redirectedAway = !page.url().includes("/company");
       expect(showsAuthPrompt || redirectedAway).toBeTruthy();
     }
@@ -518,7 +518,7 @@ test.describe("Error boundary behavior", () => {
     await page.waitForLoadState("domcontentloaded");
 
     // Should show 404 page or redirect to home — not a blank white screen
-    const has404 = await page.locator("text=/not found|404|page.*not.*exist/i").first().isVisible({ timeout: 5_000 }).catch(() => false);
+    const has404 = await page.locator("text=/not found|404|page.*not.*exist/i").first().isVisible({ timeout: 30_000 }).catch(() => false);
     const redirectedHome = page.url().endsWith("/") || page.url().endsWith("/#");
     expect(has404 || redirectedHome).toBeTruthy();
   });

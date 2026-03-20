@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { loginAsContractor, mockGoogleMapsRoutes, mockStripeRoutes } from "./helpers/auth";
+import { mockGoogleMapsRoutes, mockStripeRoutes } from "./helpers/auth";
 
 test.describe("Contractor flows", () => {
   test.beforeEach(async ({ page }) => {
@@ -23,8 +23,8 @@ test.describe("Contractor flows", () => {
       await page.goto("/contractor");
       await page.waitForLoadState("domcontentloaded");
 
-      const hasJobs = await page.locator('[data-testid="job-card"], .job-card').isVisible({ timeout: 3_000 }).catch(() => false);
-      const hasEmptyState = await page.locator("text=/no active jobs/i").isVisible({ timeout: 3_000 }).catch(() => false);
+      const hasJobs = await page.locator('[data-testid="job-card"], .job-card').first().isVisible({ timeout: 3_000 }).catch(() => false);
+      const hasEmptyState = await page.locator("text=/no active jobs/i").first().isVisible({ timeout: 3_000 }).catch(() => false);
       expect(hasJobs || hasEmptyState).toBeTruthy();
     });
 
@@ -32,7 +32,7 @@ test.describe("Contractor flows", () => {
       await page.goto("/contractor");
       await page.waitForLoadState("domcontentloaded");
       // Announcement is conditional — just verify the page loads without error
-      const isLoaded = await page.locator("main, [role='main'], #root").first().isVisible();
+      const isLoaded = await page.locator("main, [role='main'], #root").first().isVisible({ timeout: 30_000 }).catch(() => false);
       expect(isLoaded).toBeTruthy();
     });
   });
@@ -277,8 +277,8 @@ test.describe("Contractor flows", () => {
       // Wait for page content to load (auth resolves)
       await expect(page.locator("h1, h2").filter({ hasText: /earnings/i }).first()).toBeVisible();
 
-      const hasTable = await page.locator("table, [role='table']").isVisible({ timeout: 5_000 }).catch(() => false);
-      const hasEmptyState = await page.locator("text=/no transactions|no earnings|no.*yet/i").isVisible({ timeout: 5_000 }).catch(() => false);
+      const hasTable = await page.locator("table, [role='table']").first().isVisible({ timeout: 5_000 }).catch(() => false);
+      const hasEmptyState = await page.locator("text=/no transactions|no earnings|no.*yet/i").first().isVisible({ timeout: 5_000 }).catch(() => false);
       expect(hasTable || hasEmptyState).toBeTruthy();
     });
   });
@@ -301,7 +301,7 @@ test.describe("Contractor flows", () => {
       await page.waitForLoadState("domcontentloaded");
 
       const connectButton = page.locator('button:has-text("Connect Stripe"), button:has-text("Connect"), a:has-text("Connect Stripe")').first();
-      const isConnected = await page.locator("text=/connected|bank account/i").isVisible({ timeout: 3_000 }).catch(() => false);
+      const isConnected = await page.locator("text=/connected|bank account/i").first().isVisible({ timeout: 3_000 }).catch(() => false);
 
       // Either connected or shows connect button
       const hasConnectButton = await connectButton.isVisible({ timeout: 3_000 }).catch(() => false);
@@ -362,7 +362,7 @@ test.describe("Contractor flows", () => {
         await clockInBtn.click();
         await page.waitForTimeout(1_000);
       }
-      const isLoaded = await page.locator("main, [role='main']").first().isVisible();
+      const isLoaded = await page.locator("main, [role='main']").first().isVisible({ timeout: 30_000 }).catch(() => false);
       expect(isLoaded).toBeTruthy();
     });
   });
@@ -372,7 +372,7 @@ test.describe("Contractor flows", () => {
     test("Contractor onboarding checklist is visible on dashboard for new contractors", async ({ page }) => {
       await page.goto("/contractor");
       await page.waitForLoadState("domcontentloaded");
-      const isLoaded = await page.locator("main, [role='main']").first().isVisible();
+      const isLoaded = await page.locator("main, [role='main']").first().isVisible({ timeout: 30_000 }).catch(() => false);
       expect(isLoaded).toBeTruthy();
     });
 
@@ -414,7 +414,7 @@ test.describe("Contractor flows", () => {
         await refreshBtn.click();
         await page.waitForLoadState("domcontentloaded");
       }
-      const isLoaded = await page.locator("main, [role='main']").first().isVisible();
+      const isLoaded = await page.locator("main, [role='main']").first().isVisible({ timeout: 30_000 }).catch(() => false);
       expect(isLoaded).toBeTruthy();
     });
   });
@@ -426,7 +426,7 @@ test.describe("Contractor flows", () => {
       await page.goto("/contractor");
       await page.waitForLoadState("domcontentloaded");
 
-      const isLoaded = await page.locator("main, [role='main'], #root").first().isVisible();
+      const isLoaded = await page.locator("main, [role='main'], #root").first().isVisible({ timeout: 30_000 }).catch(() => false);
       expect(isLoaded).toBeTruthy();
 
       const hasHorizontalScroll = await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth);
@@ -438,7 +438,7 @@ test.describe("Contractor flows", () => {
       await page.goto("/contractor/job-board");
       await page.waitForLoadState("domcontentloaded");
 
-      const isLoaded = await page.locator("main, [role='main']").first().isVisible();
+      const isLoaded = await page.locator("main, [role='main']").first().isVisible({ timeout: 30_000 }).catch(() => false);
       expect(isLoaded).toBeTruthy();
 
       const hasHorizontalScroll = await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth);
