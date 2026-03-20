@@ -124,19 +124,19 @@ export default function ContractorProfile() {
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
-            <Label>Business Name</Label>
-            <Input value={businessName} onChange={(e) => setBusinessName(e.target.value)} placeholder="Your business name" disabled={readOnly} />
+            <Label htmlFor="contractor-business-name">Business Name</Label>
+            <Input id="contractor-business-name" value={businessName} onChange={(e) => setBusinessName(e.target.value)} placeholder="Your business name" disabled={readOnly} />
           </div>
           <div className="space-y-2">
-            <Label>Phone</Label>
-            <Input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="(555) 123-4567" disabled={readOnly} />
+            <Label htmlFor="contractor-phone">Phone</Label>
+            <Input id="contractor-phone" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="(555) 123-4567" disabled={readOnly} />
           </div>
           <div className="flex items-center justify-between">
             <div>
               <Label>Available for Jobs</Label>
               <p className="text-xs text-muted-foreground">Toggle off to stop receiving new job notifications</p>
             </div>
-            <Switch checked={isAvailable} onCheckedChange={setIsAvailable} disabled={readOnly} />
+            <Switch checked={isAvailable} onCheckedChange={setIsAvailable} disabled={readOnly} aria-label="Available for Jobs" />
           </div>
         </CardContent>
       </Card>
@@ -183,13 +183,13 @@ export default function ContractorProfile() {
             </div>
           )}
           <div className="space-y-2">
-            <Label>Service Area Zip Codes</Label>
-            <Input value={serviceAreaZips} onChange={(e) => setServiceAreaZips(e.target.value)} placeholder="02101, 02102, 02103" disabled={readOnly} />
+            <Label htmlFor="contractor-service-zips">Service Area Zip Codes</Label>
+            <Input id="contractor-service-zips" value={serviceAreaZips} onChange={(e) => setServiceAreaZips(e.target.value)} placeholder="02101, 02102, 02103" disabled={readOnly} />
             <p className="text-xs text-muted-foreground">Comma-separated. The first ZIP is used as your base location for distance filtering.</p>
           </div>
           <div className="space-y-2">
-            <Label>Service Radius (miles)</Label>
-            <Input type="number" value={serviceRadiusMiles} onChange={(e) => setServiceRadiusMiles(e.target.value)} disabled={readOnly} />
+            <Label htmlFor="contractor-service-radius">Service Radius (miles)</Label>
+            <Input id="contractor-service-radius" type="number" value={serviceRadiusMiles} onChange={(e) => setServiceRadiusMiles(e.target.value)} disabled={readOnly} />
             <p className="text-xs text-muted-foreground">Jobs within this radius of your first ZIP code will appear on your job board.</p>
           </div>
         </CardContent>
@@ -207,28 +207,28 @@ export default function ContractorProfile() {
                 <Label className="text-sm font-medium">Job Assigned to Me</Label>
                 <p className="text-xs text-muted-foreground">Email when a company assigns you to a new job</p>
               </div>
-              <Switch checked={emailJobAssigned} onCheckedChange={(v) => { setEmailJobAssigned(v); toggleEmail("jobAssigned", v); }} />
+              <Switch checked={emailJobAssigned} onCheckedChange={(v) => { setEmailJobAssigned(v); toggleEmail("jobAssigned", v); }} aria-label="Email: Job Assigned to Me" />
             </div>
             <div className="flex items-center justify-between">
               <div>
                 <Label className="text-sm font-medium">Job Paid / Verified</Label>
                 <p className="text-xs text-muted-foreground">Email when a job you completed is verified and paid</p>
               </div>
-              <Switch checked={emailJobPaid} onCheckedChange={(v) => { setEmailJobPaid(v); toggleEmail("jobPaid", v); }} />
+              <Switch checked={emailJobPaid} onCheckedChange={(v) => { setEmailJobPaid(v); toggleEmail("jobPaid", v); }} aria-label="Email: Job Paid / Verified" />
             </div>
             <div className="flex items-center justify-between">
               <div>
                 <Label className="text-sm font-medium">New Job Comment</Label>
                 <p className="text-xs text-muted-foreground">Email when a company posts a note on your job</p>
               </div>
-              <Switch checked={emailNewComment} onCheckedChange={(v) => { setEmailNewComment(v); toggleEmail("newComment", v); }} />
+              <Switch checked={emailNewComment} onCheckedChange={(v) => { setEmailNewComment(v); toggleEmail("newComment", v); }} aria-label="Email: New Job Comment" />
             </div>
             <div className="flex items-center justify-between">
               <div>
                 <Label className="text-sm font-medium">Job Disputed</Label>
                 <p className="text-xs text-muted-foreground">Email when a company disputes a job you submitted</p>
               </div>
-              <Switch checked={emailJobDisputed} onCheckedChange={(v) => { setEmailJobDisputed(v); toggleEmail("jobDisputed", v); }} />
+              <Switch checked={emailJobDisputed} onCheckedChange={(v) => { setEmailJobDisputed(v); toggleEmail("jobDisputed", v); }} aria-label="Email: Job Disputed" />
             </div>
           </CardContent>
         </Card>

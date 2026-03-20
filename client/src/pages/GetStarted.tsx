@@ -55,6 +55,7 @@ export default function GetStarted() {
           {/* Property Management Company */}
           <Card
             className="cursor-pointer hover:border-primary/50 transition-all hover:shadow-lg hover:shadow-primary/5 group relative overflow-hidden"
+            data-role="company"
             onClick={() => setLocation("/signup?role=company")}
           >
             <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-primary/60 to-primary opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -89,6 +90,7 @@ export default function GetStarted() {
           {/* Contractor */}
           <Card
             className="cursor-pointer hover:border-primary/50 transition-all hover:shadow-lg hover:shadow-primary/5 group relative overflow-hidden"
+            data-role="contractor"
             onClick={() => setLocation("/signup?role=contractor")}
           >
             <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-primary/60 to-primary opacity-0 group-hover:opacity-100 transition-opacity" />

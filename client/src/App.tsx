@@ -55,6 +55,23 @@ import InviteAccept from "./pages/InviteAccept";
 import TeamInviteAccept from "./pages/TeamInviteAccept";
 import AdminLogin from "./pages/AdminLogin";
 import { PWAInstallBanner } from "./components/PWAInstallBanner";
+import { useAuth } from "./_core/hooks/useAuth";
+import { useLocation } from "wouter";
+
+/**
+ * AdminGuard — redirects unauthenticated users or non-admins to /admin/login.
+ */
+function AdminGuard({ children }: { children: React.ReactNode }) {
+  const { user, loading } = useAuth();
+  const [, setLocation] = useLocation();
+
+  if (loading) return null;
+  if (!user || user.role !== "admin") {
+    setLocation("/admin/login");
+    return null;
+  }
+  return <>{children}</>;
+}
 
 function Router() {
   return (
@@ -129,63 +146,63 @@ function Router() {
       <Route path="/contractor/billing">
         <DashboardLayout><ContractorBilling /></DashboardLayout>
       </Route>
-      {/* Platform Admin Routes */}
+      {/* Platform Admin Routes — protected by AdminGuard */}
       <Route path="/admin/companies">
-        <DashboardLayout><AdminCompanies /></DashboardLayout>
+        <AdminGuard><DashboardLayout><AdminCompanies /></DashboardLayout></AdminGuard>
       </Route>
       <Route path="/admin/contractors">
-        <DashboardLayout><AdminContractors /></DashboardLayout>
+        <AdminGuard><DashboardLayout><AdminContractors /></DashboardLayout></AdminGuard>
       </Route>
       <Route path="/admin/plans">
-        <DashboardLayout><AdminSubscriptionPlans /></DashboardLayout>
+        <AdminGuard><DashboardLayout><AdminSubscriptionPlans /></DashboardLayout></AdminGuard>
       </Route>
       <Route path="/admin/revenue">
-        <DashboardLayout><AdminRevenue /></DashboardLayout>
+        <AdminGuard><DashboardLayout><AdminRevenue /></DashboardLayout></AdminGuard>
       </Route>
       <Route path="/admin/promo-codes">
-        <DashboardLayout><AdminPromoCodes /></DashboardLayout>
+        <AdminGuard><DashboardLayout><AdminPromoCodes /></DashboardLayout></AdminGuard>
       </Route>
       <Route path="/admin/webhooks">
-        <DashboardLayout><AdminWebhookEvents /></DashboardLayout>
+        <AdminGuard><DashboardLayout><AdminWebhookEvents /></DashboardLayout></AdminGuard>
       </Route>
       <Route path="/admin/announcements">
-        <DashboardLayout><AdminAnnouncements /></DashboardLayout>
+        <AdminGuard><DashboardLayout><AdminAnnouncements /></DashboardLayout></AdminGuard>
       </Route>
       <Route path="/admin/maintenance-mode">
-        <DashboardLayout><AdminMaintenanceMode /></DashboardLayout>
+        <AdminGuard><DashboardLayout><AdminMaintenanceMode /></DashboardLayout></AdminGuard>
       </Route>
       <Route path="/admin/feature-flags">
-        <DashboardLayout><AdminFeatureFlags /></DashboardLayout>
+        <AdminGuard><DashboardLayout><AdminFeatureFlags /></DashboardLayout></AdminGuard>
       </Route>
       <Route path="/admin/suspensions">
-        <DashboardLayout><AdminSuspensions /></DashboardLayout>
+        <AdminGuard><DashboardLayout><AdminSuspensions /></DashboardLayout></AdminGuard>
       </Route>
       <Route path="/admin/audit-log">
-        <DashboardLayout><AdminAuditLog /></DashboardLayout>
+        <AdminGuard><DashboardLayout><AdminAuditLog /></DashboardLayout></AdminGuard>
       </Route>
       <Route path="/admin/credits">
-        <DashboardLayout><AdminCredits /></DashboardLayout>
+        <AdminGuard><DashboardLayout><AdminCredits /></DashboardLayout></AdminGuard>
       </Route>
       <Route path="/admin/payout-holds">
-        <DashboardLayout><AdminPayoutHolds /></DashboardLayout>
+        <AdminGuard><DashboardLayout><AdminPayoutHolds /></DashboardLayout></AdminGuard>
       </Route>
       <Route path="/admin/activity">
-        <DashboardLayout><AdminActivityFeed /></DashboardLayout>
+        <AdminGuard><DashboardLayout><AdminActivityFeed /></DashboardLayout></AdminGuard>
       </Route>
       <Route path="/admin/leaderboard">
-        <DashboardLayout><AdminLeaderboard /></DashboardLayout>
+        <AdminGuard><DashboardLayout><AdminLeaderboard /></DashboardLayout></AdminGuard>
       </Route>
       <Route path="/admin/churn-risk">
-        <DashboardLayout><AdminChurnRisk /></DashboardLayout>
+        <AdminGuard><DashboardLayout><AdminChurnRisk /></DashboardLayout></AdminGuard>
       </Route>
       <Route path="/admin/email-blast">
-        <DashboardLayout><AdminEmailBlast /></DashboardLayout>
+        <AdminGuard><DashboardLayout><AdminEmailBlast /></DashboardLayout></AdminGuard>
       </Route>
       <Route path="/admin/job-fee-override">
-        <DashboardLayout><AdminJobFeeOverride /></DashboardLayout>
+        <AdminGuard><DashboardLayout><AdminJobFeeOverride /></DashboardLayout></AdminGuard>
       </Route>
       <Route path="/admin">
-        <DashboardLayout><PlatformDashboard /></DashboardLayout>
+        <AdminGuard><DashboardLayout><PlatformDashboard /></DashboardLayout></AdminGuard>
       </Route>
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />

@@ -238,7 +238,7 @@ function DashboardLayoutContent({ children, setSidebarWidth }: { children: React
                 {sIdx > 0 && <Separator className="my-2 mx-2" />}
                 {!isCollapsed && (
                   <div className="px-4 py-2">
-                    <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60">
+                    <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                       {section.title}
                     </span>
                   </div>
@@ -277,8 +277,8 @@ function DashboardLayoutContent({ children, setSidebarWidth }: { children: React
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-48">
                 {!isImpersonating && (
-                  <DropdownMenuItem onClick={logout} className="cursor-pointer text-destructive focus:text-destructive">
-                    <LogOut className="mr-2 h-4 w-4" /><span>Sign out</span>
+                  <DropdownMenuItem onClick={logout} className="cursor-pointer text-destructive focus:text-destructive" data-testid="sign-out" aria-label="Sign Out">
+                    <LogOut className="mr-2 h-4 w-4" /><span>Sign Out</span>
                   </DropdownMenuItem>
                 )}
               </DropdownMenuContent>

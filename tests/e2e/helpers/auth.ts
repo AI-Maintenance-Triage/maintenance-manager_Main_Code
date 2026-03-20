@@ -69,38 +69,32 @@ export async function loginAsAdmin(
 
 /**
  * Log out from any dashboard.
- * Finds and clicks the sign out button in the dashboard layout, then waits for redirect to /.
+ * Opens the user avatar dropdown in the sidebar footer, then clicks Sign Out.
  */
 export async function logOut(page: Page): Promise<void> {
-  // Try sidebar sign out button first, then dropdown menu
-  const signOutSelectors = [
-    'button:has-text("Sign Out")',
-    'button:has-text("Log Out")',
-    'button:has-text("Logout")',
-    '[data-testid="sign-out"]',
-    'a:has-text("Sign Out")',
-  ];
-
-  for (const selector of signOutSelectors) {
-    const el = page.locator(selector).first();
-    if (await el.isVisible({ timeout: 2_000 }).catch(() => false)) {
-      await el.click();
-      await page.waitForURL(/\/$/, { timeout: 10_000 });
-      return;
-    }
+  // The sign-out button is inside a DropdownMenu in the sidebar footer.
+  // We must click the avatar trigger first to open the dropdown.
+  const avatarTrigger = page.locator('[data-sidebar="footer"] button').first();
+  if (await avatarTrigger.isVisible({ timeout: 5_000 }).catch(() => false)) {
+    await avatarTrigger.click();
+    // Wait for the dropdown to open and find the sign-out item
+    const signOutItem = page.locator('[data-testid="sign-out"]').first();
+    await signOutItem.waitFor({ state: 'visible', timeout: 5_000 });
+    await signOutItem.click();
+    await page.waitForURL(/\/$/, { timeout: 10_000 });
+    return;
   }
 
-  // Fallback: open user menu then click sign out
-  const userMenuSelectors = [
-    '[data-testid="user-menu"]',
-    'button:has-text("Account")',
-    '[aria-label="User menu"]',
+  // Fallback: try direct selectors if sidebar is not present
+  const directSelectors = [
+    '[data-testid="sign-out"]',
+    'button:has-text("Sign Out")',
+    'a:has-text("Sign Out")',
   ];
-  for (const selector of userMenuSelectors) {
+  for (const selector of directSelectors) {
     const el = page.locator(selector).first();
     if (await el.isVisible({ timeout: 2_000 }).catch(() => false)) {
       await el.click();
-      await page.locator('button:has-text("Sign Out"), a:has-text("Sign Out")').first().click();
       await page.waitForURL(/\/$/, { timeout: 10_000 });
       return;
     }

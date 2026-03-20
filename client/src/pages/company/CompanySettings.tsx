@@ -110,8 +110,8 @@ function GeneralSettings({ readOnly, companyId }: { readOnly: boolean; companyId
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
-            <Label>Company Name</Label>
-            <Input value={companyName} onChange={(e) => setCompanyName(e.target.value)} disabled={readOnly} />
+            <Label htmlFor="company-name">Company Name</Label>
+            <Input id="company-name" value={companyName} onChange={(e) => setCompanyName(e.target.value)} disabled={readOnly} />
           </div>
           {!readOnly && (
             <Button onClick={() => updateCompany.mutate({ name: companyName })} disabled={updateCompany.isPending}>
@@ -132,17 +132,17 @@ function GeneralSettings({ readOnly, companyId }: { readOnly: boolean; companyId
               <Label>Auto-Approve Contractors</Label>
               <p className="text-xs text-muted-foreground">Automatically approve contractors who request to join</p>
             </div>
-            <Switch checked={autoApprove} disabled={readOnly} onCheckedChange={(v) => { if (!readOnly) { setAutoApprove(v); updateSettings.mutate({ autoApproveContractors: v }); } }} />
+            <Switch checked={autoApprove} disabled={readOnly} onCheckedChange={(v) => { if (!readOnly) { setAutoApprove(v); updateSettings.mutate({ autoApproveContractors: v }); } }} aria-label="Auto-Approve Contractors" />
           </div>
           <div className="space-y-2">
-            <Label>Job Escalation Timeout (minutes)</Label>
+            <Label htmlFor="escalation-timeout">Job Escalation Timeout (minutes)</Label>
             <p className="text-xs text-muted-foreground">Auto-escalate if no contractor accepts within this time</p>
-            <Input type="number" value={escalationTimeout} disabled={readOnly} onChange={(e) => setEscalationTimeout(e.target.value)} onBlur={() => { if (!readOnly) updateSettings.mutate({ escalationTimeoutMinutes: Number(escalationTimeout) }); }} />
+            <Input type="number" id="escalation-timeout" value={escalationTimeout} disabled={readOnly} onChange={(e) => setEscalationTimeout(e.target.value)} onBlur={() => { if (!readOnly) updateSettings.mutate({ escalationTimeoutMinutes: Number(escalationTimeout) }); }} />
           </div>
           <div className="space-y-2">
-            <Label>Parts Markup (%)</Label>
+            <Label htmlFor="parts-markup">Parts Markup (%)</Label>
             <p className="text-xs text-muted-foreground">Markup percentage applied to contractor-submitted parts receipts</p>
-            <Input type="number" value={partsMarkup} disabled={readOnly} onChange={(e) => setPartsMarkup(e.target.value)} onBlur={() => { if (!readOnly) updateSettings.mutate({ partsMarkupPercent: partsMarkup }); }} />
+            <Input type="number" id="parts-markup" value={partsMarkup} disabled={readOnly} onChange={(e) => setPartsMarkup(e.target.value)} onBlur={() => { if (!readOnly) updateSettings.mutate({ partsMarkupPercent: partsMarkup }); }} />
           </div>
           <div className="space-y-2">
             <Label>Default Job Board Visibility</Label>
@@ -213,10 +213,10 @@ function SkillTiersSettings({ readOnly, isAdmin, companyId }: { readOnly: boolea
               <DialogContent className="bg-card">
                 <DialogHeader><DialogTitle className="text-card-foreground">Add Skill Tier</DialogTitle></DialogHeader>
                 <div className="space-y-4">
-                  <div className="space-y-2"><Label>Tier Name</Label><Input placeholder="e.g. General Handyman" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></div>
-                  <div className="space-y-2"><Label>Hourly Rate ($)</Label><Input type="number" placeholder="35" value={form.hourlyRate} onChange={(e) => setForm({ ...form, hourlyRate: e.target.value })} /></div>
-                  <div className="space-y-2"><Label>Description</Label><Input placeholder="Basic repairs, minor fixes" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} /></div>
-                  <div className="space-y-2"><Label>Emergency Multiplier</Label><Input type="number" step="0.1" placeholder="1.5" value={form.emergencyMultiplier} onChange={(e) => setForm({ ...form, emergencyMultiplier: e.target.value })} /></div>
+                  <div className="space-y-2"><Label>Tier Name</Label><Input aria-label="Tier Name" placeholder="e.g. General Handyman" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></div>
+                  <div className="space-y-2"><Label>Hourly Rate ($)</Label><Input aria-label="Hourly Rate" type="number" placeholder="35" value={form.hourlyRate} onChange={(e) => setForm({ ...form, hourlyRate: e.target.value })} /></div>
+                  <div className="space-y-2"><Label>Description</Label><Input aria-label="Description" placeholder="Basic repairs, minor fixes" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} /></div>
+                  <div className="space-y-2"><Label>Emergency Multiplier</Label><Input aria-label="Emergency Multiplier" type="number" step="0.1" placeholder="1.5" value={form.emergencyMultiplier} onChange={(e) => setForm({ ...form, emergencyMultiplier: e.target.value })} /></div>
                   <Button onClick={() => createTier.mutate({ name: form.name, hourlyRate: form.hourlyRate, description: form.description || undefined, emergencyMultiplier: form.emergencyMultiplier })} disabled={!form.name || !form.hourlyRate || createTier.isPending} className="w-full">
                     {createTier.isPending ? "Creating..." : "Create Tier"}
                   </Button>
@@ -268,19 +268,19 @@ function SkillTiersSettings({ readOnly, isAdmin, companyId }: { readOnly: boolea
             <div className="space-y-2">
               <Label>Tier Name</Label>
               {isAdmin && !companyId
-                ? <Input value={editForm.name} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} />
+                ? <Input aria-label="Tier Name" value={editForm.name} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} />
                 : <p className="text-sm font-medium text-foreground py-2">{editForm.name}</p>
               }
             </div>
-            <div className="space-y-2"><Label>Hourly Rate ($)</Label><Input type="number" value={editForm.hourlyRate} onChange={(e) => setEditForm({ ...editForm, hourlyRate: e.target.value })} /></div>
+            <div className="space-y-2"><Label>Hourly Rate ($)</Label><Input aria-label="Hourly Rate" type="number" value={editForm.hourlyRate} onChange={(e) => setEditForm({ ...editForm, hourlyRate: e.target.value })} /></div>
             <div className="space-y-2">
               <Label>Description</Label>
               {isAdmin && !companyId
-                ? <Input value={editForm.description} onChange={(e) => setEditForm({ ...editForm, description: e.target.value })} />
+                ? <Input aria-label="Description" value={editForm.description} onChange={(e) => setEditForm({ ...editForm, description: e.target.value })} />
                 : <p className="text-sm text-muted-foreground py-1">{editForm.description || <span className="italic">No description</span>}</p>
               }
             </div>
-            <div className="space-y-2"><Label>Emergency Multiplier</Label><Input type="number" step="0.1" value={editForm.emergencyMultiplier} onChange={(e) => setEditForm({ ...editForm, emergencyMultiplier: e.target.value })} /></div>
+            <div className="space-y-2"><Label>Emergency Multiplier</Label><Input aria-label="Emergency Multiplier" type="number" step="0.1" value={editForm.emergencyMultiplier} onChange={(e) => setEditForm({ ...editForm, emergencyMultiplier: e.target.value })} /></div>
             <Button onClick={() => updateTier.mutate({ id: editForm.id, name: editForm.name, hourlyRate: editForm.hourlyRate, description: editForm.description || undefined, emergencyMultiplier: editForm.emergencyMultiplier })} disabled={!editForm.name || !editForm.hourlyRate || updateTier.isPending} className="w-full">
               {updateTier.isPending ? "Saving..." : "Save Changes"}
             </Button>
@@ -329,9 +329,9 @@ function TrackingSettings({ readOnly, companyId }: { readOnly: boolean; companyI
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
-            <Label>Geofence Radius (feet)</Label>
+            <Label htmlFor="geofence-radius">Geofence Radius (feet)</Label>
             <p className="text-xs text-muted-foreground">Contractor must be within this distance of the property to clock in/out</p>
-            <Input type="number" value={geofence} disabled={readOnly} onChange={(e) => setGeofence(e.target.value)} onBlur={() => { if (!readOnly) updateSettings.mutate({ geofenceRadiusFeet: Number(geofence) }); }} />
+            <Input type="number" id="geofence-radius" value={geofence} disabled={readOnly} onChange={(e) => setGeofence(e.target.value)} onBlur={() => { if (!readOnly) updateSettings.mutate({ geofenceRadiusFeet: Number(geofence) }); }} />
           </div>
         </CardContent>
       </Card>
@@ -343,21 +343,21 @@ function TrackingSettings({ readOnly, companyId }: { readOnly: boolean; companyI
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
-            <Label>Auto Clock-Out Timer (minutes)</Label>
+            <Label htmlFor="auto-clockout">Auto Clock-Out Timer (minutes)</Label>
             <p className="text-xs text-muted-foreground">Auto clock-out when contractor returns to starting location for this duration</p>
-            <Input type="number" value={autoClockOut} disabled={readOnly} onChange={(e) => setAutoClockOut(e.target.value)} onBlur={() => { if (!readOnly) updateSettings.mutate({ autoClockOutMinutes: Number(autoClockOut) }); }} />
+            <Input type="number" id="auto-clockout" value={autoClockOut} disabled={readOnly} onChange={(e) => setAutoClockOut(e.target.value)} onBlur={() => { if (!readOnly) updateSettings.mutate({ autoClockOutMinutes: Number(autoClockOut) }); }} />
           </div>
           <div className="space-y-2">
-            <Label>Max Session Duration (hours)</Label>
+            <Label htmlFor="max-session">Max Session Duration (hours)</Label>
             <p className="text-xs text-muted-foreground">Auto-flag sessions exceeding this duration for review</p>
-            <Input type="number" value={maxSession} disabled={readOnly} onChange={(e) => setMaxSession(e.target.value)} onBlur={() => { if (!readOnly) updateSettings.mutate({ maxSessionDurationHours: Number(maxSession) }); }} />
+            <Input type="number" id="max-session" value={maxSession} disabled={readOnly} onChange={(e) => setMaxSession(e.target.value)} onBlur={() => { if (!readOnly) updateSettings.mutate({ maxSessionDurationHours: Number(maxSession) }); }} />
           </div>
           <div className="flex items-center justify-between">
             <div>
               <Label>Timesheet Review Window</Label>
               <p className="text-xs text-muted-foreground">Allow contractors to review calculated time before submission</p>
             </div>
-            <Switch checked={timesheetReview} disabled={readOnly} onCheckedChange={(v) => { if (!readOnly) { setTimesheetReview(v); updateSettings.mutate({ timesheetReviewEnabled: v }); } }} />
+            <Switch checked={timesheetReview} disabled={readOnly} onCheckedChange={(v) => { if (!readOnly) { setTimesheetReview(v); updateSettings.mutate({ timesheetReviewEnabled: v }); } }} aria-label="Timesheet Review Window" />
           </div>
           <div className="space-y-2">
             <Label>Billable Time Policy</Label>
@@ -376,7 +376,7 @@ function TrackingSettings({ readOnly, companyId }: { readOnly: boolean; companyI
               <Label>Exclude Out-of-Geofence Sessions from Billing</Label>
               <p className="text-xs text-muted-foreground">When enabled, time sessions where the contractor was outside the property geofence will not be included in labor cost calculations</p>
             </div>
-            <Switch checked={excludeOutOfGeofence} disabled={readOnly} onCheckedChange={(v) => { if (!readOnly) { setExcludeOutOfGeofence(v); updateSettings.mutate({ excludeOutOfGeofenceSessions: v }); } }} />
+            <Switch checked={excludeOutOfGeofence} disabled={readOnly} onCheckedChange={(v) => { if (!readOnly) { setExcludeOutOfGeofence(v); updateSettings.mutate({ excludeOutOfGeofenceSessions: v }); } }} aria-label="Exclude Out-of-Geofence Sessions from Billing" />
           </div>
         </CardContent>
       </Card>
@@ -445,28 +445,28 @@ function NotificationSettings({ readOnly, companyId }: { readOnly: boolean; comp
               <Label className="text-sm font-medium">Contractor Clocked In</Label>
               <p className="text-xs text-muted-foreground">Notify when a contractor starts GPS tracking on a job</p>
             </div>
-            <Switch checked={notifyClockIn} disabled={readOnly} onCheckedChange={(v) => { setNotifyClockIn(v); toggle("notifyOnClockIn", v); }} />
+            <Switch checked={notifyClockIn} disabled={readOnly} onCheckedChange={(v) => { setNotifyClockIn(v); toggle("notifyOnClockIn", v); }} aria-label="Notify: Contractor Clocked In" />
           </div>
           <div className="flex items-center justify-between">
             <div>
               <Label className="text-sm font-medium">Contractor Clocked Out</Label>
               <p className="text-xs text-muted-foreground">Notify when a contractor ends their session (manual or auto)</p>
             </div>
-            <Switch checked={notifyClockOut} disabled={readOnly} onCheckedChange={(v) => { setNotifyClockOut(v); toggle("notifyOnClockOut", v); }} />
+            <Switch checked={notifyClockOut} disabled={readOnly} onCheckedChange={(v) => { setNotifyClockOut(v); toggle("notifyOnClockOut", v); }} aria-label="Notify: Contractor Clocked Out" />
           </div>
           <div className="flex items-center justify-between">
             <div>
               <Label className="text-sm font-medium">Job Submitted for Verification</Label>
               <p className="text-xs text-muted-foreground">Notify when a contractor marks a job as complete and submits it for your review</p>
             </div>
-            <Switch checked={notifyJobSubmitted} disabled={readOnly} onCheckedChange={(v) => { setNotifyJobSubmitted(v); toggle("notifyOnJobSubmitted", v); }} />
+            <Switch checked={notifyJobSubmitted} disabled={readOnly} onCheckedChange={(v) => { setNotifyJobSubmitted(v); toggle("notifyOnJobSubmitted", v); }} aria-label="Notify: Job Submitted for Verification" />
           </div>
           <div className="flex items-center justify-between">
             <div>
               <Label className="text-sm font-medium">New Contractor Application</Label>
               <p className="text-xs text-muted-foreground">Notify when a contractor requests to join your company</p>
             </div>
-            <Switch checked={notifyNewContractor} disabled={readOnly} onCheckedChange={(v) => { setNotifyNewContractor(v); toggle("notifyOnNewContractor", v); }} />
+            <Switch checked={notifyNewContractor} disabled={readOnly} onCheckedChange={(v) => { setNotifyNewContractor(v); toggle("notifyOnNewContractor", v); }} aria-label="Notify: New Contractor Application" />
           </div>
         </CardContent>
       </Card>
@@ -484,28 +484,28 @@ function NotificationSettings({ readOnly, companyId }: { readOnly: boolean; comp
                 <Label className="text-sm font-medium">Job Submitted for Verification</Label>
                 <p className="text-xs text-muted-foreground">Email when a contractor submits a job for your review</p>
               </div>
-              <Switch checked={emailJobSubmitted} onCheckedChange={(v) => { setEmailJobSubmitted(v); toggleEmail("jobSubmitted", v); }} />
+              <Switch checked={emailJobSubmitted} onCheckedChange={(v) => { setEmailJobSubmitted(v); toggleEmail("jobSubmitted", v); }} aria-label="Email: Job Submitted for Verification" />
             </div>
             <div className="flex items-center justify-between">
               <div>
                 <Label className="text-sm font-medium">Job Paid / Verified</Label>
                 <p className="text-xs text-muted-foreground">Email when a job payment is confirmed</p>
               </div>
-              <Switch checked={emailJobPaid} onCheckedChange={(v) => { setEmailJobPaid(v); toggleEmail("jobPaid", v); }} />
+              <Switch checked={emailJobPaid} onCheckedChange={(v) => { setEmailJobPaid(v); toggleEmail("jobPaid", v); }} aria-label="Email: Job Paid / Verified" />
             </div>
             <div className="flex items-center justify-between">
               <div>
                 <Label className="text-sm font-medium">New Job Comment</Label>
                 <p className="text-xs text-muted-foreground">Email when a contractor posts a note on a job</p>
               </div>
-              <Switch checked={emailNewComment} onCheckedChange={(v) => { setEmailNewComment(v); toggleEmail("newComment", v); }} />
+              <Switch checked={emailNewComment} onCheckedChange={(v) => { setEmailNewComment(v); toggleEmail("newComment", v); }} aria-label="Email: New Job Comment" />
             </div>
             <div className="flex items-center justify-between">
               <div>
                 <Label className="text-sm font-medium">Job Disputed</Label>
                 <p className="text-xs text-muted-foreground">Email when a job is disputed by your team</p>
               </div>
-              <Switch checked={emailJobDisputed} onCheckedChange={(v) => { setEmailJobDisputed(v); toggleEmail("jobDisputed", v); }} />
+              <Switch checked={emailJobDisputed} onCheckedChange={(v) => { setEmailJobDisputed(v); toggleEmail("jobDisputed", v); }} aria-label="Email: Job Disputed" />
             </div>
           </CardContent>
         </Card>
@@ -562,8 +562,8 @@ function IntegrationSettings({ readOnly, companyId }: { readOnly: boolean; compa
               <p className="text-xs text-muted-foreground">{providers.find(p => p.value === provider)?.description}</p>
             </div>
             <div className="space-y-2">
-              <Label>API Key</Label>
-              <Input type="password" placeholder="Enter your API key" value={apiKey} onChange={(e) => setApiKey(e.target.value)} />
+              <Label htmlFor="pms-api-key">API Key</Label>
+              <Input id="pms-api-key" type="password" placeholder="Enter your API key" value={apiKey} onChange={(e) => setApiKey(e.target.value)} />
             </div>
             <div className="space-y-2">
               <Label>Base URL (optional)</Label>
