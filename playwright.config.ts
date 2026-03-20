@@ -14,7 +14,7 @@ export default defineConfig({
   workers: process.env.CI ? 4 : 2,
   reporter: [["html", { outputFolder: "playwright-report" }], ["list"]],
   timeout: 90_000,
-  expect: { timeout: 30_000 },
+  expect: { timeout: 60_000 },
 
   globalSetup: "./tests/e2e/global-setup.ts",
   use: {

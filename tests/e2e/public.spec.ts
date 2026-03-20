@@ -81,9 +81,11 @@ test.describe("Public pages — unauthenticated access", () => {
   test("/reset-password loads without authentication", async ({ page }) => {
     await page.goto("/reset-password");
     await page.waitForLoadState("domcontentloaded");
+    // Wait for page to render
+    await expect(page.locator("main, [role='main'], #root").first()).toBeVisible();
     // Should either show the reset form or an error about missing/invalid token
-    const hasForm = await page.locator('input[type="password"]').first().isVisible({ timeout: 30_000 }).catch(() => false);
-    const hasError = await page.locator("text=/invalid|expired|token|missing/i").first().isVisible({ timeout: 30_000 }).catch(() => false);
+    const hasForm = await page.locator('input[type="password"]').first().isVisible({ timeout: 5_000 }).catch(() => false);
+    const hasError = await page.locator("text=/invalid|expired|token|missing/i").first().isVisible({ timeout: 5_000 }).catch(() => false);
     expect(hasForm || hasError).toBeTruthy();
   });
 
@@ -112,13 +114,15 @@ test.describe("Public pages — unauthenticated access", () => {
   test("/404 loads not found page", async ({ page }) => {
     const response = await page.goto("/404");
     await page.waitForLoadState("domcontentloaded");
-    const hasNotFound = await page.locator("text=/not found|404/i").first().isVisible({ timeout: 30_000 }).catch(() => false);
+    await expect(page.locator("main, [role='main'], #root").first()).toBeVisible();
+    const hasNotFound = await page.locator("text=/not found|404/i").first().isVisible({ timeout: 5_000 }).catch(() => false);
     expect(hasNotFound || (response?.status() === 404)).toBeTruthy();
   });
   test("Unknown route loads not found page", async ({ page }) => {
     await page.goto("/this-route-definitely-does-not-exist-xyz");
     await page.waitForLoadState("domcontentloaded");
-    const hasNotFound = await page.locator("text=/not found|404/i").first().isVisible({ timeout: 30_000 }).catch(() => false);
+    await expect(page.locator("main, [role='main'], #root").first()).toBeVisible();
+    const hasNotFound = await page.locator("text=/not found|404/i").first().isVisible({ timeout: 5_000 }).catch(() => false);
     expect(hasNotFound).toBeTruthy();
   });
 });

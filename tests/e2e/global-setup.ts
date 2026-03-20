@@ -62,7 +62,10 @@ async function loginAndSaveState(
 
   try {
     await page.goto(`${BASE_URL}/signin`);
-    await page.waitForLoadState("domcontentloaded");
+    // Wait for the page to be fully loaded including JS bundle (first load can be slow)
+    await page.waitForLoadState("networkidle").catch(() => page.waitForLoadState("domcontentloaded"));
+    // Wait up to 60s for the email input to appear (first page load can be slow in CI)
+    await page.waitForSelector('input[type="email"], input[name="email"], #email', { timeout: 60_000 });
     await page.fill('input[type="email"], input[name="email"], #email', email);
     await page.fill('input[type="password"], input[name="password"], #password', password);
     await page.click('button[type="submit"]');

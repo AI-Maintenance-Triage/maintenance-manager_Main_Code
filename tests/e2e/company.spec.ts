@@ -33,8 +33,7 @@ test.describe("Company Admin flows", () => {
       await page.goto("/company");
       await page.waitForLoadState("domcontentloaded");
       // Announcement banner is conditional — just verify the page loads without error
-      const isLoaded = await page.locator("main, [role='main'], #root").first().isVisible();
-      expect(isLoaded).toBeTruthy();
+      await expect(page.locator("main, [role='main'], #root").first()).toBeVisible();
     });
   });
 

@@ -15,6 +15,7 @@ import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
 import { startCronJobs } from "../cron";
+import { getUserByEmail } from "../db";
 import { registerCronRoutes } from "../cron-routes";
 import { registerTestSetupRoute } from "../test-setup";
 
@@ -100,6 +101,14 @@ async function startServer() {
     console.log(`Server running on http://localhost:${port}/`);
     // Start scheduled background jobs
     startCronJobs();
+    // Warm up the DB connection pool and TiDB compute layer so the first
+    // authenticated request is fast (avoids 30s cold-start delays in CI)
+    getUserByEmail("warmup@noop.invalid").then(() => {
+      console.log("[Database] Connection pool warmed up.");
+    }).catch((err: unknown) => {
+      // Expected: user not found — we just want the connection to be established
+      console.log("[Database] Connection pool warmed up.");
+    });
   });
 }
 
