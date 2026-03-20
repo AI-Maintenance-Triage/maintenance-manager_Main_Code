@@ -26,6 +26,74 @@ export const ADMIN_STORAGE_STATE = path.join(__dirname, ".auth", "admin.json");
 export const COMPANY_STORAGE_STATE = path.join(__dirname, ".auth", "company.json");
 export const CONTRACTOR_STORAGE_STATE = path.join(__dirname, ".auth", "contractor.json");
 
+/**
+ * Login via the /signin page and save the auth state.
+ * Intercepts the /api/auth/login response to detect errors early.
+ */
+async function loginAndSaveState(
+  browser: Awaited<ReturnType<typeof chromium.launch>>,
+  email: string,
+  password: string,
+  expectedUrlPattern: RegExp,
+  storagePath: string,
+  label: string
+): Promise<void> {
+  const context = await browser.newContext();
+  const page = await context.newPage();
+
+  let loginApiResponse: { success?: boolean; error?: string; role?: string } | null = null;
+
+  // Intercept the login API response for early error detection
+  page.on("response", async (response) => {
+    if (response.url().includes("/api/auth/login") && response.request().method() === "POST") {
+      try {
+        const body = await response.json();
+        loginApiResponse = body;
+        if (body.success) {
+          console.log(`[global-setup] ${label} login API success, role: ${body.user?.role}`);
+        } else {
+          console.warn(`[global-setup] ${label} login API error (${response.status()}): ${body.error}`);
+        }
+      } catch {
+        console.warn(`[global-setup] ${label} could not parse login API response`);
+      }
+    }
+  });
+
+  try {
+    await page.goto(`${BASE_URL}/signin`);
+    await page.waitForLoadState("domcontentloaded");
+    await page.fill('input[type="email"], input[name="email"], #email', email);
+    await page.fill('input[type="password"], input[name="password"], #password', password);
+    await page.click('button[type="submit"]');
+
+    // Wait for the login API response first (up to 20s)
+    await page.waitForResponse(
+      (res) => res.url().includes("/api/auth/login") && res.request().method() === "POST",
+      { timeout: 20_000 }
+    ).catch(() => console.warn(`[global-setup] ${label} login API response not detected within 20s`));
+
+    // If the API returned an error, don't wait for URL change
+    if (loginApiResponse && !loginApiResponse.success) {
+      console.warn(`[global-setup] ${label} login failed with API error: ${loginApiResponse.error}`);
+      await context.close();
+      fs.writeFileSync(storagePath, JSON.stringify({ cookies: [], origins: [] }));
+      return;
+    }
+
+    // Wait for URL to change to the expected pattern (direct redirect from SignIn.tsx)
+    await page.waitForURL(expectedUrlPattern, { timeout: 30_000 });
+    await context.storageState({ path: storagePath });
+    await context.close();
+    console.log(`[global-setup] ${label} auth state saved.`);
+  } catch (err) {
+    const currentUrl = page.url();
+    console.warn(`[global-setup] ${label} login failed (tests will run without auth). Current URL: ${currentUrl}`, err);
+    await context.close();
+    fs.writeFileSync(storagePath, JSON.stringify({ cookies: [], origins: [] }));
+  }
+}
+
 async function globalSetup(_config: FullConfig) {
   // Ensure .auth directory exists
   const authDir = path.join(__dirname, ".auth");
@@ -61,7 +129,7 @@ async function globalSetup(_config: FullConfig) {
   // Step 2: Log in as each role and save storage state
   const browser = await chromium.launch();
 
-  // --- Admin ---
+  // --- Admin (uses /admin/login, not /signin) ---
   try {
     console.log("[global-setup] Logging in as admin...");
     const adminContext = await browser.newContext();
@@ -77,52 +145,30 @@ async function globalSetup(_config: FullConfig) {
     console.log("[global-setup] Admin auth state saved.");
   } catch (err) {
     console.warn("[global-setup] Admin login failed (tests will run without auth):", err);
-    // Write empty state so tests can still run (they'll redirect to login)
     fs.writeFileSync(ADMIN_STORAGE_STATE, JSON.stringify({ cookies: [], origins: [] }));
   }
 
   // --- Company ---
-  // The SignIn page redirects to "/" after login, then the Home page redirects
-  // to "/company" based on the user role. We wait for either URL pattern.
-  try {
-    console.log("[global-setup] Logging in as company...");
-    const companyContext = await browser.newContext();
-    const companyPage = await companyContext.newPage();
-    await companyPage.goto(`${BASE_URL}/signin`);
-    await companyPage.waitForLoadState("domcontentloaded");
-    await companyPage.fill('input[type="email"], input[name="email"], #email', "testcompany@example.com");
-    await companyPage.fill('input[type="password"], input[name="password"], #password', "TestCompany123!");
-    await companyPage.click('button[type="submit"]');
-    // Wait for the two-hop redirect: /signin -> / -> /company
-    await companyPage.waitForURL(/\/company|\/register/, { timeout: 40_000 });
-    await companyContext.storageState({ path: COMPANY_STORAGE_STATE });
-    await companyContext.close();
-    console.log("[global-setup] Company auth state saved.");
-  } catch (err) {
-    console.warn("[global-setup] Company login failed (tests will run without auth):", err);
-    fs.writeFileSync(COMPANY_STORAGE_STATE, JSON.stringify({ cookies: [], origins: [] }));
-  }
+  console.log("[global-setup] Logging in as company...");
+  await loginAndSaveState(
+    browser,
+    "testcompany@example.com",
+    "TestCompany123!",
+    /\/company/,
+    COMPANY_STORAGE_STATE,
+    "Company"
+  );
 
   // --- Contractor ---
-  // Same two-hop redirect pattern as company
-  try {
-    console.log("[global-setup] Logging in as contractor...");
-    const contractorContext = await browser.newContext();
-    const contractorPage = await contractorContext.newPage();
-    await contractorPage.goto(`${BASE_URL}/signin`);
-    await contractorPage.waitForLoadState("domcontentloaded");
-    await contractorPage.fill('input[type="email"], input[name="email"], #email', "testcontractor@example.com");
-    await contractorPage.fill('input[type="password"], input[name="password"], #password', "TestContractor123!");
-    await contractorPage.click('button[type="submit"]');
-    // Wait for the two-hop redirect: /signin -> / -> /contractor
-    await contractorPage.waitForURL(/\/contractor|\/register/, { timeout: 40_000 });
-    await contractorContext.storageState({ path: CONTRACTOR_STORAGE_STATE });
-    await contractorContext.close();
-    console.log("[global-setup] Contractor auth state saved.");
-  } catch (err) {
-    console.warn("[global-setup] Contractor login failed (tests will run without auth):", err);
-    fs.writeFileSync(CONTRACTOR_STORAGE_STATE, JSON.stringify({ cookies: [], origins: [] }));
-  }
+  console.log("[global-setup] Logging in as contractor...");
+  await loginAndSaveState(
+    browser,
+    "testcontractor@example.com",
+    "TestContractor123!",
+    /\/contractor/,
+    CONTRACTOR_STORAGE_STATE,
+    "Contractor"
+  );
 
   await browser.close();
   console.log("[global-setup] Setup complete.");

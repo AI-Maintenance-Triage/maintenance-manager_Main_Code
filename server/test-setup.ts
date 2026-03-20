@@ -74,7 +74,7 @@ export function registerTestSetupRoute(app: Express) {
           .limit(1);
 
         if (existing) {
-          // Ensure account is verified and has the right password
+          // Ensure account is verified, has the right password, and the correct role
           const passwordHash = await bcrypt.hash(account.password, SALT_ROUNDS);
           await db
             .update(users)
@@ -82,8 +82,34 @@ export function registerTestSetupRoute(app: Express) {
               passwordHash,
               emailVerified: true,
               emailVerificationCode: null,
+              emailVerificationExpiry: null,
+              role: account.role,
             })
             .where(eq(users.id, existing.id));
+          // Ensure company_admin has a companyId linked
+          if (account.role === "company_admin") {
+            const [existingWithCompany] = await db
+              .select({ companyId: users.companyId })
+              .from(users)
+              .where(eq(users.id, existing.id))
+              .limit(1);
+            if (!existingWithCompany?.companyId) {
+              const [companyInserted] = await db
+                .insert(companies)
+                .values({
+                  name: "Test Property Management Co.",
+                  email: normalizedEmail,
+                  subscriptionTier: "professional",
+                  subscriptionStatus: "active",
+                  planStatus: "active",
+                })
+                .$returningId();
+              await db
+                .update(users)
+                .set({ companyId: companyInserted.id })
+                .where(eq(users.id, existing.id));
+            }
+          }
           results[account.email] = "updated";
         } else {
           // Create new user
