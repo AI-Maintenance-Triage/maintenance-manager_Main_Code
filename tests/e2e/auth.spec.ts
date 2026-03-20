@@ -235,9 +235,10 @@ test.describe("Authentication flows", () => {
     test("/reset-password with no token shows error message", async ({ page }) => {
       await page.goto("/reset-password");
       await page.waitForLoadState("domcontentloaded");
-
-      const hasError = await page.locator("text=/invalid|expired|token|missing/i").first().isVisible({ timeout: 30_000 }).catch(() => false);
-      const hasForm = await page.locator('input[type="password"]').first().isVisible({ timeout: 30_000 }).catch(() => false);
+      // Wait for page to render (uses expect timeout from playwright.config.ts)
+      await expect(page.locator("main, [role='main'], #root").first()).toBeVisible();
+      const hasError = await page.locator("text=/invalid|expired|token|missing/i").first().isVisible({ timeout: 5_000 }).catch(() => false);
+      const hasForm = await page.locator('input[type="password"]').first().isVisible({ timeout: 5_000 }).catch(() => false);
       // Either shows an error or the form (some implementations show form and validate on submit)
       expect(hasError || hasForm).toBeTruthy();
     });
@@ -248,7 +249,7 @@ test.describe("Authentication flows", () => {
 
       // If form is shown, try submitting to trigger error
       const passwordInput = page.locator('input[type="password"]').first();
-      if (await passwordInput.isVisible({ timeout: 30_000 }).catch(() => false)) {
+      if (await passwordInput.isVisible({ timeout: 5_000 }).catch(() => false)) {
         await passwordInput.fill("NewPassword123!");
         const confirmInput = page.locator('input[name="confirmPassword"], input[placeholder*="confirm" i]').first();
         if (await confirmInput.isVisible({ timeout: 2_000 }).catch(() => false)) {
@@ -257,9 +258,11 @@ test.describe("Authentication flows", () => {
         await page.locator('button[type="submit"]').first().click();
       }
 
+      // Wait for page to render, then check for error
+      await expect(page.locator("main, [role='main'], #root").first()).toBeVisible();
       await expect(
         page.locator("text=/invalid|expired|token|error/i").first()
-      ).toBeVisible({ timeout: 30_000 });
+      ).toBeVisible({ timeout: 10_000 });
     });
   });
 
@@ -518,7 +521,9 @@ test.describe("Error boundary behavior", () => {
     await page.waitForLoadState("domcontentloaded");
 
     // Should show 404 page or redirect to home — not a blank white screen
-    const has404 = await page.locator("text=/not found|404|page.*not.*exist/i").first().isVisible({ timeout: 30_000 }).catch(() => false);
+    // Wait for page to render
+    await expect(page.locator("main, [role='main'], #root").first()).toBeVisible();
+    const has404 = await page.locator("text=/not found|404|page.*not.*exist/i").first().isVisible({ timeout: 5_000 }).catch(() => false);
     const redirectedHome = page.url().endsWith("/") || page.url().endsWith("/#");
     expect(has404 || redirectedHome).toBeTruthy();
   });

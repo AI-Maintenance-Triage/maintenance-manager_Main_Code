@@ -29,7 +29,7 @@ const GET_USER_INFO_PATH = `/webdev.v1.WebDevAuthPublicService/GetUserInfo`;
 const GET_USER_INFO_WITH_JWT_PATH = `/webdev.v1.WebDevAuthPublicService/GetUserInfoWithJwt`;
 
 // Short-lived in-memory cache for user lookups to reduce DB round-trips on every request
-const USER_CACHE_TTL_MS = 30_000; // 30 seconds
+const USER_CACHE_TTL_MS = 300_000; // 5 minutes
 const _userCache = new Map<string, { user: User; expiresAt: number }>();
 function getCachedUser(openId: string): User | null {
   const entry = _userCache.get(openId);

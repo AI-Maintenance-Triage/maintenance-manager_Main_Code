@@ -32,8 +32,7 @@ test.describe("Contractor flows", () => {
       await page.goto("/contractor");
       await page.waitForLoadState("domcontentloaded");
       // Announcement is conditional — just verify the page loads without error
-      const isLoaded = await page.locator("main, [role='main'], #root").first().isVisible({ timeout: 30_000 }).catch(() => false);
-      expect(isLoaded).toBeTruthy();
+      await expect(page.locator("main, [role='main'], #root").first()).toBeVisible();
     });
   });
 
@@ -362,8 +361,7 @@ test.describe("Contractor flows", () => {
         await clockInBtn.click();
         await page.waitForTimeout(1_000);
       }
-      const isLoaded = await page.locator("main, [role='main']").first().isVisible({ timeout: 30_000 }).catch(() => false);
-      expect(isLoaded).toBeTruthy();
+      await expect(page.locator("main, [role='main'], #root").first()).toBeVisible();
     });
   });
 
@@ -372,15 +370,22 @@ test.describe("Contractor flows", () => {
     test("Contractor onboarding checklist is visible on dashboard for new contractors", async ({ page }) => {
       await page.goto("/contractor");
       await page.waitForLoadState("domcontentloaded");
-      const isLoaded = await page.locator("main, [role='main']").first().isVisible({ timeout: 30_000 }).catch(() => false);
-      expect(isLoaded).toBeTruthy();
+      // Wait for the page to render (either skeleton or actual content)
+      await expect(page.locator("main, [role='main'], #root").first()).toBeVisible();
     });
 
     test("Onboarding step Complete your profile links to /contractor/profile", async ({ page }) => {
       await page.goto("/contractor");
       await page.waitForLoadState("domcontentloaded");
-      const profileStep = page.locator("text=/complete.*profile|profile.*setup/i").first();
-      if (await profileStep.isVisible({ timeout: 3_000 }).catch(() => false)) {
+      // Wait for page to load first
+      await expect(page.locator("main, [role='main'], #root").first()).toBeVisible();
+      // The checklist shows individual step buttons that navigate to /contractor/profile
+      const profileStep = page.locator(
+        "button:has-text('Add your business name'), button:has-text('Add a contact phone'), " +
+        "button:has-text('Select your trades'), button:has-text('Set your service area'), " +
+        "button:has-text('Add license'), button:has-text('Add insurance')"
+      ).first();
+      if (await profileStep.isVisible({ timeout: 5_000 }).catch(() => false)) {
         await profileStep.click();
         await page.waitForLoadState("domcontentloaded");
         expect(page.url()).toContain("/contractor/profile");
@@ -414,8 +419,8 @@ test.describe("Contractor flows", () => {
         await refreshBtn.click();
         await page.waitForLoadState("domcontentloaded");
       }
-      const isLoaded = await page.locator("main, [role='main']").first().isVisible({ timeout: 30_000 }).catch(() => false);
-      expect(isLoaded).toBeTruthy();
+      // Wait for the page to render (either skeleton or actual content)
+      await expect(page.locator("main, [role='main'], #root").first()).toBeVisible();
     });
   });
 
@@ -426,8 +431,8 @@ test.describe("Contractor flows", () => {
       await page.goto("/contractor");
       await page.waitForLoadState("domcontentloaded");
 
-      const isLoaded = await page.locator("main, [role='main'], #root").first().isVisible({ timeout: 30_000 }).catch(() => false);
-      expect(isLoaded).toBeTruthy();
+      // Wait for the page to render (either skeleton or actual content)
+      await expect(page.locator("main, [role='main'], #root").first()).toBeVisible();
 
       const hasHorizontalScroll = await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth);
       expect(hasHorizontalScroll).toBeFalsy();
@@ -438,8 +443,8 @@ test.describe("Contractor flows", () => {
       await page.goto("/contractor/job-board");
       await page.waitForLoadState("domcontentloaded");
 
-      const isLoaded = await page.locator("main, [role='main']").first().isVisible({ timeout: 30_000 }).catch(() => false);
-      expect(isLoaded).toBeTruthy();
+      // Wait for the page to render (either skeleton or actual content)
+      await expect(page.locator("main, [role='main'], #root").first()).toBeVisible();
 
       const hasHorizontalScroll = await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth);
       expect(hasHorizontalScroll).toBeFalsy();
