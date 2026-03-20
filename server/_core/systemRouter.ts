@@ -11,6 +11,7 @@ export const systemRouter = router({
     )
     .query(() => ({
       ok: true,
+      sha: process.env.GIT_COMMIT_SHA ?? "dev",
     })),
 
   notifyOwner: adminProcedure

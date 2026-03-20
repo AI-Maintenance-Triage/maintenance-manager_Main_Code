@@ -72,17 +72,19 @@ jobs:
       # ── Wait for DigitalOcean deployment to complete ──────────────────────────
       - name: Wait for deployment to be ready
         run: |
-          echo "Waiting for DigitalOcean deployment to complete..."
+          echo "Waiting for DigitalOcean to deploy commit $GITHUB_SHA..."
+          EXPECTED_SHA="$GITHUB_SHA"
           for i in $(seq 1 40); do
-            STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$PLAYWRIGHT_BASE_URL/api/trpc/system.health?input=%7B%22json%22%3A%7B%22timestamp%22%3A0%7D%7D")
-            if [ "$STATUS" = "200" ]; then
-              echo "Deployment ready after attempt $i!"
+            RESPONSE=$(curl -s "$PLAYWRIGHT_BASE_URL/api/trpc/system.health?input=%7B%22json%22%3A%7B%22timestamp%22%3A0%7D%7D")
+            DEPLOYED_SHA=$(echo "$RESPONSE" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('result',{}).get('data',{}).get('json',{}).get('sha',''))" 2>/dev/null || echo "")
+            if [ "$DEPLOYED_SHA" = "$EXPECTED_SHA" ]; then
+              echo "Deployment confirmed: SHA $DEPLOYED_SHA matches!"
               exit 0
             fi
-            echo "Attempt $i/40: HTTP $STATUS — waiting 15s..."
+            echo "Attempt $i/40: deployed=$DEPLOYED_SHA expected=$EXPECTED_SHA — waiting 15s..."
             sleep 15
           done
-          echo "ERROR: Deployment did not become ready within 10 minutes"
+          echo "ERROR: Deployment did not complete within 10 minutes"
           exit 1
         env:
           PLAYWRIGHT_BASE_URL: ${{ secrets.PLAYWRIGHT_BASE_URL }}
