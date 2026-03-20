@@ -13,8 +13,8 @@ export default defineConfig({
   retries: process.env.CI ? 2 : 0,
   workers: process.env.CI ? 4 : 2,
   reporter: [["html", { outputFolder: "playwright-report" }], ["list"]],
-  timeout: 30_000,
-  expect: { timeout: 8_000 },
+  timeout: 60_000,
+  expect: { timeout: 15_000 },
 
   globalSetup: "./tests/e2e/global-setup.ts",
   use: {

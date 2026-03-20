@@ -56,10 +56,11 @@ const FILTER_TABS: { label: string; value: string; queryStatus: string | string[
 // Priority filter chips
 const PRIORITY_FILTERS: { label: string; value: string | null; chipClass: string }[] = [
   { label: "All Priorities", value: null, chipClass: "border-border text-muted-foreground hover:bg-muted/50" },
-  { label: "Low", value: "low", chipClass: "border-green-500/40 text-green-400 bg-green-500/10 hover:bg-green-500/20" },
-  { label: "Medium", value: "medium", chipClass: "border-yellow-500/40 text-yellow-400 bg-yellow-500/10 hover:bg-yellow-500/20" },
-  { label: "High", value: "high", chipClass: "border-orange-600/60 text-orange-600 bg-orange-500/10 hover:bg-orange-500/20" },
-  { label: "Emergency", value: "emergency", chipClass: "border-red-600/60 text-red-600 bg-red-500/10 hover:bg-red-500/20" },
+  // Use lighter text colors (300 variants) to ensure WCAG 4.5:1 contrast ratio on dark backgrounds
+  { label: "Low", value: "low", chipClass: "border-green-500/40 text-green-300 bg-green-500/10 hover:bg-green-500/20" },
+  { label: "Medium", value: "medium", chipClass: "border-yellow-500/40 text-yellow-300 bg-yellow-500/10 hover:bg-yellow-500/20" },
+  { label: "High", value: "high", chipClass: "border-orange-400/60 text-orange-300 bg-orange-500/10 hover:bg-orange-500/20" },
+  { label: "Emergency", value: "emergency", chipClass: "border-red-400/60 text-red-300 bg-red-500/10 hover:bg-red-500/20" },
 ];
 
 // Change history type labels

@@ -274,9 +274,11 @@ test.describe("Contractor flows", () => {
     test("Transactions table shows earnings history or empty state", async ({ page }) => {
       await page.goto("/contractor/earnings");
       await page.waitForLoadState("domcontentloaded");
+      // Wait for page content to load (auth resolves)
+      await expect(page.locator("h1, h2").filter({ hasText: /earnings/i }).first()).toBeVisible();
 
-      const hasTable = await page.locator("table, [role='table']").isVisible({ timeout: 3_000 }).catch(() => false);
-      const hasEmptyState = await page.locator("text=/no transactions|no earnings/i").isVisible({ timeout: 3_000 }).catch(() => false);
+      const hasTable = await page.locator("table, [role='table']").isVisible({ timeout: 5_000 }).catch(() => false);
+      const hasEmptyState = await page.locator("text=/no transactions|no earnings|no.*yet/i").isVisible({ timeout: 5_000 }).catch(() => false);
       expect(hasTable || hasEmptyState).toBeTruthy();
     });
   });
@@ -360,7 +362,7 @@ test.describe("Contractor flows", () => {
         await clockInBtn.click();
         await page.waitForTimeout(1_000);
       }
-      const isLoaded = await page.locator("main, [role='main']").isVisible();
+      const isLoaded = await page.locator("main, [role='main']").first().isVisible();
       expect(isLoaded).toBeTruthy();
     });
   });
@@ -370,7 +372,7 @@ test.describe("Contractor flows", () => {
     test("Contractor onboarding checklist is visible on dashboard for new contractors", async ({ page }) => {
       await page.goto("/contractor");
       await page.waitForLoadState("domcontentloaded");
-      const isLoaded = await page.locator("main, [role='main']").isVisible();
+      const isLoaded = await page.locator("main, [role='main']").first().isVisible();
       expect(isLoaded).toBeTruthy();
     });
 
@@ -412,7 +414,7 @@ test.describe("Contractor flows", () => {
         await refreshBtn.click();
         await page.waitForLoadState("domcontentloaded");
       }
-      const isLoaded = await page.locator("main, [role='main']").isVisible();
+      const isLoaded = await page.locator("main, [role='main']").first().isVisible();
       expect(isLoaded).toBeTruthy();
     });
   });
@@ -436,7 +438,7 @@ test.describe("Contractor flows", () => {
       await page.goto("/contractor/job-board");
       await page.waitForLoadState("domcontentloaded");
 
-      const isLoaded = await page.locator("main, [role='main']").isVisible();
+      const isLoaded = await page.locator("main, [role='main']").first().isVisible();
       expect(isLoaded).toBeTruthy();
 
       const hasHorizontalScroll = await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth);

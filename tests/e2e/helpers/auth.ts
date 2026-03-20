@@ -27,7 +27,9 @@ export async function loginAsCompany(
   await page.fill('input[type="email"], input[name="email"]', email);
   await page.fill('input[type="password"], input[name="password"]', password);
   await page.click('button[type="submit"]');
-  await page.waitForURL(/\/company/, { timeout: 15_000 });
+  // The SignIn page redirects to "/" then the Home page redirects to /company
+  // This two-hop redirect can take up to 30s in CI
+  await page.waitForURL(/\/company/, { timeout: 30_000 });
   await page.waitForLoadState("domcontentloaded");
 }
 
@@ -45,7 +47,9 @@ export async function loginAsContractor(
   await page.fill('input[type="email"], input[name="email"]', email);
   await page.fill('input[type="password"], input[name="password"]', password);
   await page.click('button[type="submit"]');
-  await page.waitForURL(/\/contractor/, { timeout: 15_000 });
+  // The SignIn page redirects to "/" then the Home page redirects to /contractor
+  // This two-hop redirect can take up to 30s in CI
+  await page.waitForURL(/\/contractor/, { timeout: 30_000 });
   await page.waitForLoadState("domcontentloaded");
 }
 

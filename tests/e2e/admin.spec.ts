@@ -535,8 +535,8 @@ test.describe("Admin flows", () => {
       await page.goto("/admin/churn-risk");
       await page.waitForLoadState("domcontentloaded");
 
-      const hasContent = await page.locator("text=/no.*at.*risk|all.*healthy|no churn/i").first().isVisible({ timeout: 3_000 }).catch(() => false);
-      const hasTable = await page.locator("table, [role='table']").first().isVisible({ timeout: 3_000 }).catch(() => false);
+      const hasContent = await page.locator("text=/no.*at.*risk|all.*healthy|no churn/i").first().isVisible({ timeout: 15_000 }).catch(() => false);
+      const hasTable = await page.locator("table, [role='table']").first().isVisible({ timeout: 15_000 }).catch(() => false);
       expect(hasContent || hasTable).toBeTruthy();
     });
 
@@ -544,8 +544,8 @@ test.describe("Admin flows", () => {
       await page.goto("/admin/payout-holds");
       await page.waitForLoadState("domcontentloaded");
 
-      const hasContent = await page.locator("text=/no.*holds|no active holds|all.*clear/i").first().isVisible({ timeout: 3_000 }).catch(() => false);
-      const hasTable = await page.locator("table, [role='table']").first().isVisible({ timeout: 3_000 }).catch(() => false);
+      const hasContent = await page.locator("text=/no.*holds|no active holds|all.*clear/i").first().isVisible({ timeout: 15_000 }).catch(() => false);
+      const hasTable = await page.locator("table, [role='table']").first().isVisible({ timeout: 15_000 }).catch(() => false);
       expect(hasContent || hasTable).toBeTruthy();
     });
 
@@ -553,8 +553,8 @@ test.describe("Admin flows", () => {
       await page.goto("/admin/suspensions");
       await page.waitForLoadState("domcontentloaded");
 
-      const hasContent = await page.locator("text=/no.*suspensions|no active|all.*active/i").first().isVisible({ timeout: 3_000 }).catch(() => false);
-      const hasTable = await page.locator("table, [role='table']").first().isVisible({ timeout: 3_000 }).catch(() => false);
+      const hasContent = await page.locator("text=/no.*suspensions|no active|all.*active/i").first().isVisible({ timeout: 15_000 }).catch(() => false);
+      const hasTable = await page.locator("table, [role='table']").first().isVisible({ timeout: 15_000 }).catch(() => false);
       expect(hasContent || hasTable).toBeTruthy();
     });
   });

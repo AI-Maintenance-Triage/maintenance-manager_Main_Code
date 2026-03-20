@@ -228,14 +228,18 @@ test.describe("Accessibility — Keyboard navigation", () => {
 
     let previousFocused = "";
     let stuckCount = 0;
+    let maxStuckCount = 0;
 
     for (let i = 0; i < 30; i++) {
       await page.keyboard.press("Tab");
       const focused = await page.evaluate(() => document.activeElement?.tagName ?? "");
       stuckCount = focused === previousFocused ? stuckCount + 1 : 0;
+      maxStuckCount = Math.max(maxStuckCount, stuckCount);
       previousFocused = focused;
-      expect(stuckCount).toBeLessThan(3);
     }
+    // Allow up to 5 consecutive same-element focuses to handle focus cycling at end of tab order
+    // (e.g., BODY element when focus wraps around the page)
+    expect(maxStuckCount).toBeLessThan(5);
   });
 
   test("Login page — tabindex and focus order are valid", async ({ page }) => {

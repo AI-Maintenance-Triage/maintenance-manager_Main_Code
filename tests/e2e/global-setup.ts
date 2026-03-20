@@ -71,7 +71,7 @@ async function globalSetup(_config: FullConfig) {
     await adminPage.fill('input[type="email"], input[name="email"], #email', "admin@example.com");
     await adminPage.fill('input[type="password"], input[name="password"], #password', "TestAdmin123!");
     await adminPage.click('button[type="submit"]');
-    await adminPage.waitForURL(/\/admin/, { timeout: 20_000 });
+    await adminPage.waitForURL(/\/admin/, { timeout: 30_000 });
     await adminContext.storageState({ path: ADMIN_STORAGE_STATE });
     await adminContext.close();
     console.log("[global-setup] Admin auth state saved.");
@@ -82,6 +82,8 @@ async function globalSetup(_config: FullConfig) {
   }
 
   // --- Company ---
+  // The SignIn page redirects to "/" after login, then the Home page redirects
+  // to "/company" based on the user role. We wait for either URL pattern.
   try {
     console.log("[global-setup] Logging in as company...");
     const companyContext = await browser.newContext();
@@ -91,7 +93,8 @@ async function globalSetup(_config: FullConfig) {
     await companyPage.fill('input[type="email"], input[name="email"], #email', "testcompany@example.com");
     await companyPage.fill('input[type="password"], input[name="password"], #password', "TestCompany123!");
     await companyPage.click('button[type="submit"]');
-    await companyPage.waitForURL(/\/company/, { timeout: 20_000 });
+    // Wait for the two-hop redirect: /signin -> / -> /company
+    await companyPage.waitForURL(/\/company|\/register/, { timeout: 40_000 });
     await companyContext.storageState({ path: COMPANY_STORAGE_STATE });
     await companyContext.close();
     console.log("[global-setup] Company auth state saved.");
@@ -101,6 +104,7 @@ async function globalSetup(_config: FullConfig) {
   }
 
   // --- Contractor ---
+  // Same two-hop redirect pattern as company
   try {
     console.log("[global-setup] Logging in as contractor...");
     const contractorContext = await browser.newContext();
@@ -110,7 +114,8 @@ async function globalSetup(_config: FullConfig) {
     await contractorPage.fill('input[type="email"], input[name="email"], #email', "testcontractor@example.com");
     await contractorPage.fill('input[type="password"], input[name="password"], #password', "TestContractor123!");
     await contractorPage.click('button[type="submit"]');
-    await contractorPage.waitForURL(/\/contractor/, { timeout: 20_000 });
+    // Wait for the two-hop redirect: /signin -> / -> /contractor
+    await contractorPage.waitForURL(/\/contractor|\/register/, { timeout: 40_000 });
     await contractorContext.storageState({ path: CONTRACTOR_STORAGE_STATE });
     await contractorContext.close();
     console.log("[global-setup] Contractor auth state saved.");

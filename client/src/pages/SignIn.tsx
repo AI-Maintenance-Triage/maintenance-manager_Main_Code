@@ -45,8 +45,18 @@ export default function SignIn() {
       }
 
       toast.success("Welcome back!");
-      // Full page reload to pick up the new session cookie
-      window.location.href = "/";
+      // Redirect directly to the correct dashboard based on role
+      // This avoids the two-hop redirect (/ -> /company|/contractor|/admin)
+      const role = data.user?.role;
+      if (role === "admin") {
+        window.location.href = "/admin";
+      } else if (role === "company_admin") {
+        window.location.href = "/company";
+      } else if (role === "contractor") {
+        window.location.href = "/contractor";
+      } else {
+        window.location.href = "/";
+      }
     } catch (err) {
       toast.error("Something went wrong. Please try again.");
     } finally {
