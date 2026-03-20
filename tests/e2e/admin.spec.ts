@@ -566,7 +566,7 @@ test.describe("Admin flows", () => {
       await page.goto("/admin");
       await page.waitForLoadState("domcontentloaded");
 
-      const isLoaded = await page.locator("main, [role='main'], #root").isVisible();
+      const isLoaded = await page.locator("main, [role='main'], #root").first().isVisible();
       expect(isLoaded).toBeTruthy();
     });
   });

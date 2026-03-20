@@ -32,7 +32,7 @@ test.describe("Contractor flows", () => {
       await page.goto("/contractor");
       await page.waitForLoadState("domcontentloaded");
       // Announcement is conditional — just verify the page loads without error
-      const isLoaded = await page.locator("main, [role='main'], #root").isVisible();
+      const isLoaded = await page.locator("main, [role='main'], #root").first().isVisible();
       expect(isLoaded).toBeTruthy();
     });
   });
@@ -424,7 +424,7 @@ test.describe("Contractor flows", () => {
       await page.goto("/contractor");
       await page.waitForLoadState("domcontentloaded");
 
-      const isLoaded = await page.locator("main, [role='main'], #root").isVisible();
+      const isLoaded = await page.locator("main, [role='main'], #root").first().isVisible();
       expect(isLoaded).toBeTruthy();
 
       const hasHorizontalScroll = await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth);

@@ -33,7 +33,7 @@ test.describe("Company Admin flows", () => {
       await page.goto("/company");
       await page.waitForLoadState("domcontentloaded");
       // Announcement banner is conditional — just verify the page loads without error
-      const isLoaded = await page.locator("main, [role='main'], #root").isVisible();
+      const isLoaded = await page.locator("main, [role='main'], #root").first().isVisible();
       expect(isLoaded).toBeTruthy();
     });
   });
@@ -596,7 +596,7 @@ test.describe("Notification flows", () => {
 
     const bell = page.locator('[aria-label*="notification" i], button:has(svg[class*="bell" i]), [data-testid="notification-bell"]').first();
     // Bell may or may not be visible depending on layout — verify page loaded
-    const isLoaded = await page.locator("main, [role='main'], #root").isVisible();
+    const isLoaded = await page.locator("main, [role='main'], #root").first().isVisible();
     expect(isLoaded).toBeTruthy();
   });
 
@@ -612,7 +612,7 @@ test.describe("Notification flows", () => {
       // Should open a dropdown or panel
       const panel = await page.locator('[role="dialog"], [role="listbox"], .notification-panel, text=/notifications/i').first().isVisible({ timeout: 3_000 }).catch(() => false);
       // Just verify no crash occurred
-      const isLoaded = await page.locator("main, [role='main'], #root").isVisible();
+      const isLoaded = await page.locator("main, [role='main'], #root").first().isVisible();
       expect(isLoaded).toBeTruthy();
     }
   });

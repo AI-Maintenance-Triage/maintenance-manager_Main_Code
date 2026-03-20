@@ -57,19 +57,24 @@ import AdminLogin from "./pages/AdminLogin";
 import { PWAInstallBanner } from "./components/PWAInstallBanner";
 import { useAuth } from "./_core/hooks/useAuth";
 import { useLocation } from "wouter";
+import { useEffect } from "react";
 
 /**
  * AdminGuard — redirects unauthenticated users or non-admins to /admin/login.
+ * Uses useEffect to avoid render-phase side effects.
  */
 function AdminGuard({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
   const [, setLocation] = useLocation();
 
+  useEffect(() => {
+    if (!loading && (!user || user.role !== "admin")) {
+      setLocation("/admin/login");
+    }
+  }, [loading, user, setLocation]);
+
   if (loading) return null;
-  if (!user || user.role !== "admin") {
-    setLocation("/admin/login");
-    return null;
-  }
+  if (!user || user.role !== "admin") return null;
   return <>{children}</>;
 }
 
